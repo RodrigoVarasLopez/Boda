@@ -306,10 +306,10 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
                   href={`/i/${group.token}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-2.5 px-3 rounded-xl border border-border-strong text-text-primary font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-bg-secondary transition-colors"
+                  className="py-2.5 px-3 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-primary-hover shadow-soft transition-colors"
                 >
-                  <Eye className="w-4 h-4 text-text-accent" />
-                  <span>Ver invitación</span>
+                  <Eye className="w-4 h-4" />
+                  <span>Ver como invitado</span>
                 </a>
                 <button
                   onClick={() => setShowQR(!showQR)}

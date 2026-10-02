@@ -43,7 +43,7 @@ export default function RootHomePage() {
                   Invitación Personalizada: Familia García
                 </span>
                 <span className="text-xs text-text-muted block">
-                  Ver como invitado VIP (Incluye Cena de Bienvenida + Brunch)
+                  Ver como invitado (Ceremonia, Banquete al aire libre y Fiesta en Bodega Concejo)
                 </span>
               </div>
               <ArrowRight className="w-5 h-5 text-text-accent group-hover:translate-x-1 transition-transform" />
@@ -60,7 +60,7 @@ export default function RootHomePage() {
                   Invitación Personalizada: Sofía Martín
                 </span>
                 <span className="text-xs text-text-muted block">
-                  Ver como invitada individual con opción de Acompañante (+1)
+                  Ver como amiga íntima (Incluye Preboda &amp; Cata el Viernes + Acompañante +1)
                 </span>
               </div>
               <ArrowRight className="w-5 h-5 text-text-accent group-hover:translate-x-1 transition-transform" />

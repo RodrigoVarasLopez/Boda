@@ -61,19 +61,66 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex items-center gap-2 sm:gap-4">
           <ThemeSelector compact />
           
-          <Link
-            href="/i/token-garcia-772"
-            target="_blank"
-            className="hidden sm:inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-border-strong text-xs font-medium text-text-primary hover:bg-bg-secondary transition-colors"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-text-accent" />
-            <span>Ver como invitado</span>
-          </Link>
+          {/* Ver como invitado with quick selector */}
+          <div className="relative group">
+            <Link
+              href="/i/token-garcia-772"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-border-strong text-xs font-medium text-text-primary hover:bg-bg-secondary transition-colors"
+              title="Abrir vista de invitado (por defecto Familia García)"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-text-accent" />
+              <span className="hidden sm:inline">Ver como invitado</span>
+              <span className="sm:hidden">Invitado</span>
+            </Link>
+
+            {/* Quick dropdown menu for choosing specific guest profile */}
+            <div className="hidden group-hover:block absolute right-0 top-full pt-1.5 z-50 w-64 animate-fade-in">
+              <div className="bg-bg-card border border-border-subtle rounded-2xl shadow-card p-2 space-y-1 text-xs">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted px-2 py-1 block font-semibold">
+                  PROBAR COMO INVITADO:
+                </span>
+                <Link
+                  href="/i/token-garcia-772"
+                  target="_blank"
+                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
+                >
+                  <span className="font-semibold text-text-primary">Familia García</span>
+                  <span className="text-[11px] text-text-muted">Solo eventos de Sábado (Boda)</span>
+                </Link>
+                <Link
+                  href="/i/token-sofia-409"
+                  target="_blank"
+                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
+                >
+                  <span className="font-semibold text-text-primary">Sofía Martín (+1)</span>
+                  <span className="text-[11px] text-brand-olive font-medium">Viernes Preboda &amp; Sábado</span>
+                </Link>
+                <Link
+                  href="/i/token-amigos-uni-118"
+                  target="_blank"
+                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
+                >
+                  <span className="font-semibold text-text-primary">Amigos Universidad</span>
+                  <span className="text-[11px] text-brand-olive font-medium">Viernes Preboda &amp; Sábado</span>
+                </Link>
+                <div className="pt-1 border-t border-border-subtle">
+                  <Link
+                    href="/admin/guests"
+                    className="block text-center py-1.5 text-[11px] text-text-accent hover:underline font-medium"
+                  >
+                    Ver todos los invitados en CRM →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <Link
             href={`/w/${INITIAL_WEDDING.slug}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-primary text-primary-text text-xs font-medium hover:bg-primary-hover shadow-soft transition-colors"
+            title="Abrir web pública de boda"
           >
             <Eye className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ver web</span>
@@ -81,7 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Avatar Monogram */}
           <div className="w-8 h-8 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-xs font-medium text-text-primary shadow-xs">
-            S&R
+            S&amp;R
           </div>
         </div>
       </header>

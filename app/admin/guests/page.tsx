@@ -209,7 +209,7 @@ export default function AdminGuestsPage() {
             </div>
 
             {/* Quick manual RSVP trigger button for non-tech guests on mobile */}
-            <div className="pt-2 border-t border-border-subtle/50 flex items-center justify-between gap-2">
+            <div className="pt-2 border-t border-border-subtle/50 flex flex-wrap items-center justify-between gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -218,15 +218,29 @@ export default function AdminGuestsPage() {
                 className="py-1.5 px-3 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <UserCheck className="w-3.5 h-3.5" />
-                <span>Confirmar / RSVP</span>
+                <span>Confirmar RSVP</span>
               </button>
 
-              <button
-                onClick={() => setSelectedDrawerGroup(grp)}
-                className="text-xs font-medium text-text-accent flex items-center gap-1 py-1.5 px-2"
-              >
-                Detalles →
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/i/${grp.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="py-1.5 px-2.5 rounded-xl border border-border-subtle text-xs font-medium text-text-primary flex items-center gap-1 hover:bg-bg-secondary"
+                  title="Ver experiencia como este invitado"
+                >
+                  <Eye className="w-3.5 h-3.5 text-text-accent" />
+                  <span>Ver invitado</span>
+                </a>
+
+                <button
+                  onClick={() => setSelectedDrawerGroup(grp)}
+                  className="text-xs font-medium text-text-accent flex items-center gap-1 py-1.5 px-2"
+                >
+                  Detalles →
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -338,12 +352,24 @@ export default function AdminGuestsPage() {
                         <MessageCircle className="w-4 h-4" />
                       </button>
 
+                      {/* Direct Ver como invitado link */}
+                      <a
+                        href={`/i/${grp.token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Abrir experiencia de ${grp.name} como invitado en nueva pestaña`}
+                        className="py-1.5 px-2.5 rounded-xl border border-border-subtle hover:border-border-strong text-text-primary hover:bg-bg-secondary transition-colors flex items-center gap-1 font-medium text-[11px]"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-text-accent" />
+                        <span className="hidden xl:inline">Ver como invitado</span>
+                      </a>
+
                       <button
                         onClick={() => setSelectedDrawerGroup(grp)}
-                        title="Ver detalle de invitación"
-                        className="p-2 rounded-xl text-text-accent hover:bg-bg-secondary transition-colors cursor-pointer"
+                        title="Ver ficha completa y opciones de invitación"
+                        className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer text-xs"
                       >
-                        <Eye className="w-4 h-4" />
+                        <span>Detalles →</span>
                       </button>
                     </div>
                   </td>
