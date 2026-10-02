@@ -75,9 +75,9 @@ export default function PersonalizedInvitationPage() {
   }
 
   return (
-    <main className="min-h-screen pb-28 bg-bg-primary text-text-primary transition-colors duration-300">
+    <main className="min-h-screen pb-28 bg-bg-primary text-text-primary transition-colors duration-300 overflow-x-hidden">
       {/* Quick Theme Switcher Pill for Preview */}
-      <div className="max-w-md mx-auto pt-4 px-4 flex justify-between items-center text-xs text-text-muted">
+      <div className="max-w-md mx-auto pt-4 px-4 flex justify-between items-center gap-2 text-xs text-text-muted">
         <span className="font-medium">Invitación para {group.name}</span>
         <ThemeSelector compact />
       </div>

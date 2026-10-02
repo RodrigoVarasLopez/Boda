@@ -39,9 +39,9 @@ export default function PublicWeddingPage() {
   const storyBlock = INITIAL_CMS_BLOCKS.find((b) => b.type === 'story');
 
   return (
-    <main className="min-h-screen pb-32 bg-bg-primary text-text-primary transition-colors duration-300">
+    <main className="min-h-screen pb-32 bg-bg-primary text-text-primary transition-colors duration-300 overflow-x-hidden">
       {/* Top Header Pill for Preview */}
-      <div className="max-w-md mx-auto pt-6 px-4 flex justify-between items-center text-xs text-text-muted">
+      <div className="max-w-md mx-auto pt-4 sm:pt-6 px-4 flex justify-between items-center gap-2 text-xs text-text-muted">
         <span className="font-serif italic text-text-secondary text-sm">Stephanie & Rodrigo</span>
         <ThemeSelector compact />
       </div>

@@ -21,7 +21,7 @@ export const GuestStickyNav: React.FC<GuestStickyNavProps> = ({
   ];
 
   return (
-    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md bg-bg-card/90 backdrop-blur-md border border-border-strong/60 rounded-full shadow-card p-1.5 transition-all">
+    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[94%] sm:w-[92%] max-w-md bg-bg-card/90 backdrop-blur-md border border-border-strong/60 rounded-full shadow-card p-1 sm:p-1.5 transition-all">
       <nav className="flex justify-around items-center">
         {items.map((item) => {
           const Icon = item.icon;
@@ -30,7 +30,7 @@ export const GuestStickyNav: React.FC<GuestStickyNavProps> = ({
             <button
               key={item.id}
               onClick={() => onSelectSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-2 sm:px-3 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
                 isActive
                   ? 'bg-primary text-primary-text font-bold shadow-soft scale-105'
                   : 'text-text-muted hover:text-text-primary'

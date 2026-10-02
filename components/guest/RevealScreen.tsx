@@ -58,7 +58,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
 
         {/* Couple Names */}
         <div className="space-y-3">
-          <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-normal text-text-primary tracking-tight leading-[1.05]">
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-normal text-text-primary tracking-tight leading-tight break-words">
             {wedding.couple_names}
           </h1>
           <p className="text-xs uppercase tracking-[0.25em] font-medium text-text-muted">
