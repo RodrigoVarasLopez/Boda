@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${cormorant.variable} ${plusJakarta.variable}`} suppressHydrationWarning>
+    <html lang="es" data-theme="mediterranean" className={`${cormorant.variable} ${plusJakarta.variable}`} suppressHydrationWarning>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans antialiased selection:bg-brand-sand selection:text-brand-ink">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

@@ -16,7 +16,7 @@ import { Heart, Sparkles, ChevronDown } from 'lucide-react';
 
 export default function PublicWeddingPage() {
   const params = useParams();
-  const [isRevealed, setIsRevealed] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(true);
   const [activeSection, setActiveSection] = useState('welcome');
 
   const scrollToSection = (sectionId: string) => {

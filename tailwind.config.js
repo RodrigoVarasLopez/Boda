@@ -9,25 +9,25 @@ module.exports = {
     extend: {
       colors: {
         bg: {
-          primary: 'var(--color-bg-primary)',
-          secondary: 'var(--color-bg-secondary)',
-          accent: 'var(--color-bg-accent)',
-          card: 'var(--color-bg-card)',
+          primary: 'rgb(var(--color-bg-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-bg-secondary) / <alpha-value>)',
+          accent: 'rgb(var(--color-bg-accent) / <alpha-value>)',
+          card: 'rgb(var(--color-bg-card) / <alpha-value>)',
         },
         text: {
-          primary: 'var(--color-text-primary)',
-          secondary: 'var(--color-text-secondary)',
-          muted: 'var(--color-text-muted)',
-          accent: 'var(--color-text-accent)',
+          primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-text-muted) / <alpha-value>)',
+          accent: 'rgb(var(--color-text-accent) / <alpha-value>)',
         },
         border: {
-          subtle: 'var(--color-border-subtle)',
-          strong: 'var(--color-border-strong)',
+          subtle: 'rgb(var(--color-border-subtle) / <alpha-value>)',
+          strong: 'rgb(var(--color-border-strong) / <alpha-value>)',
         },
         primary: {
-          DEFAULT: 'var(--color-primary)',
-          hover: 'var(--color-primary-hover)',
-          text: 'var(--color-primary-text)',
+          DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
+          hover: 'rgb(var(--color-primary-hover) / <alpha-value>)',
+          text: 'rgb(var(--color-primary-text) / <alpha-value>)',
         },
         brand: {
           porcelain: '#F8F5EF',
