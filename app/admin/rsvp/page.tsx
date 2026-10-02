@@ -63,14 +63,20 @@ export default function AdminRSVPPage() {
             <span>Resumen de Menús Especiales</span>
           </div>
           <div className="space-y-2 text-xs">
-            {allResponses.map((res) => (
-              <div key={res.guest_id} className="flex justify-between items-center p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle">
-                <span className="font-medium text-text-primary">{res.guest_name}</span>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-sand/60 text-brand-ink uppercase">
-                  {res.dietary_choice}
-                </span>
-              </div>
-            ))}
+            {allResponses.filter((res) => res.status === 'attending' && res.dietary_choice !== 'standard').length === 0 ? (
+              <p className="text-text-muted italic py-2">Todos los invitados confirmados han seleccionado menú estándar.</p>
+            ) : (
+              allResponses
+                .filter((res) => res.status === 'attending' && res.dietary_choice !== 'standard')
+                .map((res) => (
+                  <div key={res.guest_id} className="flex justify-between items-center p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle">
+                    <span className="font-medium text-text-primary">{res.guest_name}</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-sand/60 text-brand-ink uppercase">
+                      {res.dietary_choice}
+                    </span>
+                  </div>
+                ))
+            )}
           </div>
         </div>
 
@@ -81,12 +87,18 @@ export default function AdminRSVPPage() {
             <span>Alertas de Alergias Críticas</span>
           </div>
           <div className="space-y-2 text-xs">
-            {allResponses.filter((r) => r.allergies).map((res) => (
-              <div key={res.guest_id} className="p-3 rounded-xl bg-brand-cream/60 border border-brand-sand space-y-1">
-                <span className="font-medium text-text-primary block">{res.guest_name}</span>
-                <p className="text-[11px] text-brand-terracotta font-semibold">Alergia: {res.allergies}</p>
-              </div>
-            ))}
+            {allResponses.filter((r) => r.status === 'attending' && r.allergies).length === 0 ? (
+              <p className="text-text-muted italic py-2">No se han registrado alergias entre los asistentes confirmados.</p>
+            ) : (
+              allResponses
+                .filter((r) => r.status === 'attending' && r.allergies)
+                .map((res) => (
+                  <div key={res.guest_id} className="p-3 rounded-xl bg-brand-cream/60 border border-brand-sand space-y-1">
+                    <span className="font-medium text-text-primary block">{res.guest_name}</span>
+                    <p className="text-[11px] text-brand-terracotta font-semibold">Alergia: {res.allergies}</p>
+                  </div>
+                ))
+            )}
           </div>
         </div>
       </div>

@@ -51,7 +51,7 @@ export default function PersonalizedInvitationPage() {
             Invitación no disponible
           </h1>
           <p className="text-xs text-text-secondary leading-relaxed">
-            Este enlace de invitación ha expirado, no existe o ha sido actualizado por los novios.
+            Esta invitación ya no está disponible.
           </p>
           <div className="pt-3 border-t border-border-subtle">
             <p className="text-[11px] text-text-muted flex items-center justify-center gap-1">

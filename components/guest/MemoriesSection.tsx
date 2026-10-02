@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Wedding, GuestBookEntry, MediaPhoto } from '@/lib/types';
-import { Camera, BookOpen, Send, Sparkles, Heart } from 'lucide-react';
+import { Camera, BookOpen, Send, Sparkles, Heart, Check } from 'lucide-react';
 
 interface MemoriesSectionProps {
   wedding: Wedding;
@@ -23,24 +23,33 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [entries, setEntries] = useState<GuestBookEntry[]>(guestbookEntries);
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'guestbook' | 'photos'>('guestbook');
+
+  const visibleEntries = entries.filter((item) => !item.status || item.status === 'approved');
 
   const handlePostMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !message.trim()) return;
 
+    const sanitizedName = name.trim().slice(0, 80);
+    const sanitizedMessage = message.trim().slice(0, 500);
+
     const newEntry: GuestBookEntry = {
       id: `gb-${Date.now()}`,
       wedding_id: wedding.id,
-      guest_name: name,
-      message: message,
+      guest_name: sanitizedName,
+      message: sanitizedMessage,
+      status: 'approved',
       created_at: new Date().toISOString(),
     };
 
     setEntries([newEntry, ...entries]);
-    if (onAddMessage) onAddMessage(name, message);
+    if (onAddMessage) onAddMessage(sanitizedName, sanitizedMessage);
     setName('');
     setMessage('');
+    setSubmittedSuccess(true);
+    setTimeout(() => setSubmittedSuccess(false), 4000);
   };
 
   return (
@@ -92,9 +101,16 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
             <h3 className="font-serif text-xl font-normal text-text-primary">
               Dedicatoria para Stephanie & Rodrigo
             </h3>
+            {submittedSuccess && (
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center animate-fade-in flex items-center justify-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>¡Dedicatoria guardada! Gracias por tus palabras para Stephanie & Rodrigo.</span>
+              </div>
+            )}
             <input
               type="text"
               placeholder="Tu nombre / familia"
+              maxLength={80}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full py-3 px-4 rounded-xl bg-bg-secondary/30 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent"
@@ -102,7 +118,8 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
             />
             <textarea
               rows={3}
-              placeholder="Escribe unas palabras de cariño..."
+              placeholder="Escribe unas palabras de cariño... (máx 500 caracteres)"
+              maxLength={500}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="w-full p-4 rounded-xl bg-bg-secondary/30 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent resize-none"
@@ -119,7 +136,7 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
 
           {/* List of Messages */}
           <div className="space-y-3">
-            {entries.map((item) => (
+            {visibleEntries.map((item) => (
               <div key={item.id} className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-text-primary flex items-center gap-1.5">

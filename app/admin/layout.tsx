@@ -10,6 +10,7 @@ import {
   CalendarDays,
   PanelsTopLeft,
   Image as ImageIcon,
+  BookOpen,
   Settings2,
   Eye,
   Menu,
@@ -29,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/rsvp', label: 'RSVP', icon: ClipboardCheck },
     { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
     { href: '/admin/cms', label: 'Web & CMS', icon: PanelsTopLeft },
+    { href: '/admin/guestbook', label: 'Firmas', icon: BookOpen },
     { href: '/admin/media', label: 'Memorias', icon: ImageIcon },
     { href: '/admin/settings', label: 'Ajustes', icon: Settings2 },
   ];

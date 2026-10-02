@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { GuestGroup, Event, Wedding, GuestRSVPResponse } from '@/lib/types';
+import { INVITATION_STATUS_LABELS } from '@/lib/types';
 import {
   X,
   Copy,
@@ -45,9 +46,19 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
 
   if (!group) return null;
 
+  const isLocalEnv = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.')
+  );
+
   const fullInvitationUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/i/${group.token}`
-    : `https://bodaweb.app/i/${group.token}`;
+    : `https://stephanieyrodrigo.com/i/${group.token}`;
+
+  const whatsAppInvitationUrl = isLocalEnv
+    ? `https://stephanieyrodrigo.com/i/${group.token}`
+    : fullInvitationUrl;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(fullInvitationUrl);
@@ -61,7 +72,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
       group.name,
       wedding.couple_names,
       wedding.wedding_date,
-      fullInvitationUrl,
+      whatsAppInvitationUrl,
       customNote
     );
     window.open(waUrl, '_blank');
@@ -139,7 +150,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
                 {group.invitation_status === 'responded' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 {group.invitation_status === 'sent' && <Clock className="w-3.5 h-3.5" />}
                 {group.invitation_status === 'revoked' && <Ban className="w-3.5 h-3.5" />}
-                <span>{group.invitation_status}</span>
+                <span>{INVITATION_STATUS_LABELS[group.invitation_status] || group.invitation_status}</span>
               </span>
             </div>
 

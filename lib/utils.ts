@@ -20,21 +20,17 @@ export function buildWhatsAppLink(
   invitationUrl: string,
   customNote: string = ''
 ): string {
-  const formattedDate = new Date(weddingDate).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-
-  let message = `¡Hola ${recipientName}! 🤍\n\n`;
-  if (customNote) {
-    message += `${customNote}\n\n`;
+  let message = `Hola ${recipientName} ❤️\n\n`;
+  if (customNote && customNote.trim()) {
+    message += `${customNote.trim()}\n\n`;
   } else {
-    message += `${coupleNames} tienen una noticia muy especial para ti.\n`;
+    message += `Tenemos algo muy especial que compartir contigo.\n\n`;
+    message += `Nos casamos y nos encantaría celebrar este día contigo.\n\n`;
   }
-  message += `Estás invitado/a a nuestra boda el ${formattedDate}.\n\n`;
-  message += `Hemos preparado tu invitación personalizada aquí:\n${invitationUrl}\n\n`;
-  message += `¡Tenemos muchas ganas de celebrarlo contigo!`;
+  message += `Hemos preparado tu invitación personal aquí:\n\n`;
+  message += `${invitationUrl}\n\n`;
+  message += `${coupleNames}\n`;
+  message += `25 · 08 · 2027`;
 
   const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(message);

@@ -104,6 +104,7 @@ export interface GuestBookEntry {
   wedding_id: string;
   guest_name: string;
   message: string;
+  status?: 'pending' | 'approved' | 'hidden';
   created_at: string;
 }
 
@@ -115,3 +116,18 @@ export interface MediaPhoto {
   caption?: string;
   created_at: string;
 }
+
+export const INVITATION_STATUS_LABELS: Record<InvitationStatus | 'all', string> = {
+  all: 'Todos',
+  draft: 'Borrador',
+  sent: 'Enviada',
+  opened: 'Abierta',
+  responded: 'Respondida',
+  revoked: 'Revocada',
+};
+
+export const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
+  attending: 'Asiste',
+  declined: 'No asiste',
+  pending: 'Pendiente',
+};

@@ -25,9 +25,11 @@ export default function AdminOverviewPage() {
   const totalResponses = INITIAL_RSVPS.flatMap((r) => r.responses);
   const confirmedAttending = totalResponses.filter((r) => r.status === 'attending').length;
   const confirmedDeclined = totalResponses.filter((r) => r.status === 'declined').length;
-  const pendingCount = totalGuests - (confirmedAttending + confirmedDeclined);
+  const pendingCount = Math.max(0, totalGuests - (confirmedAttending + confirmedDeclined));
 
-  const rsvpCompletionRate = Math.round(((confirmedAttending + confirmedDeclined) / totalGuests) * 100);
+  const rsvpCompletionRate = totalGuests > 0 ? Math.round(((confirmedAttending + confirmedDeclined) / totalGuests) * 100) : 0;
+  const attendingPercent = totalGuests > 0 ? (confirmedAttending / totalGuests) * 100 : 0;
+  const declinedPercent = totalGuests > 0 ? (confirmedDeclined / totalGuests) * 100 : 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -131,11 +133,11 @@ export default function AdminOverviewPage() {
           {/* Thin Elegant Progress Bar */}
           <div className="h-2.5 rounded-full bg-bg-secondary overflow-hidden flex">
             <div
-              style={{ width: `${(confirmedAttending / totalGuests) * 100}%` }}
+              style={{ width: `${attendingPercent}%` }}
               className="bg-brand-olive h-full transition-all duration-500"
             />
             <div
-              style={{ width: `${(confirmedDeclined / totalGuests) * 100}%` }}
+              style={{ width: `${declinedPercent}%` }}
               className="bg-text-muted/40 h-full transition-all duration-500"
             />
           </div>
@@ -235,21 +237,24 @@ export default function AdminOverviewPage() {
               Últimas Respuestas
             </h3>
             <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
-                <div>
-                  <span className="font-medium text-text-primary block">Sofía Martín</span>
-                  <span className="text-[11px] text-brand-olive font-semibold">Confirmado (+1)</span>
-                </div>
-                <span className="text-[10px] text-text-muted font-mono">hace 15m</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
-                <div>
-                  <span className="font-medium text-text-primary block">Familia Pérez</span>
-                  <span className="text-[11px] text-brand-olive font-semibold">Confirmado (2 pers)</span>
-                </div>
-                <span className="text-[10px] text-text-muted font-mono">hace 2h</span>
-              </div>
+              {INITIAL_RSVPS.slice(0, 4).map((sub) => {
+                const groupName = INITIAL_GROUPS.find((g) => g.token === sub.token)?.name || sub.responses[0]?.guest_name || 'Invitado';
+                const hasAttending = sub.responses.some((r) => r.status === 'attending');
+                const attendingCount = sub.responses.filter((r) => r.status === 'attending').length;
+                return (
+                  <div key={sub.token} className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-text-primary block">{groupName}</span>
+                      <span className={`text-[11px] font-semibold ${hasAttending ? 'text-brand-olive' : 'text-text-muted'}`}>
+                        {hasAttending ? `Asiste (${attendingCount} pers)` : 'No asisten'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-text-muted font-mono">
+                      {new Date(sub.submitted_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

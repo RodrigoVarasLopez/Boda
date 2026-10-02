@@ -133,8 +133,11 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     }));
   };
 
+  const hasAnyAttending = defaultGuests.some((g) => responses[g.id]?.status === 'attending');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     const finalResponses = Object.values(responses);
 
@@ -150,7 +153,9 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     } finally {
       setIsSubmitting(false);
       setIsSubmitted(true);
-      triggerConfetti();
+      if (hasAnyAttending) {
+        triggerConfetti();
+      }
       if (onSubmitted) {
         onSubmitted(finalResponses);
       }
@@ -165,10 +170,12 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
         </div>
         <div className="space-y-2">
           <h3 className="font-serif text-2xl font-bold text-text-primary">
-            ¡Respuesta Confirmada!
+            {hasAnyAttending ? '¡Respuesta Confirmada!' : '¡Gracias por comunicárnoslo!'}
           </h3>
-          <p className="text-xs text-text-secondary">
-            Muchas gracias por confirmar. Tu respuesta ha quedado registrada persistentemente en el concierge de boda.
+          <p className="text-xs text-text-secondary leading-relaxed">
+            {hasAnyAttending
+              ? 'Muchas gracias por confirmar. Tu respuesta ha quedado registrada persistentemente en el concierge de boda.'
+              : 'Lamentamos mucho que no podáis acompañarnos, pero os agradecemos enormemente haber avisado a Stephanie & Rodrigo.'}
           </p>
         </div>
 
@@ -211,7 +218,9 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
             {group?.name ? `Asistencia para ${group.name}` : 'Confirmar Asistencia'}
           </h3>
           <p className="text-xs text-text-muted">
-            Paso {currentStep} de 3 — Se tarda menos de 1 minuto
+            {hasAnyAttending
+              ? `Paso ${currentStep} de 3 — Menos de 1 minuto`
+              : `Paso ${currentStep === 1 ? 1 : 2} de 2 — Respuesta rápida`}
           </p>
         </div>
 
@@ -259,10 +268,12 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
 
               <button
                 type="button"
-                onClick={() => setCurrentStep(2)}
+                onClick={() => setCurrentStep(hasAnyAttending ? 2 : 3)}
                 className="w-full py-3.5 px-5 rounded-2xl bg-primary text-primary-text text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer shadow-card"
               >
-                Siguiente paso: Menú & Preferencias
+                {hasAnyAttending
+                  ? 'Siguiente paso: Menú & Preferencias'
+                  : 'Siguiente paso: Mensaje & Enviar'}
               </button>
             </div>
           )}
@@ -384,7 +395,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => setCurrentStep(hasAnyAttending ? 2 : 1)}
                   className="w-1/3 py-3 px-4 rounded-xl border border-border-strong text-xs font-medium text-text-secondary hover:bg-bg-secondary cursor-pointer"
                 >
                   Atrás

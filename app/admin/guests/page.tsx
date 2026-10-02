@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { INITIAL_WEDDING, INITIAL_GROUPS, INITIAL_EVENTS } from '@/lib/mock-data';
-import { GuestGroup } from '@/lib/types';
+import { GuestGroup, INVITATION_STATUS_LABELS } from '@/lib/types';
 import {
   Users,
   Search,
@@ -109,7 +109,7 @@ export default function AdminGuestsPage() {
                   : 'bg-bg-secondary/60 text-text-secondary hover:bg-bg-secondary'
               }`}
             >
-              {st === 'all' ? 'Todos' : st}
+              {INVITATION_STATUS_LABELS[st as keyof typeof INVITATION_STATUS_LABELS] || st}
             </button>
           ))}
         </div>
@@ -136,10 +136,12 @@ export default function AdminGuestsPage() {
                     ? 'bg-blue-100 text-blue-800'
                     : grp.invitation_status === 'sent'
                     ? 'bg-amber-100 text-amber-800'
+                    : grp.invitation_status === 'revoked'
+                    ? 'bg-rose-100 text-rose-800'
                     : 'bg-zinc-200 text-zinc-700'
                 }`}
               >
-                {grp.invitation_status}
+                {INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
               </span>
             </div>
 
@@ -220,10 +222,12 @@ export default function AdminGuestsPage() {
                           ? 'bg-blue-100 text-blue-800'
                           : grp.invitation_status === 'sent'
                           ? 'bg-amber-100 text-amber-800'
+                          : grp.invitation_status === 'revoked'
+                          ? 'bg-rose-100 text-rose-800'
                           : 'bg-zinc-200 text-zinc-700'
                       }`}
                     >
-                      {grp.invitation_status}
+                      {INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
                     </span>
                   </td>
 

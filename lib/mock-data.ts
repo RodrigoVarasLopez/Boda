@@ -204,6 +204,35 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     ]
   },
   {
+    id: 'grp-familia-gomez',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    name: 'Familia Gómez Peláez',
+    token: 'token-gomez-551',
+    invitation_status: 'responded',
+    opened_at: '2027-06-22T11:00:00.000Z',
+    responded_at: '2027-06-22T11:20:00.000Z',
+    custom_message: 'Querida familia, nos hace muchísima ilusión poder compartir este gran día con vosotros.',
+    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party'],
+    guests: [
+      {
+        id: 'gst-roberto-gomez',
+        wedding_id: 'w-stephanie-rodrigo-2027',
+        group_id: 'grp-familia-gomez',
+        first_name: 'Roberto',
+        last_name: 'Gómez',
+        is_plus_one_allowed: false
+      },
+      {
+        id: 'gst-carmen-pelaez',
+        wedding_id: 'w-stephanie-rodrigo-2027',
+        group_id: 'grp-familia-gomez',
+        first_name: 'Carmen',
+        last_name: 'Peláez',
+        is_plus_one_allowed: false
+      }
+    ]
+  },
+  {
     id: 'grp-elena-torres',
     wedding_id: 'w-stephanie-rodrigo-2027',
     name: 'Elena Torres',
@@ -218,6 +247,24 @@ export const INITIAL_GROUPS: GuestGroup[] = [
         first_name: 'Elena',
         last_name: 'Torres',
         is_plus_one_allowed: true
+      }
+    ]
+  },
+  {
+    id: 'grp-invitation-revoked',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    name: 'Tomás Morales (Revocada)',
+    token: 'token-revoked-999',
+    invitation_status: 'revoked',
+    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet'],
+    guests: [
+      {
+        id: 'gst-tomas-morales',
+        wedding_id: 'w-stephanie-rodrigo-2027',
+        group_id: 'grp-invitation-revoked',
+        first_name: 'Tomás',
+        last_name: 'Morales',
+        is_plus_one_allowed: false
       }
     ]
   }
@@ -261,6 +308,28 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
         guest_name: 'Lucía Pérez',
         status: 'attending',
         attending_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+        dietary_choice: 'standard'
+      }
+    ]
+  },
+  {
+    group_id: 'grp-familia-gomez',
+    token: 'token-gomez-551',
+    submitted_at: '2027-06-22T11:20:00.000Z',
+    responses: [
+      {
+        guest_id: 'gst-roberto-gomez',
+        guest_name: 'Roberto Gómez',
+        status: 'declined',
+        attending_event_ids: [],
+        dietary_choice: 'standard',
+        message: 'Nos apena enormemente no poder acompañaros por coincidir con un viaje programado. ¡Os deseamos toda la felicidad del mundo!'
+      },
+      {
+        guest_id: 'gst-carmen-pelaez',
+        guest_name: 'Carmen Peláez',
+        status: 'declined',
+        attending_event_ids: [],
         dietary_choice: 'standard'
       }
     ]
@@ -373,6 +442,7 @@ export const INITIAL_GUESTBOOK: GuestBookEntry[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     guest_name: 'Sofía Martín',
     message: '¡Va a ser una boda absolutamente mágica! No veo la hora de veros brindar juntos.',
+    status: 'approved',
     created_at: '2027-06-25T14:36:00.000Z'
   },
   {
@@ -380,6 +450,7 @@ export const INITIAL_GUESTBOOK: GuestBookEntry[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     guest_name: 'Familia Pérez',
     message: 'Muchísimas felicidades parejaza. Allá estaremos para celebrar vuestro amor con todo el cariño.',
+    status: 'approved',
     created_at: '2027-06-20T09:42:00.000Z'
   }
 ];

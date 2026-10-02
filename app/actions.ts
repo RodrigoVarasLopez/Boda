@@ -126,6 +126,36 @@ export async function submitRSVPAction(rawPayload: unknown) {
     group.responded_at = new Date().toISOString();
   }
 
+  const mappedResponses: GuestRSVPResponse[] = responses.map((r) => {
+    const guestObj = group?.guests.find((g) => g.id === r.guest_id);
+    const guestName = guestObj ? `${guestObj.first_name} ${guestObj.last_name}`.trim() : 'Invitado';
+    return {
+      guest_id: r.guest_id,
+      guest_name: guestName,
+      status: r.status,
+      attending_event_ids: r.status === 'attending' ? (group?.allowed_event_ids || []) : [],
+      dietary_choice: r.dietary_choice,
+      allergies: r.allergies || undefined,
+      plus_one_attending: r.plus_one_attending,
+      plus_one_name: r.plus_one_name || undefined,
+      plus_one_dietary: r.plus_one_dietary,
+      message: r.message || undefined,
+    };
+  });
+
+  const existingRsvpIndex = INITIAL_RSVPS.findIndex((r) => r.token === token);
+  if (existingRsvpIndex >= 0) {
+    INITIAL_RSVPS[existingRsvpIndex].responses = mappedResponses;
+    INITIAL_RSVPS[existingRsvpIndex].submitted_at = new Date().toISOString();
+  } else if (group) {
+    INITIAL_RSVPS.push({
+      group_id: group.id,
+      token: token,
+      responses: mappedResponses,
+      submitted_at: new Date().toISOString(),
+    });
+  }
+
   revalidatePath(`/i/${token}`);
   revalidatePath('/admin/guests');
   revalidatePath('/admin/rsvp');

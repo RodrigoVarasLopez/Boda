@@ -18,6 +18,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://stephanieyrodrigo.com'),
   title: 'Stephanie & Rodrigo — Nuestra Boda',
   description: 'Plataforma y Concierge Digital de Boda para Stephanie & Rodrigo · 25 de Agosto de 2027',
   robots: {
@@ -29,8 +30,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
