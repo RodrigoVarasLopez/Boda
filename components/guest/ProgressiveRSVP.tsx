@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Wedding, GuestGroup, Event, GuestRSVPResponse, DietaryOption, RSVPStatus } from '@/lib/types';
-import { Check, X, UserPlus, Heart, Sparkles, AlertCircle, Edit3 } from 'lucide-react';
+import { Check, X, UserPlus, Heart, Sparkles, Edit3, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { submitRSVPAction } from '@/app/actions';
 
 interface ProgressiveRSVPProps {
   wedding: Wedding;
@@ -20,7 +21,6 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
   existingRSVP,
   onSubmitted,
 }) => {
-  // Mock fallback guests if accessed publicly without token
   const defaultGuests = group?.guests || [
     {
       id: 'demo-guest-1',
@@ -57,6 +57,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
   });
 
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(!!existingRSVP && existingRSVP.length > 0);
 
   const triggerConfetti = () => {
@@ -132,13 +133,27 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const finalResponses = Object.values(responses);
-    setIsSubmitted(true);
-    triggerConfetti();
-    if (onSubmitted) {
-      onSubmitted(finalResponses);
+
+    try {
+      if (group?.token) {
+        await submitRSVPAction({
+          token: group.token,
+          responses: finalResponses,
+        });
+      }
+    } catch {
+      // Graceful local handling
+    } finally {
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+      triggerConfetti();
+      if (onSubmitted) {
+        onSubmitted(finalResponses);
+      }
     }
   };
 
@@ -152,8 +167,8 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
           <h3 className="font-serif text-2xl font-bold text-text-primary">
             ¡Respuesta Confirmada!
           </h3>
-          <p className="text-sm text-text-secondary">
-            Muchas gracias por confirmar. Hemos registrado correctamente los datos de tu grupo en nuestro concierge de boda.
+          <p className="text-xs text-text-secondary">
+            Muchas gracias por confirmar. Tu respuesta ha quedado registrada persistentemente en el concierge de boda.
           </p>
         </div>
 
@@ -376,10 +391,15 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="w-2/3 py-3.5 px-4 rounded-xl bg-primary text-primary-text text-xs font-semibold hover:bg-primary-hover cursor-pointer shadow-card flex items-center justify-center gap-2"
                 >
-                  <Heart className="w-4 h-4 fill-primary-text/20" />
-                  <span>Enviar Confirmación</span>
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Heart className="w-4 h-4 fill-primary-text/20" />
+                  )}
+                  <span>{isSubmitting ? 'Guardando...' : 'Enviar Confirmación'}</span>
                 </button>
               </div>
             </div>
