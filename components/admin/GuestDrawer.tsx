@@ -16,11 +16,14 @@ import {
   Ban,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  UserCheck,
+  PhoneCall
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
 import { regenerateInvitationTokenAction, revokeInvitationAction } from '@/app/actions';
+import { ManualRSVPModal } from './ManualRSVPModal';
 
 interface GuestDrawerProps {
   group: GuestGroup | null;
@@ -43,6 +46,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   const [showQR, setShowQR] = useState(false);
   const [customNote, setCustomNote] = useState(group?.custom_message || '');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isManualRSVPOpen, setIsManualRSVPOpen] = useState(false);
 
   if (!group) return null;
 
@@ -168,6 +172,39 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ASISTENCIA MANUAL / TELEFÓNICA CARD */}
+          <div className="p-4 rounded-2xl bg-brand-cream/50 border border-brand-sand/60 space-y-2.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-brand-olive" />
+                <span>Confirmación de Asistencia (RSVP)</span>
+              </span>
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                  group.invitation_status === 'responded'
+                    ? 'bg-brand-olive/15 text-brand-olive'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {group.invitation_status === 'responded' ? 'Confirmado' : 'Pendiente'}
+              </span>
+            </div>
+            <p className="text-[11px] text-text-muted leading-relaxed">
+              Para invitados que confirman por teléfono o WhatsApp y no usan la web. Actualiza su asistencia y el recuento global.
+            </p>
+            <button
+              onClick={() => setIsManualRSVPOpen(true)}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center justify-center gap-2 hover:bg-primary-hover transition-colors shadow-soft cursor-pointer"
+            >
+              <PhoneCall className="w-3.5 h-3.5" />
+              <span>
+                {group.invitation_status === 'responded'
+                  ? 'Modificar Asistencia / Menús'
+                  : 'Marcar como Aceptada (Confirmar)'}
+              </span>
+            </button>
           </div>
 
           {/* INVITADOS SECTION */}
@@ -314,6 +351,17 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Manual RSVP Modal */}
+      <ManualRSVPModal
+        group={group}
+        isOpen={isManualRSVPOpen}
+        onClose={() => setIsManualRSVPOpen(false)}
+        onSaved={() => {
+          setIsManualRSVPOpen(false);
+          // Optional callback
+        }}
+      />
     </div>
   );
 };

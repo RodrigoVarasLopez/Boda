@@ -273,3 +273,100 @@ export async function importGuestsCSVAction(rawRows: unknown[]) {
   revalidatePath('/admin/guests');
   return { success: true, count: validatedRows.length, errors };
 }
+
+/**
+ * RECORD MANUAL RSVP (Server Action)
+ * Allows the couple/admin to manually mark attendance for guests who confirmed by phone/WhatsApp
+ */
+export async function recordManualRSVPAction(payload: {
+  groupId: string;
+  responses: Array<{
+    guestId: string;
+    status: 'attending' | 'declined' | 'pending';
+    dietaryChoice?: string;
+    allergies?: string;
+    plusOneAttending?: boolean;
+    plusOneName?: string;
+    message?: string;
+  }>;
+}) {
+  const { groupId, responses } = payload;
+  const now = new Date().toISOString();
+
+  try {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+      const adminClient = createAdminClient();
+      const { data: inv } = await adminClient
+        .from('invitations')
+        .select('id')
+        .eq('group_id', groupId)
+        .single();
+
+      if (inv) {
+        for (const res of responses) {
+          await adminClient.from('rsvp_responses').upsert({
+            invitation_id: inv.id,
+            guest_id: res.guestId,
+            status: res.status,
+            menu_choice: res.dietaryChoice || 'standard',
+            allergies: res.allergies || null,
+            plus_one_attending: res.plusOneAttending || false,
+            plus_one_name: res.plusOneName || null,
+            message: res.message || 'Confirmación manual registrada por los novios',
+            submitted_at: now,
+          }, { onConflict: 'invitation_id,guest_id' });
+        }
+
+        await adminClient.from('invitations').update({
+          status: 'responded',
+          responded_at: now,
+        }).eq('id', inv.id);
+      }
+    }
+  } catch (err) {
+    console.warn('Database sync skipped (local store active):', err);
+  }
+
+  // Update in-memory fallback
+  const group = INITIAL_GROUPS.find((g) => g.id === groupId);
+  if (group) {
+    group.invitation_status = 'responded';
+    group.responded_at = now;
+
+    const mappedResponses: GuestRSVPResponse[] = responses.map((r) => {
+      const guestObj = group.guests.find((g) => g.id === r.guestId);
+      const guestName = guestObj ? `${guestObj.first_name} ${guestObj.last_name}`.trim() : 'Invitado';
+      return {
+        guest_id: r.guestId,
+        guest_name: guestName,
+        status: r.status,
+        attending_event_ids: r.status === 'attending' ? group.allowed_event_ids : [],
+        dietary_choice: (r.dietaryChoice as any) || 'standard',
+        allergies: r.allergies || undefined,
+        plus_one_attending: r.plusOneAttending,
+        plus_one_name: r.plusOneName || undefined,
+        message: r.message || 'Confirmación manual',
+      };
+    });
+
+    const existingRsvpIndex = INITIAL_RSVPS.findIndex((r) => r.group_id === groupId);
+    if (existingRsvpIndex >= 0) {
+      INITIAL_RSVPS[existingRsvpIndex].responses = mappedResponses;
+      INITIAL_RSVPS[existingRsvpIndex].submitted_at = now;
+    } else {
+      INITIAL_RSVPS.push({
+        group_id: groupId,
+        token: group.token,
+        responses: mappedResponses,
+        submitted_at: now,
+      });
+    }
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin/rsvp');
+
+  return { success: true, message: 'Confirmación manual guardada y recuento actualizado.' };
+}
+

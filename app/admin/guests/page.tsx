@@ -13,16 +13,22 @@ import {
   Check,
   Plus,
   Calendar,
-  SlidersHorizontal
+  SlidersHorizontal,
+  UserCheck,
+  PhoneCall
 } from 'lucide-react';
 import { GuestDrawer } from '@/components/admin/GuestDrawer';
+import { ManualRSVPModal } from '@/components/admin/ManualRSVPModal';
+import { useWeddingData } from '@/lib/guest-store';
 import { buildWhatsAppLink } from '@/lib/utils';
 
 export default function AdminGuestsPage() {
-  const [groups, setGroups] = useState<GuestGroup[]>(INITIAL_GROUPS);
+  const { groups, stats, refresh } = useWeddingData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [selectedDrawerGroup, setSelectedDrawerGroup] = useState<GuestGroup | null>(null);
+  const [selectedModalGroup, setSelectedModalGroup] = useState<GuestGroup | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const filteredGroups = groups.filter((grp) => {
@@ -80,6 +86,61 @@ export default function AdminGuestsPage() {
         </div>
       </div>
 
+      {/* Live Headcount KPI Banner */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-card">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted block">
+            TOTAL INVITADOS
+          </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="font-serif text-3xl font-normal text-text-primary">
+              {stats.totalGuests}
+            </span>
+            <span className="text-[11px] text-text-muted">en {stats.totalGroups} grupos</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-brand-olive/10 border border-brand-olive/20 shadow-card">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold block">
+            CONFIRMADOS (ASISTEN)
+          </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="font-serif text-3xl font-normal text-brand-olive">
+              {stats.totalConfirmedHeadcount}
+            </span>
+            {stats.confirmedPlusOnes > 0 && (
+              <span className="text-[11px] text-brand-olive/80">
+                ({stats.confirmedAttending} + {stats.confirmedPlusOnes} acomps.)
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-brand-terracotta/10 border border-brand-terracotta/20 shadow-card">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-brand-terracotta font-semibold block">
+            PENDIENTES
+          </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="font-serif text-3xl font-normal text-brand-terracotta">
+              {stats.pendingCount}
+            </span>
+            <span className="text-[11px] text-brand-terracotta/80">sin responder</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-bg-secondary/40 border border-border-subtle shadow-card">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted block">
+            NO ASISTEN
+          </span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="font-serif text-3xl font-normal text-text-muted">
+              {stats.confirmedDeclined}
+            </span>
+            <span className="text-[11px] text-text-muted">bajas</span>
+          </div>
+        </div>
+      </div>
+
       {/* Filter & Search Toolbar */}
       <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft flex flex-col md:flex-row gap-4 justify-between items-center">
         {/* Search Input */}
@@ -120,10 +181,12 @@ export default function AdminGuestsPage() {
         {filteredGroups.map((grp) => (
           <div
             key={grp.id}
-            onClick={() => setSelectedDrawerGroup(grp)}
-            className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-3 cursor-pointer hover:border-border-strong transition-all"
+            className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-3 hover:border-border-strong transition-all"
           >
-            <div className="flex justify-between items-start">
+            <div
+              className="flex justify-between items-start cursor-pointer"
+              onClick={() => setSelectedDrawerGroup(grp)}
+            >
               <div>
                 <h4 className="font-serif text-lg font-normal text-text-primary">{grp.name}</h4>
                 <p className="text-xs text-text-muted">{grp.guests.length} personas en el grupo</p>
@@ -145,14 +208,25 @@ export default function AdminGuestsPage() {
               </span>
             </div>
 
-            <div className="text-xs text-text-secondary flex justify-between items-center pt-2 border-t border-border-subtle/50">
-              <span className="flex items-center gap-1 text-[11px] text-text-muted">
-                <Calendar className="w-3.5 h-3.5 text-text-accent" />
-                {grp.allowed_event_ids.length} eventos asignados
-              </span>
-              <span className="text-xs font-medium text-text-accent flex items-center gap-1">
-                Ver detalle →
-              </span>
+            {/* Quick manual RSVP trigger button for non-tech guests on mobile */}
+            <div className="pt-2 border-t border-border-subtle/50 flex items-center justify-between gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedModalGroup(grp);
+                }}
+                className="py-1.5 px-3 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Confirmar / RSVP</span>
+              </button>
+
+              <button
+                onClick={() => setSelectedDrawerGroup(grp)}
+                className="text-xs font-medium text-text-accent flex items-center gap-1 py-1.5 px-2"
+              >
+                Detalles →
+              </button>
             </div>
           </div>
         ))}
@@ -234,6 +308,16 @@ export default function AdminGuestsPage() {
                   {/* Actions */}
                   <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
+                      {/* Manual RSVP Trigger Button */}
+                      <button
+                        onClick={() => setSelectedModalGroup(grp)}
+                        title="Registrar / Modificar confirmación de asistencia (RSVP manual/teléfono)"
+                        className="p-2 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive transition-colors cursor-pointer flex items-center gap-1 font-medium text-[11px]"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span className="hidden xl:inline">Confirmar RSVP</span>
+                      </button>
+
                       <button
                         onClick={() => handleCopyLink(grp.token)}
                         title="Copiar enlace de invitación"
@@ -269,6 +353,14 @@ export default function AdminGuestsPage() {
           </table>
         </div>
       </div>
+
+      {/* Manual RSVP Modal for offline / non-tech guests */}
+      <ManualRSVPModal
+        group={selectedModalGroup}
+        isOpen={!!selectedModalGroup}
+        onClose={() => setSelectedModalGroup(null)}
+        onSaved={refresh}
+      />
 
       {/* Invitation Drawer Component */}
       <GuestDrawer

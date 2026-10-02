@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { INITIAL_WEDDING, INITIAL_GROUPS, INITIAL_EVENTS, INITIAL_RSVPS } from '@/lib/mock-data';
+import { INITIAL_WEDDING } from '@/lib/mock-data';
+import { useWeddingData } from '@/lib/guest-store';
 import {
   Users,
   CheckCircle2,
@@ -14,21 +15,21 @@ import {
   MessageCircle,
   Image as ImageIcon,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 
 export default function AdminOverviewPage() {
-  const totalGuests = INITIAL_GROUPS.reduce((acc, g) => acc + g.guests.length, 0);
-  const totalGroups = INITIAL_GROUPS.length;
-  const openedInvitations = INITIAL_GROUPS.filter((g) => g.invitation_status === 'opened' || g.invitation_status === 'responded').length;
-
-  const totalResponses = INITIAL_RSVPS.flatMap((r) => r.responses);
-  const confirmedAttending = totalResponses.filter((r) => r.status === 'attending').length;
-  const confirmedDeclined = totalResponses.filter((r) => r.status === 'declined').length;
-  const pendingCount = Math.max(0, totalGuests - (confirmedAttending + confirmedDeclined));
-
-  const rsvpCompletionRate = totalGuests > 0 ? Math.round(((confirmedAttending + confirmedDeclined) / totalGuests) * 100) : 0;
-  const attendingPercent = totalGuests > 0 ? (confirmedAttending / totalGuests) * 100 : 0;
+  const { stats, groups, rsvps } = useWeddingData();
+  const totalGuests = stats.totalGuests;
+  const totalGroups = stats.totalGroups;
+  const confirmedAttending = stats.confirmedAttending;
+  const confirmedPlusOnes = stats.confirmedPlusOnes;
+  const totalConfirmedHeadcount = stats.totalConfirmedHeadcount;
+  const confirmedDeclined = stats.confirmedDeclined;
+  const pendingCount = stats.pendingCount;
+  const rsvpCompletionRate = stats.rsvpCompletionRate;
+  const attendingPercent = totalGuests > 0 ? (totalConfirmedHeadcount / totalGuests) * 100 : 0;
   const declinedPercent = totalGuests > 0 ? (confirmedDeclined / totalGuests) * 100 : 0;
 
   return (
@@ -75,13 +76,20 @@ export default function AdminOverviewPage() {
         {/* Card 2: CONFIRMADOS */}
         <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
           <p className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold">
-            CONFIRMADOS
+            CONFIRMADOS (ASISTEN)
           </p>
-          <p className="font-serif text-4xl font-normal text-brand-olive">
-            {confirmedAttending}
-          </p>
+          <div className="flex items-baseline gap-2">
+            <p className="font-serif text-4xl font-normal text-brand-olive">
+              {totalConfirmedHeadcount}
+            </p>
+            {confirmedPlusOnes > 0 && (
+              <span className="text-xs text-brand-olive font-semibold">
+                (+{confirmedPlusOnes} acomps.)
+              </span>
+            )}
+          </div>
           <p className="text-[11px] text-text-muted">
-            Asistencia verificada
+            {confirmedAttending} titulares {confirmedPlusOnes > 0 ? `+ ${confirmedPlusOnes} acompañantes` : 'verificados'}
           </p>
         </div>
 
@@ -164,15 +172,12 @@ export default function AdminOverviewPage() {
               Asistencia por Evento
             </span>
             <div className="space-y-2">
-              {INITIAL_EVENTS.map((evt) => {
-                const attendeesCount = evt.visibility === 'everyone' ? confirmedAttending : Math.min(confirmedAttending, 3);
-                return (
-                  <div key={evt.id} className="flex justify-between items-center text-xs py-1">
-                    <span className="text-text-primary">{evt.title}</span>
-                    <span className="font-mono text-text-muted">{attendeesCount} pers.</span>
-                  </div>
-                );
-              })}
+              {stats.eventAttendance.map((evt) => (
+                <div key={evt.eventId} className="flex justify-between items-center text-xs py-1">
+                  <span className="text-text-primary">{evt.eventTitle}</span>
+                  <span className="font-mono text-text-muted">{evt.attendees} pers.</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -185,6 +190,18 @@ export default function AdminOverviewPage() {
               Acciones Rápidas
             </h3>
             <div className="space-y-2">
+              {/* Highlighted Manual RSVP for Non-Tech Guests */}
+              <Link
+                href="/admin/guests"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 border border-brand-olive/30 flex items-center justify-between text-xs text-brand-olive transition-colors group"
+              >
+                <span className="flex items-center gap-2 font-medium">
+                  <UserCheck className="w-4 h-4 text-brand-olive" />
+                  Confirmar asistencia manual
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-brand-olive group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
               <Link
                 href="/admin/guests"
                 className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
@@ -237,20 +254,37 @@ export default function AdminOverviewPage() {
               Últimas Respuestas
             </h3>
             <div className="space-y-3 text-xs">
-              {INITIAL_RSVPS.slice(0, 4).map((sub) => {
-                const groupName = INITIAL_GROUPS.find((g) => g.token === sub.token)?.name || sub.responses[0]?.guest_name || 'Invitado';
+              {rsvps.slice(0, 5).map((sub) => {
+                const groupName =
+                  groups.find((g) => g.id === sub.group_id || g.token === sub.token)?.name ||
+                  sub.responses[0]?.guest_name ||
+                  'Invitado';
                 const hasAttending = sub.responses.some((r) => r.status === 'attending');
                 const attendingCount = sub.responses.filter((r) => r.status === 'attending').length;
+                const plusOnesCount = sub.responses.filter(
+                  (r) => r.status === 'attending' && r.plus_one_attending
+                ).length;
+                const totalHeadcount = attendingCount + plusOnesCount;
                 return (
-                  <div key={sub.token} className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
+                  <div
+                    key={`${sub.group_id || sub.token}-${sub.submitted_at}`}
+                    className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center"
+                  >
                     <div>
                       <span className="font-medium text-text-primary block">{groupName}</span>
-                      <span className={`text-[11px] font-semibold ${hasAttending ? 'text-brand-olive' : 'text-text-muted'}`}>
-                        {hasAttending ? `Asiste (${attendingCount} pers)` : 'No asisten'}
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          hasAttending ? 'text-brand-olive' : 'text-text-muted'
+                        }`}
+                      >
+                        {hasAttending ? `Asiste (${totalHeadcount} pers)` : 'No asisten'}
                       </span>
                     </div>
                     <span className="text-[10px] text-text-muted font-mono">
-                      {new Date(sub.submitted_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                      {new Date(sub.submitted_at).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
                     </span>
                   </div>
                 );
