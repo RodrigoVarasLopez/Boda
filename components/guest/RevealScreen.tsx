@@ -42,7 +42,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         {/* Date Monogram */}
         <div className="space-y-1">
           <p className="font-serif text-5xl sm:text-6xl font-light text-text-primary tracking-tight leading-none">
-            25
+            28
           </p>
           <p className="text-xs uppercase tracking-[0.3em] font-semibold text-text-accent">
             Agosto · 2027
@@ -69,7 +69,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         {/* Location & Quote */}
         <div className="space-y-2 pt-2">
           <p className="text-xs font-semibold tracking-wider text-text-secondary uppercase">
-            Madrid · España
+            {wedding.location_summary}
           </p>
           <p className="font-serif italic text-base sm:text-lg text-text-secondary/80 max-w-xs mx-auto leading-relaxed">
             &ldquo;{wedding.hero_message}&rdquo;

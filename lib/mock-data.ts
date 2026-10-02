@@ -6,13 +6,13 @@ export const INITIAL_WEDDING: Wedding = {
   couple_names: 'Stephanie & Rodrigo',
   bride_name: 'Stephanie',
   groom_name: 'Rodrigo',
-  wedding_date: '2027-08-25T17:30:00.000Z',
-  location_summary: 'Finca La Alquería · Madrid, España',
+  wedding_date: '2027-08-28T18:00:00.000Z',
+  location_summary: 'Bodega Concejo · Valoria la Buena (Valladolid)',
   theme: 'mediterranean',
   privacy_mode: false,
-  rsvp_deadline: '2027-07-15T23:59:59.000Z',
+  rsvp_deadline: '2027-07-20T23:59:59.000Z',
   hero_message: 'Nos casamos y no nos imaginaríamos este día sin vosotros',
-  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas en un entorno mediterráneo inolvidable.',
+  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas entre viñedos, música en directo y los mejores vinos de nuestra tierra.',
   iban_details: {
     account_holder: 'Stephanie & Rodrigo',
     iban: 'ES91 2100 0418 4502 0005 1234',
@@ -23,74 +23,72 @@ export const INITIAL_WEDDING: Wedding = {
 
 export const INITIAL_EVENTS: Event[] = [
   {
-    id: 'evt-welcome-dinner',
+    id: 'evt-preboda-cata',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Cena de Bienvenida',
-    description: 'Una velada íntima de bienvenida bajo las parras para familia directa y testigos antes del gran día.',
-    start_time: '2027-08-24T20:30:00.000Z',
-    end_time: '2027-08-24T23:30:00.000Z',
-    location_name: 'El Patio de los Olivos',
-    address: 'Camino del Valle 12, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
-    dress_code: 'Smart Casual / Elegante desenfadado',
+    title: 'Preboda & Cata Privada de Vinos',
+    description: 'Una velada íntima de bienvenida en la bodega de Rodrigo. Paseo entre viñedos, visita guiada a la sala de barricas y cata de vinos con maridaje para nuestros amigos más cercanos.',
+    start_time: '2027-08-27T19:30:00.000Z',
+    end_time: '2027-08-27T23:30:00.000Z',
+    location_name: 'Bodega de Rodrigo',
+    address: 'Ctra. Valoria, 47200 Valoria La Buena (Valladolid)',
+    google_maps_url: 'https://maps.google.com/?q=Valoria+La+Buena+Valladolid',
+    dress_code: 'Casual Chic / Elegante desenfadado entre viñedos',
     visibility: 'selected_groups',
-    display_order: 1
+    display_order: 1,
+    day: 'friday',
+    day_label: 'Viernes · Preboda & Cata Privada',
+    image_url: '/images/bodega/cata-vino-burro-loco.png'
   },
   {
-    id: 'evt-ceremony',
+    id: 'evt-ceremonia',
     wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Ceremonia',
-    description: 'Intercambio de votos al atardecer rodeados de piedra caliza y olivos centenarios.',
-    start_time: '2027-08-25T17:30:00.000Z',
-    end_time: '2027-08-25T18:30:00.000Z',
-    location_name: 'Claustro de la Finca La Alquería',
-    address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
-    dress_code: 'Formal / Traje de lino o chaqueta y vestido midi o largo',
+    description: 'El "sí, quiero" civil al aire libre rodeados de viñedos y arquitectura vinícola tradicional de Bodega Concejo.',
+    start_time: '2027-08-28T18:00:00.000Z',
+    end_time: '2027-08-28T19:00:00.000Z',
+    location_name: 'Bodega Concejo · Jardín de Viñedos',
+    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+    google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+    dress_code: 'Formal / Traje o chaqueta y vestido midi o largo',
     visibility: 'everyone',
-    display_order: 2
+    display_order: 2,
+    day: 'saturday',
+    day_label: 'Sábado · El Gran Día',
+    image_url: '/images/bodega/vinedos-valoria-barrica.png'
   },
   {
-    id: 'evt-cocktail-banquet',
+    id: 'evt-banquete',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Cóctel & Banquete',
-    description: 'Aperitivos mediterráneos y cena a la luz de las velas con gastronomía de autor.',
-    start_time: '2027-08-25T18:30:00.000Z',
-    end_time: '2027-08-25T23:00:00.000Z',
-    location_name: 'El Jardín de las Bouganvillas',
-    address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
+    title: 'Banquete al Aire Libre con Música',
+    description: 'Cóctel y cena al aire libre en la terraza de la bodega con vistas a los viñedos, música en directo y maridaje con los vinos de autor de la finca.',
+    start_time: '2027-08-28T19:30:00.000Z',
+    end_time: '2027-08-28T23:30:00.000Z',
+    location_name: 'Bodega Concejo · Terraza Exterior & Viñedos',
+    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+    google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
     dress_code: 'Formal',
     visibility: 'everyone',
-    display_order: 3
+    display_order: 3,
+    day: 'saturday',
+    day_label: 'Sábado · El Gran Día',
+    image_url: '/images/bodega/bodega-concejo-banquete-noche.png'
   },
   {
-    id: 'evt-party',
+    id: 'evt-fiesta-dj',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Fiesta & Barra Libre',
-    description: 'Música en directo, baile y celebración bajo las estrellas hasta el amanecer.',
-    start_time: '2027-08-25T23:00:00.000Z',
-    end_time: '2027-08-26T05:00:00.000Z',
-    location_name: 'Pabellón de Cristal & Pérgola',
-    address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
-    dress_code: '¡Prepárate para bailar!',
+    title: 'Fiesta, DJ & Barra Libre',
+    description: 'Sesión con DJ en directo, barra libre de cócteles y vinos de Bodega Concejo, recena y fiesta bajo las estrellas.',
+    start_time: '2027-08-28T23:30:00.000Z',
+    end_time: '2027-08-29T05:00:00.000Z',
+    location_name: 'Bodega Concejo · Pabellón Acristalado & Terraza',
+    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+    google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+    dress_code: '¡Prepárate para bailar hasta el amanecer!',
     visibility: 'everyone',
-    display_order: 4
-  },
-  {
-    id: 'evt-brunch',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Brunch Mediterráneo',
-    description: 'Desayuno relajado en la piscina para recordar los mejores momentos de la boda.',
-    start_time: '2027-08-26T12:00:00.000Z',
-    end_time: '2027-08-26T16:00:00.000Z',
-    location_name: 'Piscina de la Alquería',
-    address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
-    dress_code: 'Resort Wear / Traje de baño',
-    visibility: 'selected_groups',
-    display_order: 5
+    display_order: 4,
+    day: 'saturday',
+    day_label: 'Sábado · El Gran Día',
+    image_url: '/images/bodega/bodega-concejo-fachada-logo.png'
   }
 ];
 
@@ -102,8 +100,8 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     token: 'token-garcia-772',
     invitation_status: 'opened',
     opened_at: '2027-06-28T10:15:00.000Z',
-    custom_message: 'Nos hace una ilusión inmensa teneros con nosotros en la primera fila de nuestro gran día.',
-    allowed_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+    custom_message: 'Nos hace una ilusión inmensa teneros con nosotros en la primera fila de nuestro gran día en Bodega Concejo.',
+    allowed_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-carlos-garcia',
@@ -133,8 +131,8 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     invitation_status: 'responded',
     opened_at: '2027-06-25T14:20:00.000Z',
     responded_at: '2027-06-25T14:35:00.000Z',
-    custom_message: 'Sofi, tu alegría en la pista de baile y a nuestro lado es imprescindible.',
-    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+    custom_message: 'Sofi, tu presencia es indispensable desde la cata del viernes hasta el cierre de la pista de baile.',
+    allowed_event_ids: ['evt-preboda-cata', 'evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-sofia-martin',
@@ -153,8 +151,8 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     name: 'Javier & Alejandro',
     token: 'token-univ-881',
     invitation_status: 'sent',
-    custom_message: '¡Chicos! Preparad las pajaritas y las ganas de celebrar hasta el amanecer.',
-    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party'],
+    custom_message: '¡Chicos! Os esperamos el viernes para la cata en la bodega y el sábado para darlo todo en Bodega Concejo.',
+    allowed_event_ids: ['evt-preboda-cata', 'evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-javier-lopez',
@@ -182,8 +180,8 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     invitation_status: 'responded',
     opened_at: '2027-06-20T09:00:00.000Z',
     responded_at: '2027-06-20T09:40:00.000Z',
-    custom_message: 'Os esperamos con los brazos abiertos para un fin de semana lleno de amor y recuerdos.',
-    allowed_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+    custom_message: 'Os esperamos con los brazos abiertos para celebrar nuestro amor entre los viñedos de Bodega Concejo.',
+    allowed_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-antonio-perez',
@@ -212,7 +210,7 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     opened_at: '2027-06-22T11:00:00.000Z',
     responded_at: '2027-06-22T11:20:00.000Z',
     custom_message: 'Querida familia, nos hace muchísima ilusión poder compartir este gran día con vosotros.',
-    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party'],
+    allowed_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-roberto-gomez',
@@ -238,7 +236,7 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     name: 'Elena Torres',
     token: 'token-elena-312',
     invitation_status: 'draft',
-    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party'],
+    allowed_event_ids: ['evt-preboda-cata', 'evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-elena-torres',
@@ -256,7 +254,7 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     name: 'Tomás Morales (Revocada)',
     token: 'token-revoked-999',
     invitation_status: 'revoked',
-    allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet'],
+    allowed_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
     guests: [
       {
         id: 'gst-tomas-morales',
@@ -280,13 +278,13 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
         guest_id: 'gst-sofia-martin',
         guest_name: 'Sofía Martín',
         status: 'attending',
-        attending_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+        attending_event_ids: ['evt-preboda-cata', 'evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
         dietary_choice: 'vegetarian',
         allergies: 'Frutos secos',
         plus_one_attending: true,
         plus_one_name: 'Daniel Rivas',
         plus_one_dietary: 'standard',
-        message: '¡Contando los días! No sabéis las ganas que tengo de veros radiantes en el altar.'
+        message: '¡Contando los días! No sabéis las ganas que tengo de catar esos vinos y veros radiantes en el altar.'
       }
     ]
   },
@@ -299,15 +297,15 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
         guest_id: 'gst-antonio-perez',
         guest_name: 'Antonio Pérez',
         status: 'attending',
-        attending_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+        attending_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
         dietary_choice: 'standard',
-        message: 'Será un auténtico placer acompañaros en este fin de semana tan especial.'
+        message: 'Será un auténtico placer acompañaros en este fin de semana tan especial en Bodega Concejo.'
       },
       {
         guest_id: 'gst-lucia-perez',
         guest_name: 'Lucía Pérez',
         status: 'attending',
-        attending_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
+        attending_event_ids: ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
         dietary_choice: 'standard'
       }
     ]
@@ -342,11 +340,11 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'hero',
     title: 'Stephanie & Rodrigo',
-    subtitle: '25 · 08 · 2027 · Madrid, España',
+    subtitle: '28 · 08 · 2027 · Bodega Concejo, Valladolid',
     content: {
-      location: 'Finca La Alquería',
-      date: '25 · 08 · 2027',
-      image: '/wedding/hero-mediterranean.jpg'
+      location: 'Bodega Concejo',
+      date: '28 · 08 · 2027',
+      image: '/images/bodega/bodega-concejo-banquete-noche.png'
     },
     display_order: 1,
     is_active: true,
@@ -360,10 +358,10 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: '01 · NOSOTROS',
     content: {
       paragraphs: [
-        'Nos conocimos en una tarde de verano en Madrid, en una conversación espontánea que se transformó en horas de complicidad, risas y proyectos compartidos.',
-        'Siete años después, habiendo recorrido caminos juntos y construido nuestro propio hogar, estamos listos para celebrar el siguiente gran capítulo con las personas que más queremos.'
+        'Nuestra historia comenzó entre risas, complicidad y una pasión compartida por nuestra tierra, la gastronomía y el buen vino.',
+        'Nos hace una ilusión inmensa dar el "sí, quiero" rodeados de nuestra gente en un entorno tan mágico y personal como los viñedos de Bodega Concejo.'
       ],
-      image: '/wedding/table-setting.jpg'
+      image: '/images/bodega/vinedos-valoria-barrica.png'
     },
     display_order: 2,
     is_active: true,
@@ -374,12 +372,12 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'venue',
     title: 'El Lugar',
-    subtitle: 'Finca La Alquería',
+    subtitle: 'Bodega Concejo',
     content: {
-      description: 'Un enclave rodeado de piedra caliza, arquitectura mediterránea y olivos centenarios a tan solo 20 minutos de Madrid.',
-      address: 'Carretera de Colmenar Viejo, Km 22, 28770 Madrid',
-      google_maps_url: 'https://maps.google.com/?q=Madrid+España',
-      image: '/wedding/venue-editorial.jpg'
+      description: 'Enclavada en Valoria la Buena (Valladolid), Bodega Concejo es una bodega familiar rodeada de viñedos centenarios donde celebraremos la ceremonia civil al aire libre, el banquete con música en directo y la fiesta nocturna.',
+      address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+      google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+      image: '/images/bodega/bodega-concejo-banquete-noche.png'
     },
     display_order: 3,
     is_active: true,
@@ -393,10 +391,10 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: 'Para vuestra mayor comodidad',
     content: {
       hotels: [
-        { name: 'Hotel Eurostars Madrid Tower', discount: 'Tarifa especial invitados: STEPHANIE&RODRIGO', distance: '15 min de la finca' },
-        { name: 'Eurostars Gran Madrid', discount: 'Descuento con enlace de boda', distance: '12 min de la finca' }
+        { name: 'Posada Real Concejo', discount: 'Alojamiento boutique en la propia finca / Valoria', distance: 'En el propio complejo' },
+        { name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)', discount: 'Tarifa especial invitados: STEPHANIE&RODRIGO', distance: 'A 25 min en autobús' }
       ],
-      bus_info: 'Habrá servicio privado de autobuses de ida y vuelta con paradas centrales en Plaza de Castilla y Moncloa.'
+      bus_info: 'Habrá servicio de autobuses de ida y vuelta desde Valladolid centro (Plaza de Zorrilla) hasta Bodega Concejo para la boda y con varios turnos de regreso tras la fiesta.'
     },
     display_order: 4,
     is_active: true,
@@ -425,9 +423,9 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: 'Detalles prácticos para el fin de semana',
     content: {
       faqs: [
-        { question: '¿Cuál es el dress code recomendado?', answer: 'Traje formal para ellos (los tonos lino o azul marino son ideales) y vestido de cóctel, midi o largo en tonos mediterráneos para ellas.' },
+        { question: '¿Cuál es el dress code recomendado?', answer: 'Viernes (preboda): Casual Chic entre viñedos. Sábado (boda): Formal / traje o vestido midi o largo.' },
         { question: '¿Habrá opciones para alergias y dietas especiales?', answer: 'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, etc.) y adaptaremos tu menú.' },
-        { question: '¿Hay aparcamiento en la finca?', answer: 'Sí, la finca cuenta con parking privado vigilado gratuito para todos los invitados que decidan acudir en su propio vehículo.' }
+        { question: '¿Hay aparcamiento en la bodega?', answer: 'Sí, Bodega Concejo cuenta con amplio aparcamiento privado gratuito para los invitados que vengan en coche.' }
       ]
     },
     display_order: 6,
@@ -441,7 +439,7 @@ export const INITIAL_GUESTBOOK: GuestBookEntry[] = [
     id: 'gb-1',
     wedding_id: 'w-stephanie-rodrigo-2027',
     guest_name: 'Sofía Martín',
-    message: '¡Va a ser una boda absolutamente mágica! No veo la hora de veros brindar juntos.',
+    message: '¡Va a ser una boda absolutamente mágica en Bodega Concejo! No veo la hora de brindar juntos.',
     status: 'approved',
     created_at: '2027-06-25T14:36:00.000Z'
   },
@@ -460,32 +458,40 @@ export const INITIAL_MEDIA: MediaPhoto[] = [
     id: 'm-1',
     wedding_id: 'w-stephanie-rodrigo-2027',
     uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/wedding/hero-mediterranean.jpg',
-    caption: 'Finca La Alquería al atardecer',
+    photo_url: '/images/bodega/bodega-concejo-banquete-noche.png',
+    caption: 'Bodega Concejo iluminada para el banquete al aire libre',
     created_at: '2027-01-10T12:00:00.000Z'
   },
   {
     id: 'm-2',
     wedding_id: 'w-stephanie-rodrigo-2027',
     uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/wedding/table-setting.jpg',
-    caption: 'Mesas imperiales bajo los olivos',
+    photo_url: '/images/bodega/bodega-concejo-fachada-logo.png',
+    caption: 'Fachada y terraza de Bodega Concejo al atardecer',
     created_at: '2027-02-15T15:30:00.000Z'
   },
   {
     id: 'm-3',
     wedding_id: 'w-stephanie-rodrigo-2027',
     uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/wedding/venue-editorial.jpg',
-    caption: 'Claustro de piedra caliza',
+    photo_url: '/images/bodega/cata-vino-burro-loco.png',
+    caption: 'Cata de vino en barrica para la preboda',
     created_at: '2027-03-15T15:30:00.000Z'
   },
   {
     id: 'm-4',
     wedding_id: 'w-stephanie-rodrigo-2027',
     uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/wedding/floral-detail.jpg',
-    caption: 'Detalles florales y cerámica artesanal',
+    photo_url: '/images/bodega/sala-barricas-bodega.png',
+    caption: 'Sala de crianza y barricas de roble en la bodega',
     created_at: '2027-04-10T12:00:00.000Z'
+  },
+  {
+    id: 'm-5',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    uploader_name: 'Stephanie & Rodrigo',
+    photo_url: '/images/bodega/vinedos-valoria-barrica.png',
+    caption: 'Viñedos de Valoria la Buena bajo el sol castellano',
+    created_at: '2027-05-01T12:00:00.000Z'
   }
 ];

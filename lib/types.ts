@@ -61,6 +61,9 @@ export interface Event {
   dress_code?: string;
   visibility: 'everyone' | 'selected_groups';
   display_order: number;
+  day?: 'friday' | 'saturday';
+  day_label?: string;
+  image_url?: string;
 }
 
 export type RSVPStatus = 'attending' | 'declined' | 'pending';

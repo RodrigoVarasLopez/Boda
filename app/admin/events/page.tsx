@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { INITIAL_EVENTS, INITIAL_GROUPS } from '@/lib/mock-data';
 import { Event } from '@/lib/types';
 import { Clock, MapPin, Eye, Lock, Plus, Check } from 'lucide-react';
@@ -51,6 +52,22 @@ export default function AdminEventsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {events.map((evt) => (
           <div key={evt.id} className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-4">
+            {evt.image_url && (
+              <div className="relative h-36 w-full rounded-2xl overflow-hidden mb-2">
+                <Image
+                  src={evt.image_url}
+                  alt={evt.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 400px"
+                />
+                <div className="absolute top-2.5 left-2.5 z-10">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider bg-black/60 text-white backdrop-blur-xs">
+                    {evt.day_label || (evt.day === 'friday' ? 'Viernes' : 'Sábado')}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-start">
               <div className="space-y-1">
                 <span className="text-xs font-mono font-medium text-text-accent flex items-center gap-1.5">

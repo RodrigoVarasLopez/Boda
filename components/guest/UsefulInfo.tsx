@@ -46,8 +46,8 @@ export const UsefulInfo: React.FC<UsefulInfoProps> = ({ wedding, blocks }) => {
         <div className="rounded-3xl bg-bg-card border border-border-subtle shadow-card overflow-hidden space-y-4">
           <div className="relative h-56 w-full overflow-hidden">
             <Image
-              src="/wedding/venue-editorial.jpg"
-              alt="Finca La Alquería"
+              src={venueBlock.content?.image || '/images/bodega/bodega-concejo-banquete-noche.png'}
+              alt={venueBlock.subtitle || 'Bodega Concejo'}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 500px"
@@ -55,7 +55,7 @@ export const UsefulInfo: React.FC<UsefulInfoProps> = ({ wedding, blocks }) => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 text-white">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-brand-sand block">El Enclave</span>
-              <h3 className="font-serif text-2xl font-normal leading-tight">{venueBlock.subtitle || 'Finca La Alquería'}</h3>
+              <h3 className="font-serif text-2xl font-normal leading-tight">{venueBlock.subtitle || 'Bodega Concejo'}</h3>
             </div>
           </div>
           <div className="p-6 pt-2 space-y-3 text-xs text-text-secondary leading-relaxed">
