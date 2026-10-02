@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Wedding, GuestGroup } from '@/lib/types';
-import { Heart, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface PersonalizedWelcomeProps {
   wedding: Wedding;
@@ -13,40 +13,43 @@ export const PersonalizedWelcome: React.FC<PersonalizedWelcomeProps> = ({
   wedding,
   group,
 }) => {
-  return (
-    <section className="py-12 px-6 max-w-lg mx-auto text-center space-y-6 animate-fade-in">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-bg-secondary text-text-accent border border-border-subtle mb-2">
-        <Heart className="w-5 h-5 fill-text-accent/20 text-text-accent" />
-      </div>
+  const guestNames = group?.guests?.map((g) => g.first_name).join(' · ');
 
-      {group ? (
-        <div className="space-y-3">
-          <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-semibold">
-            ¡Hola, {group.name}!
-          </h2>
-          <p className="font-serif italic text-lg text-text-secondary leading-relaxed">
-            {group.custom_message ||
-              `Tenemos muchas ganas de celebrar este día tan especial contigo y tu familia.`}
+  return (
+    <section className="py-12 px-6 max-w-lg mx-auto text-center space-y-8 animate-fade-in">
+      {/* Personalized Badge */}
+      {group && (
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-text-muted">
+            Invitación Personalizada
           </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-semibold">
-            Nos casamos
-          </h2>
-          <p className="font-serif italic text-lg text-text-secondary leading-relaxed">
-            {wedding.welcome_quote}
-          </p>
+          {guestNames && (
+            <p className="text-xs font-serif italic text-text-accent tracking-wide">
+              {guestNames}
+            </p>
+          )}
         </div>
       )}
 
-      <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft text-left space-y-2">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-accent">
-          <Sparkles className="w-4 h-4" />
-          <span>Tu Concierge Digital de Boda</span>
+      {/* Welcome Title & Message */}
+      <div className="space-y-4">
+        <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-normal leading-snug">
+          {group ? group.name : 'Bienvenidos a nuestra boda'}
+        </h2>
+        <p className="font-serif italic text-lg sm:text-xl text-text-secondary leading-relaxed max-w-md mx-auto">
+          {group?.custom_message || wedding.welcome_quote}
+        </p>
+      </div>
+
+      {/* Concierge Info Card */}
+      <div className="p-6 rounded-2xl bg-bg-card border border-border-subtle shadow-card text-left space-y-3 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-brand-cream/40 rounded-full blur-xl pointer-events-none" />
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-text-accent">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Concierge Digital de Boda</span>
         </div>
-        <p className="text-sm text-text-secondary leading-normal">
-          A través de este enlace personal podrás confirmar tu asistencia, consultar los horarios actualizados de tus eventos, ver indicaciones para llegar y guardar todos los detalles en tu calendario.
+        <p className="text-xs text-text-secondary leading-relaxed">
+          Este espacio es tu guía interactiva para todo el fin de semana. Desde aquí podrás confirmar tu asistencia, consultar los horarios actualizados de tus eventos, indicaciones de llegada y guardar los detalles en tu calendario.
         </p>
       </div>
     </section>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { INITIAL_WEDDING, INITIAL_EVENTS, INITIAL_CMS_BLOCKS, INITIAL_GUESTBOOK, INITIAL_MEDIA } from '@/lib/mock-data';
 import { RevealScreen } from '@/components/guest/RevealScreen';
@@ -11,6 +12,7 @@ import { UsefulInfo } from '@/components/guest/UsefulInfo';
 import { MemoriesSection } from '@/components/guest/MemoriesSection';
 import { GuestStickyNav } from '@/components/guest/GuestStickyNav';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
+import { Heart, Sparkles, ChevronDown } from 'lucide-react';
 
 export default function PublicWeddingPage() {
   const params = useParams();
@@ -34,16 +36,75 @@ export default function PublicWeddingPage() {
     );
   }
 
+  const storyBlock = INITIAL_CMS_BLOCKS.find((b) => b.type === 'story');
+
   return (
-    <main className="min-h-screen pb-28 bg-bg-primary text-text-primary transition-colors duration-300">
-      {/* Quick Theme Switcher Pill for Preview */}
-      <div className="max-w-md mx-auto pt-4 px-4 flex justify-end">
+    <main className="min-h-screen pb-32 bg-bg-primary text-text-primary transition-colors duration-300">
+      {/* Top Header Pill for Preview */}
+      <div className="max-w-md mx-auto pt-6 px-4 flex justify-between items-center text-xs text-text-muted">
+        <span className="font-serif italic text-text-secondary text-sm">Stephanie & Rodrigo</span>
         <ThemeSelector compact />
       </div>
+
+      {/* Editorial Hero Banner */}
+      <section className="py-12 px-6 max-w-lg mx-auto text-center space-y-6 animate-fade-in">
+        <div className="relative h-72 w-full rounded-3xl overflow-hidden shadow-card border border-border-subtle">
+          <Image
+            src="/wedding/hero-mediterranean.jpg"
+            alt="Stephanie & Rodrigo — Boda Mediterránea"
+            fill
+            priority
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 500px"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute bottom-6 left-6 right-6 text-white text-center space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-brand-sand block">
+              25 · 08 · 2027 · Madrid
+            </span>
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal leading-tight">
+              Stephanie & Rodrigo
+            </h1>
+            <p className="text-xs uppercase tracking-widest text-white/80">Nos Casamos</p>
+          </div>
+        </div>
+      </section>
 
       <div id="welcome">
         <PersonalizedWelcome wedding={INITIAL_WEDDING} />
       </div>
+
+      {/* Editorial Story Section: 01 NOSOTROS */}
+      {storyBlock && (
+        <section className="py-12 px-6 max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="space-y-2 text-center">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-text-accent font-semibold block">
+              01 · NOSOTROS
+            </span>
+            <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-normal">
+              Nuestra Historia
+            </h2>
+          </div>
+
+          <div className="relative h-64 w-full rounded-3xl overflow-hidden shadow-card border border-border-subtle">
+            <Image
+              src="/wedding/table-setting.jpg"
+              alt="Mesa de boda"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 500px"
+            />
+          </div>
+
+          <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-soft space-y-4 text-xs text-text-secondary leading-relaxed">
+            {storyBlock.content?.paragraphs?.map((p: string, idx: number) => (
+              <p key={idx} className="font-serif italic text-sm text-text-secondary leading-relaxed">
+                &ldquo;{p}&rdquo;
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div id="rsvp">
         <ProgressiveRSVP
@@ -72,6 +133,19 @@ export default function PublicWeddingPage() {
           photos={INITIAL_MEDIA}
         />
       </div>
+
+      {/* Editorial Footer */}
+      <footer className="text-center py-16 px-6 border-t border-border-subtle/60 space-y-3 mt-16 max-w-lg mx-auto">
+        <h3 className="font-serif text-3xl font-normal text-text-primary tracking-tight">
+          Stephanie & Rodrigo
+        </h3>
+        <p className="text-[10px] font-mono tracking-[0.25em] text-text-muted uppercase">
+          25 · 08 · 2027 · Madrid, España
+        </p>
+        <p className="text-xs font-serif italic text-text-secondary">
+          Con todo nuestro cariño
+        </p>
+      </footer>
 
       {/* Floating Sticky Mobile Navigation */}
       <GuestStickyNav

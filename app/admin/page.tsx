@@ -1,9 +1,21 @@
 'use client';
 
 import React from 'react';
-import { INITIAL_WEDDING, INITIAL_GROUPS, INITIAL_EVENTS, INITIAL_RSVPS } from '@/lib/mock-data';
-import { Users, CheckCircle, Clock, XCircle, Eye, ArrowUpRight, Calendar, Sparkles, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { INITIAL_WEDDING, INITIAL_GROUPS, INITIAL_EVENTS, INITIAL_RSVPS } from '@/lib/mock-data';
+import {
+  Users,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Eye,
+  Plus,
+  Calendar,
+  MessageCircle,
+  Image as ImageIcon,
+  ArrowUpRight,
+  Sparkles
+} from 'lucide-react';
 
 export default function AdminOverviewPage() {
   const totalGuests = INITIAL_GROUPS.reduce((acc, g) => acc + g.guests.length, 0);
@@ -19,165 +31,226 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Top Header */}
+      {/* Editorial Welcome Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-6">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-accent block">
-            Resumen General de Boda
-          </span>
-          <h1 className="font-serif text-3xl font-bold text-text-primary">
-            Panel de Control
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-[0.2em] font-semibold text-text-accent">
+            Panel de Operaciones
+          </p>
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-text-primary tracking-tight">
+            Buenos días, Stephanie & Rodrigo
           </h1>
+          <p className="text-xs text-text-muted">
+            Así va la organización y confirmaciones de vuestra boda.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Link
-            href="/admin/guests"
-            className="py-2.5 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center gap-1.5 shadow-soft hover:bg-primary-hover transition-colors"
-          >
-            <Users className="w-4 h-4" />
-            <span>Gestionar Invitados</span>
-          </Link>
-        </div>
+
+        {/* Quick Action Button */}
+        <Link
+          href="/admin/guests"
+          className="inline-flex items-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs hover:bg-primary-hover shadow-soft transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Añadir invitado</span>
+        </Link>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* Card 1: Total Guests */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-text-muted">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Invitados</span>
-            <Users className="w-4 h-4 text-text-accent" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-text-primary">{totalGuests}</p>
-          <span className="text-[10px] text-text-muted block">{totalGroups} familias/grupos</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: INVITADOS */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted">
+            INVITADOS
+          </p>
+          <p className="font-serif text-4xl font-normal text-text-primary">
+            {totalGuests}
+          </p>
+          <p className="text-[11px] text-text-muted">
+            En {totalGroups} grupos y familias
+          </p>
         </div>
 
-        {/* Card 2: Confirmed */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-emerald-700">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Confirmados</span>
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-emerald-700">{confirmedAttending}</p>
-          <span className="text-[10px] text-emerald-800 font-medium block">Asistencia confirmada</span>
+        {/* Card 2: CONFIRMADOS */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold">
+            CONFIRMADOS
+          </p>
+          <p className="font-serif text-4xl font-normal text-brand-olive">
+            {confirmedAttending}
+          </p>
+          <p className="text-[11px] text-text-muted">
+            Asistencia verificada
+          </p>
         </div>
 
-        {/* Card 3: Pending */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-amber-700">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Pendientes</span>
-            <Clock className="w-4 h-4 text-amber-600" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-amber-700">{pendingCount}</p>
-          <span className="text-[10px] text-amber-800 block">Sin responder</span>
+        {/* Card 3: PENDIENTES */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-brand-terracotta font-semibold">
+            PENDIENTES
+          </p>
+          <p className="font-serif text-4xl font-normal text-brand-terracotta">
+            {pendingCount}
+          </p>
+          <p className="text-[11px] text-text-muted">
+            Esperando respuesta
+          </p>
         </div>
 
-        {/* Card 4: Declined */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-rose-700">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">No Asisten</span>
-            <XCircle className="w-4 h-4 text-rose-600" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-rose-700">{confirmedDeclined}</p>
-          <span className="text-[10px] text-rose-800 block">Bajas registradas</span>
-        </div>
-
-        {/* Card 5: Opened Invitations */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-blue-700">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Abiertas</span>
-            <Eye className="w-4 h-4 text-blue-600" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-blue-700">{openedInvitations} / {totalGroups}</p>
-          <span className="text-[10px] text-blue-800 block">Invitaciones leídas</span>
-        </div>
-
-        {/* Card 6: Completion Rate */}
-        <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-2">
-          <div className="flex justify-between items-center text-text-accent">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Tasa RSVP</span>
-            <Sparkles className="w-4 h-4 text-text-accent" />
-          </div>
-          <p className="font-serif text-3xl font-bold text-text-primary">{rsvpCompletionRate}%</p>
-          <span className="text-[10px] text-text-muted block">Completitud global</span>
+        {/* Card 4: NO ASISTEN */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted font-semibold">
+            NO ASISTEN
+          </p>
+          <p className="font-serif text-4xl font-normal text-text-muted">
+            {confirmedDeclined}
+          </p>
+          <p className="text-[11px] text-text-muted">
+            Bajas comunicadas
+          </p>
         </div>
       </div>
 
-      {/* Visual Charts & Breakdown Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* RSVP Distribution Bar */}
-        <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-5">
+      {/* Progress Bar & Operational Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Widget 1: RSVP Progress (2 Columns) */}
+        <div className="lg:col-span-2 p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="font-serif text-xl font-semibold text-text-primary">
-              Distribución de Respuestas RSVP
-            </h3>
-            <span className="text-xs font-mono text-text-muted">{totalGuests} invitados</span>
+            <div>
+              <h3 className="font-serif text-xl font-normal text-text-primary">
+                Progreso Global de Confirmación
+              </h3>
+              <p className="text-xs text-text-muted">
+                {rsvpCompletionRate}% del total de invitados ha respondido
+              </p>
+            </div>
+            <span className="font-mono text-sm font-semibold text-text-accent">
+              {rsvpCompletionRate}%
+            </span>
           </div>
 
-          <div className="h-4 rounded-full bg-bg-secondary overflow-hidden flex">
+          {/* Thin Elegant Progress Bar */}
+          <div className="h-2.5 rounded-full bg-bg-secondary overflow-hidden flex">
             <div
               style={{ width: `${(confirmedAttending / totalGuests) * 100}%` }}
-              className="bg-emerald-500 h-full transition-all"
-              title={`Confirmados: ${confirmedAttending}`}
-            />
-            <div
-              style={{ width: `${(pendingCount / totalGuests) * 100}%` }}
-              className="bg-amber-400 h-full transition-all"
-              title={`Pendientes: ${pendingCount}`}
+              className="bg-brand-olive h-full transition-all duration-500"
             />
             <div
               style={{ width: `${(confirmedDeclined / totalGuests) * 100}%` }}
-              className="bg-rose-500 h-full transition-all"
-              title={`No asisten: ${confirmedDeclined}`}
+              className="bg-text-muted/40 h-full transition-all duration-500"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs text-center pt-2">
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className="font-bold block text-sm">{confirmedAttending}</span>
-              <span className="text-[11px]">Asisten</span>
+          {/* Status Breakdown Pills */}
+          <div className="grid grid-cols-3 gap-3 text-center text-xs pt-2">
+            <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle">
+              <span className="font-mono text-base font-semibold text-brand-olive block">{confirmedAttending}</span>
+              <span className="text-[11px] text-text-muted">Confirmados</span>
             </div>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">
-              <span className="font-bold block text-sm">{pendingCount}</span>
-              <span className="text-[11px]">Pendientes</span>
+            <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle">
+              <span className="font-mono text-base font-semibold text-brand-terracotta block">{pendingCount}</span>
+              <span className="text-[11px] text-text-muted">Pendientes</span>
             </div>
-            <div className="p-2 rounded-xl bg-rose-50 text-rose-800 border border-rose-200">
-              <span className="font-bold block text-sm">{confirmedDeclined}</span>
-              <span className="text-[11px]">No asisten</span>
+            <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle">
+              <span className="font-mono text-base font-semibold text-text-muted block">{confirmedDeclined}</span>
+              <span className="text-[11px] text-text-muted">No asisten</span>
+            </div>
+          </div>
+
+          {/* Attendance per Event */}
+          <div className="pt-4 border-t border-border-subtle space-y-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary block">
+              Asistencia por Evento
+            </span>
+            <div className="space-y-2">
+              {INITIAL_EVENTS.map((evt) => {
+                const attendeesCount = evt.visibility === 'everyone' ? confirmedAttending : Math.min(confirmedAttending, 3);
+                return (
+                  <div key={evt.id} className="flex justify-between items-center text-xs py-1">
+                    <span className="text-text-primary">{evt.title}</span>
+                    <span className="font-mono text-text-muted">{attendeesCount} pers.</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Attendance per Event */}
-        <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-serif text-xl font-semibold text-text-primary">
-              Asistencia por Evento
+        {/* Widget 2: Acciones Rápidas & Últimas Respuestas (1 Column) */}
+        <div className="space-y-6">
+          {/* Quick Actions Card */}
+          <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-4">
+            <h3 className="font-serif text-lg font-normal text-text-primary">
+              Acciones Rápidas
             </h3>
-            <Link href="/admin/events" className="text-xs text-text-accent font-medium hover:underline flex items-center gap-1">
-              <span>Ver eventos</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="space-y-2">
+              <Link
+                href="/admin/guests"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
+              >
+                <span className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-text-accent" />
+                  + Añadir invitados
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary" />
+              </Link>
+
+              <Link
+                href="/admin/events"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
+              >
+                <span className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-text-accent" />
+                  Crear / editar evento
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary" />
+              </Link>
+
+              <Link
+                href="/admin/guests"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
+              >
+                <span className="flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-brand-olive" />
+                  Enviar por WhatsApp
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary" />
+              </Link>
+
+              <Link
+                href="/admin/media"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
+              >
+                <span className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-text-accent" />
+                  Galería & Recuerdos
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary" />
+              </Link>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {INITIAL_EVENTS.map((evt) => {
-              const attendeesCount = evt.visibility === 'everyone' ? confirmedAttending : Math.min(confirmedAttending, 3);
-              return (
-                <div key={evt.id} className="space-y-1 text-xs">
-                  <div className="flex justify-between font-medium">
-                    <span className="text-text-primary">{evt.title}</span>
-                    <span className="text-text-muted font-mono">{attendeesCount} pers.</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-bg-secondary overflow-hidden">
-                    <div
-                      className="bg-primary h-full transition-all"
-                      style={{ width: `${(attendeesCount / totalGuests) * 100}%` }}
-                    />
-                  </div>
+          {/* Recent Responses Card */}
+          <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-4">
+            <h3 className="font-serif text-lg font-normal text-text-primary">
+              Últimas Respuestas
+            </h3>
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-text-primary block">Sofía Martín</span>
+                  <span className="text-[11px] text-brand-olive font-semibold">Confirmado (+1)</span>
                 </div>
-              );
-            })}
+                <span className="text-[10px] text-text-muted font-mono">hace 15m</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-text-primary block">Familia Pérez</span>
+                  <span className="text-[11px] text-brand-olive font-semibold">Confirmado (2 pers)</span>
+                </div>
+                <span className="text-[10px] text-text-muted font-mono">hace 2h</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

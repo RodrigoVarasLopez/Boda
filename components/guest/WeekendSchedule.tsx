@@ -2,19 +2,17 @@
 
 import React, { useState } from 'react';
 import { Event, GuestGroup } from '@/lib/types';
-import { Clock, MapPin, Calendar, ExternalLink, Sparkles, Shirt } from 'lucide-react';
+import { Clock, MapPin, Calendar, Sparkles, Navigation } from 'lucide-react';
 import { formatDateEs, generateGoogleCalendarUrl, downloadICSFile } from '@/lib/utils';
 
 interface WeekendScheduleProps {
   events: Event[];
   group?: GuestGroup;
-  guestFirstName?: string;
 }
 
 export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
   events,
   group,
-  guestFirstName = 'invitado',
 }) => {
   // Filter events according to group access rules
   const visibleEvents = events.filter((e) => {
@@ -26,99 +24,105 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
   const [activeCalendarModal, setActiveCalendarModal] = useState<Event | null>(null);
 
   return (
-    <section className="py-10 px-4 max-w-lg mx-auto space-y-8 animate-fade-in">
-      {/* Title & Differential Concept Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-bg-secondary text-text-accent border border-border-subtle">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Tu Boda • Agenda Personalizada</span>
+    <section className="py-12 px-5 max-w-lg mx-auto space-y-10 animate-fade-in">
+      {/* Title & Header */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.2em] bg-bg-secondary text-text-accent border border-border-subtle">
+          <Sparkles className="w-3 h-3" />
+          <span>Itinerario · Tu Boda</span>
         </div>
-        <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-semibold pt-1">
-          {group?.name ? `Tu Plan de Fin de Semana, ${group.name.split(' ')[0]}` : 'Agenda del Fin de Semana'}
+        <h2 className="font-serif text-3xl sm:text-4xl text-text-primary font-normal">
+          {group?.name ? `El Plan de Fin de Semana` : 'Agenda del Fin de Semana'}
         </h2>
         <p className="text-xs text-text-muted max-w-xs mx-auto">
-          Este es el itinerario exclusivo de eventos a los que estás invitado/a.
+          Los momentos y celebraciones especialmente preparados para ti.
         </p>
       </div>
 
       {/* Events Timeline */}
-      <div className="relative pl-6 border-l-2 border-border-subtle space-y-8 ml-2">
-        {visibleEvents.map((evt) => (
-          <div key={evt.id} className="relative group">
-            {/* Timeline Dot */}
-            <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-bg-card border-2 border-text-accent shadow-sm group-hover:scale-110 transition-transform" />
+      <div className="relative pl-6 border-l border-border-strong/60 space-y-8 ml-3">
+        {visibleEvents.map((evt) => {
+          const eventTime = new Date(evt.start_time).toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
 
-            {/* Event Card */}
-            <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-soft space-y-4 hover:border-border-strong transition-colors">
-              {/* Event Time & Title */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-text-accent">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{formatDateEs(evt.start_time, true)}</span>
-                </div>
-                <h3 className="font-serif text-2xl font-semibold text-text-primary">
-                  {evt.title}
-                </h3>
-              </div>
+          return (
+            <div key={evt.id} className="relative group">
+              {/* Timeline Dot */}
+              <div className="absolute -left-[30px] top-2 w-3 h-3 rounded-full bg-brand-sand border-2 border-primary shadow-xs group-hover:scale-125 transition-transform" />
 
-              {/* Event Description */}
-              <p className="text-xs text-text-secondary leading-relaxed">
-                {evt.description}
-              </p>
-
-              {/* Location & Dress Code */}
-              <div className="space-y-2 text-xs text-text-secondary pt-1 border-t border-border-subtle/50">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-text-accent shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-text-primary block">{evt.location_name}</span>
-                    <span className="text-text-muted">{evt.address}</span>
-                  </div>
+              {/* Event Card */}
+              <div className="p-6 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-4 hover:border-border-strong transition-all">
+                {/* Time & Title */}
+                <div className="space-y-1">
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-text-accent flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    {eventTime}h · {formatDateEs(evt.start_time).split(',')[0]}
+                  </span>
+                  <h3 className="font-serif text-2xl font-normal text-text-primary">
+                    {evt.title}
+                  </h3>
                 </div>
 
-                {evt.dress_code && (
-                  <div className="flex items-center gap-2 text-text-muted">
-                    <Shirt className="w-4 h-4 text-text-accent shrink-0" />
-                    <span><strong className="text-text-primary font-medium">Dress Code:</strong> {evt.dress_code}</span>
+                {/* Event Description */}
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {evt.description}
+                </p>
+
+                {/* Location & Dress Code */}
+                <div className="space-y-2 text-xs text-text-secondary pt-3 border-t border-border-subtle/50">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-text-primary block">{evt.location_name}</span>
+                      <span className="text-text-muted text-[11px]">{evt.address}</span>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Action Buttons: Maps & Add to Calendar */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <a
-                  href={evt.google_maps_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-bg-secondary text-text-primary text-xs font-medium border border-border-subtle hover:border-border-strong transition-colors"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-text-accent" />
-                  <span>Ver en Google Maps</span>
-                  <ExternalLink className="w-3 h-3 text-text-muted ml-0.5" />
-                </a>
+                  {evt.dress_code && (
+                    <div className="text-[11px] text-text-muted pl-6">
+                      <span className="text-text-secondary font-medium">Dress Code:</span> {evt.dress_code}
+                    </div>
+                  )}
+                </div>
 
-                <button
-                  onClick={() => setActiveCalendarModal(evt)}
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-bg-secondary text-text-primary text-xs font-medium border border-border-subtle hover:border-border-strong transition-colors cursor-pointer"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-text-accent" />
-                  <span>Añadir al Calendario</span>
-                </button>
+                {/* Action Buttons: Cómo llegar & Añadir al Calendario */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <a
+                    href={evt.google_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-xl bg-bg-secondary text-text-primary text-xs font-medium border border-border-subtle hover:border-border-strong transition-colors"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-text-accent" />
+                    <span>Cómo llegar</span>
+                  </a>
+
+                  <button
+                    onClick={() => setActiveCalendarModal(evt)}
+                    className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-xl bg-bg-secondary text-text-primary text-xs font-medium border border-border-subtle hover:border-border-strong transition-colors cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-text-accent" />
+                    <span>Añadir al calendario</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Calendar Action Modal */}
       {activeCalendarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
           <div className="bg-bg-card p-6 rounded-3xl max-w-sm w-full border border-border-subtle shadow-card space-y-4 text-center">
-            <h4 className="font-serif text-xl font-bold text-text-primary">
+            <h4 className="font-serif text-2xl font-normal text-text-primary">
               Guardar {activeCalendarModal.title}
             </h4>
             <p className="text-xs text-text-secondary">
-              Selecciona tu calendario preferido para guardar el evento con todos los recordatorios.
+              Añade el evento directamente a tu agenda personal con ubicación y recordatorios.
             </p>
 
             <div className="space-y-2 pt-2">
@@ -133,7 +137,7 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setActiveCalendarModal(null)}
-                className="w-full py-3 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center justify-center gap-2 shadow-soft hover:bg-primary-hover"
+                className="w-full py-3 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center justify-center gap-2 shadow-soft hover:bg-primary-hover transition-colors"
               >
                 <Calendar className="w-4 h-4" />
                 <span>Google Calendar</span>
@@ -150,7 +154,7 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
                   );
                   setActiveCalendarModal(null);
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-bg-secondary text-text-primary font-medium text-xs border border-border-subtle hover:border-border-strong flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-bg-secondary text-text-primary font-medium text-xs border border-border-subtle hover:border-border-strong flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <span>Descargar archivo .ICS (Apple / Outlook)</span>
               </button>

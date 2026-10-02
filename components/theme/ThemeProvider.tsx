@@ -9,12 +9,12 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'editorial',
+  theme: 'mediterranean',
   setTheme: () => {},
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setThemeState] = useState<ThemeType>('editorial');
+  const [theme, setThemeState] = useState<ThemeType>('mediterranean');
 
   const setTheme = (newTheme: ThemeType) => {
     setThemeState(newTheme);
@@ -30,7 +30,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       setThemeState(saved);
       document.documentElement.setAttribute('data-theme', saved);
     } else {
-      document.documentElement.setAttribute('data-theme', 'editorial');
+      document.documentElement.setAttribute('data-theme', 'mediterranean');
     }
   }, []);
 

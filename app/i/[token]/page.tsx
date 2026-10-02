@@ -56,7 +56,7 @@ export default function PersonalizedInvitationPage() {
           <div className="pt-3 border-t border-border-subtle">
             <p className="text-[11px] text-text-muted flex items-center justify-center gap-1">
               <HeartHandshake className="w-3.5 h-3.5 text-text-accent" />
-              Ponte en contacto con Laura o Rodrigo para cualquier consulta.
+              Ponte en contacto con Stephanie o Rodrigo para cualquier consulta.
             </p>
           </div>
         </div>

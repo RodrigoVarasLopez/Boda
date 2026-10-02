@@ -370,7 +370,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
             <div className="space-y-5 animate-fade-in">
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary block">
-                  Mensaje opcional para Laura & Rodrigo
+                  Mensaje opcional para Stephanie & Rodrigo
                 </label>
                 <textarea
                   rows={3}

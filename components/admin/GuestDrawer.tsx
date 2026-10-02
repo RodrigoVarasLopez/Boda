@@ -2,9 +2,24 @@
 
 import React, { useState } from 'react';
 import { GuestGroup, Event, Wedding, GuestRSVPResponse } from '@/lib/types';
-import { X, Copy, ExternalLink, MessageCircle, QrCode, Eye, Check, Calendar, Users, Clock, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  Copy,
+  MessageCircle,
+  QrCode,
+  Eye,
+  Check,
+  Calendar,
+  Users,
+  RefreshCw,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Sparkles
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
+import { regenerateInvitationTokenAction, revokeInvitationAction } from '@/app/actions';
 
 interface GuestDrawerProps {
   group: GuestGroup | null;
@@ -26,6 +41,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [customNote, setCustomNote] = useState(group?.custom_message || '');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!group) return null;
 
@@ -51,9 +67,33 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
     window.open(waUrl, '_blank');
   };
 
-  const assignedEvents = events.filter((e) =>
-    e.visibility === 'everyone' || group.allowed_event_ids.includes(e.id)
-  );
+  const handleRegenerate = async () => {
+    if (!confirm('¿Regenerar el enlace de invitación? El enlace anterior dejará de funcionar.')) return;
+    setIsProcessing(true);
+    try {
+      const res = await regenerateInvitationTokenAction(group.id);
+      if (res.success && res.newToken) {
+        group.token = res.newToken;
+        alert('Enlace regenerado correctamente.');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!confirm('¿Revocar el acceso a esta invitación? El invitado verá la pantalla de invitación no disponible.')) return;
+    setIsProcessing(true);
+    try {
+      const res = await revokeInvitationAction(group.id);
+      if (res.success) {
+        group.invitation_status = 'revoked';
+        alert('Invitación revocada.');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-fade-in">
@@ -61,10 +101,10 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
         {/* Header */}
         <div className="p-6 border-b border-border-subtle flex justify-between items-center sticky top-0 bg-bg-card/95 backdrop-blur-md z-10">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-text-accent block">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-text-accent block">
               Detalle de Invitación
             </span>
-            <h3 className="font-serif text-2xl font-semibold text-text-primary">
+            <h3 className="font-serif text-2xl font-normal text-text-primary">
               {group.name}
             </h3>
           </div>
@@ -79,25 +119,31 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
         {/* Content Body */}
         <div className="p-6 space-y-6 flex-1">
           {/* Status Badge & Timestamps */}
-          <div className="p-4 rounded-2xl bg-bg-secondary/60 border border-border-subtle space-y-3 text-xs">
+          <div className="p-4 rounded-2xl bg-bg-secondary/40 border border-border-subtle space-y-3 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-text-muted font-medium">Estado de Invitación</span>
+              <span className="text-text-muted font-medium">Estado de Invitación:</span>
               <span
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize inline-flex items-center gap-1.5 ${
                   group.invitation_status === 'responded'
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-brand-olive/15 text-brand-olive'
                     : group.invitation_status === 'opened'
                     ? 'bg-blue-100 text-blue-800'
                     : group.invitation_status === 'sent'
                     ? 'bg-amber-100 text-amber-800'
+                    : group.invitation_status === 'revoked'
+                    ? 'bg-rose-100 text-rose-800'
                     : 'bg-zinc-200 text-zinc-700'
                 }`}
               >
-                {group.invitation_status}
+                {group.invitation_status === 'opened' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                {group.invitation_status === 'responded' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                {group.invitation_status === 'sent' && <Clock className="w-3.5 h-3.5" />}
+                {group.invitation_status === 'revoked' && <Ban className="w-3.5 h-3.5" />}
+                <span>{group.invitation_status}</span>
               </span>
             </div>
 
-            <div className="space-y-1 text-text-secondary text-[11px] pt-1 border-t border-border-subtle/50">
+            <div className="space-y-1 text-text-secondary text-[11px] pt-2 border-t border-border-subtle/50">
               {group.opened_at && (
                 <div className="flex justify-between">
                   <span>Abierta el:</span>
@@ -113,96 +159,19 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
             </div>
           </div>
 
-          {/* Quick Action Links & WhatsApp Helper */}
+          {/* INVITADOS SECTION */}
           <div className="space-y-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-text-muted block">
-              Enlace Seguro OPACO
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={fullInvitationUrl}
-                className="w-full py-2.5 px-3 rounded-xl bg-bg-secondary/40 border border-border-subtle font-mono text-xs text-text-secondary truncate focus:outline-none"
-              />
-              <button
-                onClick={handleCopyLink}
-                className="py-2.5 px-3 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center gap-1.5 hover:bg-primary-hover shrink-0 cursor-pointer shadow-soft"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copiado' : 'Copiar'}</span>
-              </button>
-            </div>
-
-            {/* Custom WhatsApp Note Helper */}
-            <div className="space-y-2 pt-2">
-              <label className="text-xs font-semibold text-text-secondary block">
-                Mensaje de WhatsApp personalizado
-              </label>
-              <textarea
-                rows={2}
-                value={customNote}
-                onChange={(e) => setCustomNote(e.target.value)}
-                placeholder="Añade una frase personal para este invitado..."
-                className="w-full p-2.5 rounded-xl bg-bg-secondary/40 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent resize-none"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleWhatsAppOpen}
-                  className="py-2.5 px-3 rounded-xl bg-emerald-600 text-white font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-colors cursor-pointer shadow-soft"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Abrir WhatsApp</span>
-                </button>
-                <a
-                  href={`/i/${group.token}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2.5 px-3 rounded-xl border border-border-strong text-text-primary font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-bg-secondary transition-colors"
-                >
-                  <Eye className="w-4 h-4 text-text-accent" />
-                  <span>Ver como invitado</span>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* QR Code Generator */}
-          <div className="p-4 rounded-2xl bg-bg-secondary/40 border border-border-subtle space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                <QrCode className="w-4 h-4 text-text-accent" />
-                Código QR de Invitación
-              </span>
-              <button
-                onClick={() => setShowQR(!showQR)}
-                className="text-xs text-text-accent font-medium hover:underline cursor-pointer"
-              >
-                {showQR ? 'Ocultar' : 'Mostrar QR'}
-              </button>
-            </div>
-
-            {showQR && (
-              <div className="p-4 rounded-xl bg-white border border-border-subtle flex flex-col items-center justify-center space-y-2 animate-fade-in">
-                <QRCodeSVG value={fullInvitationUrl} size={150} level="M" />
-                <span className="text-[10px] font-mono text-gray-500">Scan to open invitation</span>
-              </div>
-            )}
-          </div>
-
-          {/* Guests List in this Group */}
-          <div className="space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-text-accent" />
-              Personas en este Grupo ({group.guests.length})
+            <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted block flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-text-accent" />
+              INVITADOS EN EL GRUPO ({group.guests.length})
             </span>
             <div className="space-y-2">
               {group.guests.map((gst) => (
-                <div key={gst.id} className="p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle space-y-1 text-xs">
+                <div key={gst.id} className="p-3.5 rounded-xl bg-bg-secondary/30 border border-border-subtle space-y-1 text-xs">
                   <div className="flex justify-between font-medium text-text-primary">
                     <span>{gst.first_name} {gst.last_name}</span>
                     {gst.is_plus_one_allowed && (
-                      <span className="text-[10px] text-text-accent font-semibold bg-bg-card px-2 py-0.5 rounded-full border border-border-subtle">
+                      <span className="text-[10px] text-brand-terracotta font-semibold bg-bg-card px-2 py-0.5 rounded-full border border-border-subtle">
                         +1 Permitido
                       </span>
                     )}
@@ -211,26 +180,125 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
                     <p className="text-[11px] text-text-muted">Dieta: {gst.dietary_restrictions}</p>
                   )}
                   {gst.allergies && (
-                    <p className="text-[11px] text-rose-700">Alergia: {gst.allergies}</p>
+                    <p className="text-[11px] text-brand-terracotta font-medium">Alergia: {gst.allergies}</p>
                   )}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Event Visibility Matrix for this Group */}
+          {/* EVENTOS VISIBLES SECTION */}
           <div className="space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-text-accent" />
-              Eventos Visibles (&ldquo;Tu boda&rdquo;) ({assignedEvents.length})
+            <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted block flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-text-accent" />
+              EVENTOS ASIGNADOS
             </span>
             <div className="space-y-1.5">
-              {assignedEvents.map((evt) => (
-                <div key={evt.id} className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border-subtle flex justify-between items-center text-xs">
-                  <span className="font-medium text-text-primary">{evt.title}</span>
-                  <span className="text-[10px] text-text-muted font-mono">{formatDateEs(evt.start_time, true)}</span>
+              {events.map((evt) => {
+                const isAllowed = evt.visibility === 'everyone' || group.allowed_event_ids.includes(evt.id);
+                return (
+                  <div
+                    key={evt.id}
+                    className={`p-2.5 rounded-xl border flex justify-between items-center text-xs ${
+                      isAllowed
+                        ? 'bg-bg-secondary/40 border-border-subtle text-text-primary'
+                        : 'bg-bg-secondary/10 border-border-subtle/30 text-text-muted opacity-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={isAllowed ? 'text-brand-olive font-bold' : 'text-text-muted'}>
+                        {isAllowed ? '✓' : '✕'}
+                      </span>
+                      <span>{evt.title}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-text-muted">
+                      {isAllowed ? 'Visible' : 'Oculto'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ACCIONES DE INVITACIÓN */}
+          <div className="space-y-3 pt-2 border-t border-border-subtle">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted block">
+              GESTIÓN DE ENLACE & WHATSAPP
+            </span>
+
+            {/* Custom WhatsApp Note Helper */}
+            <div className="space-y-2">
+              <textarea
+                rows={2}
+                value={customNote}
+                onChange={(e) => setCustomNote(e.target.value)}
+                placeholder="Frase personalizada para el WhatsApp..."
+                className="w-full p-3 rounded-xl bg-bg-secondary/30 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent resize-none"
+              />
+              
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleWhatsAppOpen}
+                  className="py-2.5 px-3 rounded-xl bg-brand-olive text-white font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-brand-olive/90 transition-colors cursor-pointer shadow-soft"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar WhatsApp</span>
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="py-2.5 px-3 rounded-xl border border-border-strong text-text-primary font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-bg-secondary transition-colors cursor-pointer"
+                >
+                  {copied ? <Check className="w-4 h-4 text-brand-olive" /> : <Copy className="w-4 h-4" />}
+                  <span>{copied ? 'Copiado' : 'Copiar enlace'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <a
+                  href={`/i/${group.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 rounded-xl border border-border-strong text-text-primary font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-bg-secondary transition-colors"
+                >
+                  <Eye className="w-4 h-4 text-text-accent" />
+                  <span>Ver invitación</span>
+                </a>
+                <button
+                  onClick={() => setShowQR(!showQR)}
+                  className="py-2.5 px-3 rounded-xl border border-border-subtle text-text-secondary font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-bg-secondary transition-colors cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4 text-text-accent" />
+                  <span>{showQR ? 'Ocultar QR' : 'Mostrar QR'}</span>
+                </button>
+              </div>
+
+              {/* QR Modal view */}
+              {showQR && (
+                <div className="p-4 rounded-2xl bg-white border border-border-subtle flex flex-col items-center justify-center space-y-2 animate-fade-in my-2">
+                  <QRCodeSVG value={fullInvitationUrl} size={150} level="M" />
+                  <span className="text-[10px] font-mono text-gray-500">Escanear para abrir invitación</span>
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* Danger Actions: Regenerate / Revoke */}
+            <div className="flex gap-2 pt-3 border-t border-border-subtle">
+              <button
+                onClick={handleRegenerate}
+                disabled={isProcessing}
+                className="flex-1 py-2 px-3 rounded-xl border border-border-subtle text-[11px] font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Regenerar</span>
+              </button>
+              <button
+                onClick={handleRevoke}
+                disabled={isProcessing}
+                className="flex-1 py-2 px-3 rounded-xl border border-rose-200 text-[11px] font-medium text-rose-700 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span>Revocar</span>
+              </button>
             </div>
           </div>
         </div>

@@ -68,13 +68,13 @@ export default function RootHomePage() {
 
             {/* Link 3: Public Website */}
             <Link
-              href="/w/laura-y-rodrigo"
+              href="/w/stephanie-y-rodrigo"
               className="p-4 rounded-2xl bg-bg-secondary/60 border border-border-subtle hover:border-text-accent flex items-center justify-between group transition-all"
             >
               <div className="space-y-0.5">
                 <span className="font-semibold text-text-primary block text-sm flex items-center gap-1.5">
                   <Eye className="w-4 h-4 text-text-accent" />
-                  Web Pública de Boda (/w/laura-y-rodrigo)
+                  Web Pública de Boda (/w/stephanie-y-rodrigo)
                 </span>
                 <span className="text-xs text-text-muted block">
                   Vista sin token de invitado personalizado

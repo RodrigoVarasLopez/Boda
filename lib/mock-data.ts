@@ -1,20 +1,20 @@
 import { Wedding, GuestGroup, Event, CMSBlock, GuestBookEntry, MediaPhoto, GroupRSVPSubmission } from './types';
 
 export const INITIAL_WEDDING: Wedding = {
-  id: 'w-laura-rodrigo-2026',
-  slug: 'laura-y-rodrigo',
-  couple_names: 'Laura & Rodrigo',
-  bride_name: 'Laura',
+  id: 'w-stephanie-rodrigo-2027',
+  slug: 'stephanie-y-rodrigo',
+  couple_names: 'Stephanie & Rodrigo',
+  bride_name: 'Stephanie',
   groom_name: 'Rodrigo',
-  wedding_date: '2026-06-20T17:30:00.000Z',
-  location_summary: 'Finca El Olivar, Madrid',
-  theme: 'editorial',
+  wedding_date: '2027-08-25T17:30:00.000Z',
+  location_summary: 'Finca La Alquería · Madrid, España',
+  theme: 'mediterranean',
   privacy_mode: false,
-  rsvp_deadline: '2026-05-15T23:59:59.000Z',
-  hero_message: 'Nos casamos y no nos imaginaríamos este día sin ti',
-  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas en un entorno único.',
+  rsvp_deadline: '2027-07-15T23:59:59.000Z',
+  hero_message: 'Nos casamos y no nos imaginaríamos este día sin vosotros',
+  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas en un entorno mediterráneo inolvidable.',
   iban_details: {
-    account_holder: 'Laura Mateo & Rodrigo Gómez',
+    account_holder: 'Stephanie & Rodrigo',
     iban: 'ES91 2100 0418 4502 0005 1234',
     bank_name: 'CaixaBank',
     bic_swift: 'CAIXESBBXXX'
@@ -24,70 +24,70 @@ export const INITIAL_WEDDING: Wedding = {
 export const INITIAL_EVENTS: Event[] = [
   {
     id: 'evt-welcome-dinner',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Cena de Bienvenida',
-    description: 'Una velada íntima de bienvenida para familia directa y testigos antes del gran día.',
-    start_time: '2026-06-19T20:30:00.000Z',
-    end_time: '2026-06-19T23:30:00.000Z',
-    location_name: 'Restaurante El Jardín Secreto',
-    address: 'Calle Mayor 14, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Restaurante+El+Jardin+Secreto+Madrid',
+    description: 'Una velada íntima de bienvenida bajo las parras para familia directa y testigos antes del gran día.',
+    start_time: '2027-08-24T20:30:00.000Z',
+    end_time: '2027-08-24T23:30:00.000Z',
+    location_name: 'El Patio de los Olivos',
+    address: 'Camino del Valle 12, Madrid',
+    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
     dress_code: 'Smart Casual / Elegante desenfadado',
     visibility: 'selected_groups',
     display_order: 1
   },
   {
     id: 'evt-ceremony',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Ceremonia',
-    description: 'Intercambio de votos al aire libre rodeados de los olivos centenarios.',
-    start_time: '2026-06-20T17:30:00.000Z',
-    end_time: '2026-06-20T18:30:00.000Z',
-    location_name: 'Finca El Olivar - Los Olivos',
+    description: 'Intercambio de votos al atardecer rodeados de piedra caliza y olivos centenarios.',
+    start_time: '2027-08-25T17:30:00.000Z',
+    end_time: '2027-08-25T18:30:00.000Z',
+    location_name: 'Claustro de la Finca La Alquería',
     address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Finca+El+Olivar+Colmenar',
-    dress_code: 'Formal / Traje de chaqueta y vestido de cóctel o largo',
+    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
+    dress_code: 'Formal / Traje de lino o chaqueta y vestido midi o largo',
     visibility: 'everyone',
     display_order: 2
   },
   {
     id: 'evt-cocktail-banquet',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Cóctel & Banquete',
-    description: 'Aperitivos gourmet en el claustro y cena gastronómica bajo las estrellas.',
-    start_time: '2026-06-20T18:30:00.000Z',
-    end_time: '2026-06-20T22:30:00.000Z',
-    location_name: 'Finca El Olivar - Claustro Principal',
+    description: 'Aperitivos mediterráneos y cena a la luz de las velas con gastronomía de autor.',
+    start_time: '2027-08-25T18:30:00.000Z',
+    end_time: '2027-08-25T23:00:00.000Z',
+    location_name: 'El Jardín de las Bouganvillas',
     address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Finca+El+Olivar+Colmenar',
+    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
     dress_code: 'Formal',
     visibility: 'everyone',
     display_order: 3
   },
   {
     id: 'evt-party',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Fiesta & Barra Libre',
-    description: 'Música en directo, DJ y barra libre hasta el amanecer.',
-    start_time: '2026-06-20T22:30:00.000Z',
-    end_time: '2026-06-21T05:00:00.000Z',
-    location_name: 'Finca El Olivar - Pabellón de Cristal',
+    description: 'Música en directo, baile y celebración bajo las estrellas hasta el amanecer.',
+    start_time: '2027-08-25T23:00:00.000Z',
+    end_time: '2027-08-26T05:00:00.000Z',
+    location_name: 'Pabellón de Cristal & Pérgola',
     address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Finca+El+Olivar+Colmenar',
+    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
     dress_code: '¡Prepárate para bailar!',
     visibility: 'everyone',
     display_order: 4
   },
   {
     id: 'evt-brunch',
-    wedding_id: 'w-laura-rodrigo-2026',
-    title: 'Brunch de Recarga',
-    description: 'Desayuno relajado en la piscina para comentar los mejores momentos de la boda.',
-    start_time: '2026-06-21T12:00:00.000Z',
-    end_time: '2026-06-21T16:00:00.000Z',
-    location_name: 'Piscina de la Finca El Olivar',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    title: 'Brunch Mediterráneo',
+    description: 'Desayuno relajado en la piscina para recordar los mejores momentos de la boda.',
+    start_time: '2027-08-26T12:00:00.000Z',
+    end_time: '2027-08-26T16:00:00.000Z',
+    location_name: 'Piscina de la Alquería',
     address: 'Carretera de Colmenar Km 22, Madrid',
-    google_maps_url: 'https://maps.google.com/?q=Finca+El+Olivar+Colmenar',
+    google_maps_url: 'https://maps.google.com/?q=Madrid+España',
     dress_code: 'Resort Wear / Traje de baño',
     visibility: 'selected_groups',
     display_order: 5
@@ -97,48 +97,48 @@ export const INITIAL_EVENTS: Event[] = [
 export const INITIAL_GROUPS: GuestGroup[] = [
   {
     id: 'grp-familia-garcia',
-    wedding_id: 'w-laura-rodrigo-2026',
-    name: 'Familia García Mateo',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    name: 'Familia García',
     token: 'token-garcia-772',
     invitation_status: 'opened',
-    opened_at: '2026-09-28T10:15:00.000Z',
-    custom_message: '¡Tíos querida! Nos hace una ilusión inmensa teneros con nosotros en la primera fila.',
+    opened_at: '2027-06-28T10:15:00.000Z',
+    custom_message: 'Nos hace una ilusión inmensa teneros con nosotros en la primera fila de nuestro gran día.',
     allowed_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
     guests: [
       {
         id: 'gst-carlos-garcia',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-familia-garcia',
         first_name: 'Carlos',
         last_name: 'García',
         is_plus_one_allowed: false,
         dietary_restrictions: 'sin gluten',
-        allergies: 'Celiaco'
+        allergies: 'Celíaco'
       },
       {
         id: 'gst-marta-mateo',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-familia-garcia',
         first_name: 'Marta',
-        last_name: 'Mateo',
+        last_name: 'García',
         is_plus_one_allowed: false
       }
     ]
   },
   {
     id: 'grp-sofia-martin',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     name: 'Sofía Martín',
     token: 'token-sofia-409',
     invitation_status: 'responded',
-    opened_at: '2026-09-25T14:20:00.000Z',
-    responded_at: '2026-09-25T14:35:00.000Z',
-    custom_message: 'Sofi, tu lugar en la pista de baile está garantizado.',
+    opened_at: '2027-06-25T14:20:00.000Z',
+    responded_at: '2027-06-25T14:35:00.000Z',
+    custom_message: 'Sofi, tu alegría en la pista de baile y a nuestro lado es imprescindible.',
     allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
     guests: [
       {
         id: 'gst-sofia-martin',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-sofia-martin',
         first_name: 'Sofía',
         last_name: 'Martín',
@@ -149,16 +149,16 @@ export const INITIAL_GROUPS: GuestGroup[] = [
   },
   {
     id: 'grp-amigos-universidad',
-    wedding_id: 'w-laura-rodrigo-2026',
-    name: 'Javier & Alejandro (Univ)',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    name: 'Javier & Alejandro',
     token: 'token-univ-881',
     invitation_status: 'sent',
-    custom_message: '¡Chicos! Preparad las pajaritas y las ganas de darlo todo.',
+    custom_message: '¡Chicos! Preparad las pajaritas y las ganas de celebrar hasta el amanecer.',
     allowed_event_ids: ['evt-ceremony', 'evt-cocktail-banquet', 'evt-party'],
     guests: [
       {
         id: 'gst-javier-lopez',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-amigos-universidad',
         first_name: 'Javier',
         last_name: 'López',
@@ -166,7 +166,7 @@ export const INITIAL_GROUPS: GuestGroup[] = [
       },
       {
         id: 'gst-alejandro-ruiz',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-amigos-universidad',
         first_name: 'Alejandro',
         last_name: 'Ruiz',
@@ -175,37 +175,37 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     ]
   },
   {
-    id: 'grp-familia-gomez',
-    wedding_id: 'w-laura-rodrigo-2026',
-    name: 'Familia Gómez Peláez',
-    token: 'token-gomez-105',
+    id: 'grp-familia-perez',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    name: 'Familia Pérez',
+    token: 'token-perez-105',
     invitation_status: 'responded',
-    opened_at: '2026-09-20T09:00:00.000Z',
-    responded_at: '2026-09-20T09:40:00.000Z',
-    custom_message: 'Os esperamos con los brazos abiertos para un fin de semana inolvidable.',
+    opened_at: '2027-06-20T09:00:00.000Z',
+    responded_at: '2027-06-20T09:40:00.000Z',
+    custom_message: 'Os esperamos con los brazos abiertos para un fin de semana lleno de amor y recuerdos.',
     allowed_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
     guests: [
       {
-        id: 'gst-antonio-gomez',
-        wedding_id: 'w-laura-rodrigo-2026',
-        group_id: 'grp-familia-gomez',
+        id: 'gst-antonio-perez',
+        wedding_id: 'w-stephanie-rodrigo-2027',
+        group_id: 'grp-familia-perez',
         first_name: 'Antonio',
-        last_name: 'Gómez',
+        last_name: 'Pérez',
         is_plus_one_allowed: false
       },
       {
-        id: 'gst-lucia-pelaez',
-        wedding_id: 'w-laura-rodrigo-2026',
-        group_id: 'grp-familia-gomez',
+        id: 'gst-lucia-perez',
+        wedding_id: 'w-stephanie-rodrigo-2027',
+        group_id: 'grp-familia-perez',
         first_name: 'Lucía',
-        last_name: 'Peláez',
+        last_name: 'Pérez',
         is_plus_one_allowed: false
       }
     ]
   },
   {
     id: 'grp-elena-torres',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     name: 'Elena Torres',
     token: 'token-elena-312',
     invitation_status: 'draft',
@@ -213,7 +213,7 @@ export const INITIAL_GROUPS: GuestGroup[] = [
     guests: [
       {
         id: 'gst-elena-torres',
-        wedding_id: 'w-laura-rodrigo-2026',
+        wedding_id: 'w-stephanie-rodrigo-2027',
         group_id: 'grp-elena-torres',
         first_name: 'Elena',
         last_name: 'Torres',
@@ -227,7 +227,7 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
   {
     group_id: 'grp-sofia-martin',
     token: 'token-sofia-409',
-    submitted_at: '2026-09-25T14:35:00.000Z',
+    submitted_at: '2027-06-25T14:35:00.000Z',
     responses: [
       {
         guest_id: 'gst-sofia-martin',
@@ -239,26 +239,26 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
         plus_one_attending: true,
         plus_one_name: 'Daniel Rivas',
         plus_one_dietary: 'standard',
-        message: '¡Contando los días! No sabéis las ganas que tengo de veros radiantes.'
+        message: '¡Contando los días! No sabéis las ganas que tengo de veros radiantes en el altar.'
       }
     ]
   },
   {
-    group_id: 'grp-familia-gomez',
-    token: 'token-gomez-105',
-    submitted_at: '2026-09-20T09:40:00.000Z',
+    group_id: 'grp-familia-perez',
+    token: 'token-perez-105',
+    submitted_at: '2027-06-20T09:40:00.000Z',
     responses: [
       {
-        guest_id: 'gst-antonio-gomez',
-        guest_name: 'Antonio Gómez',
+        guest_id: 'gst-antonio-perez',
+        guest_name: 'Antonio Pérez',
         status: 'attending',
         attending_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
         dietary_choice: 'standard',
-        message: 'Será un placer acompañaros todo el fin de semana.'
+        message: 'Será un auténtico placer acompañaros en este fin de semana tan especial.'
       },
       {
-        guest_id: 'gst-lucia-pelaez',
-        guest_name: 'Lucía Peláez',
+        guest_id: 'gst-lucia-perez',
+        guest_name: 'Lucía Pérez',
         status: 'attending',
         attending_event_ids: ['evt-welcome-dinner', 'evt-ceremony', 'evt-cocktail-banquet', 'evt-party', 'evt-brunch'],
         dietary_choice: 'standard'
@@ -270,13 +270,14 @@ export const INITIAL_RSVPS: GroupRSVPSubmission[] = [
 export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   {
     id: 'block-hero',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'hero',
-    title: 'Laura & Rodrigo',
-    subtitle: '20 de Junio de 2026 • Madrid',
+    title: 'Stephanie & Rodrigo',
+    subtitle: '25 · 08 · 2027 · Madrid, España',
     content: {
-      location: 'Finca El Olivar',
-      date: '20.06.2026'
+      location: 'Finca La Alquería',
+      date: '25 · 08 · 2027',
+      image: '/wedding/hero-mediterranean.jpg'
     },
     display_order: 1,
     is_active: true,
@@ -284,16 +285,16 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   },
   {
     id: 'block-story',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'story',
     title: 'Nuestra Historia',
-    subtitle: 'Cómo empezó todo',
+    subtitle: '01 · NOSOTROS',
     content: {
       paragraphs: [
-        'Nos conocimos hace 7 años en Madrid durante un café improvisado que duró más de cuatro horas.',
-        'Desde entonces hemos compartido viajes, mudanzas, risas y la convicción absoluta de que queríamos caminar juntos.'
+        'Nos conocimos en una tarde de verano en Madrid, en una conversación espontánea que se transformó en horas de complicidad, risas y proyectos compartidos.',
+        'Siete años después, habiendo recorrido caminos juntos y construido nuestro propio hogar, estamos listos para celebrar el siguiente gran capítulo con las personas que más queremos.'
       ],
-      image: 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop'
+      image: '/wedding/table-setting.jpg'
     },
     display_order: 2,
     is_active: true,
@@ -301,14 +302,15 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   },
   {
     id: 'block-venue',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'venue',
     title: 'El Lugar',
-    subtitle: 'Finca El Olivar',
+    subtitle: 'Finca La Alquería',
     content: {
-      description: 'Un espacio rodeado de naturaleza y olivos centenarios a tan solo 20 minutos del centro de Madrid.',
+      description: 'Un enclave rodeado de piedra caliza, arquitectura mediterránea y olivos centenarios a tan solo 20 minutos de Madrid.',
       address: 'Carretera de Colmenar Viejo, Km 22, 28770 Madrid',
-      google_maps_url: 'https://maps.google.com/?q=Finca+El+Olivar+Colmenar'
+      google_maps_url: 'https://maps.google.com/?q=Madrid+España',
+      image: '/wedding/venue-editorial.jpg'
     },
     display_order: 3,
     is_active: true,
@@ -316,16 +318,16 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   },
   {
     id: 'block-travel',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'travel',
     title: 'Alojamiento & Transporte',
-    subtitle: 'Para tu mayor comodidad',
+    subtitle: 'Para vuestra mayor comodidad',
     content: {
       hotels: [
-        { name: 'Hotel Eurostars Madrid Tower', discount: 'Código novios: LAURARODRI2026', distance: '15 min de la finca' },
-        { name: 'Eurostars Gran Madrid', discount: 'Descuento 15% con enlace directo', distance: '12 min de la finca' }
+        { name: 'Hotel Eurostars Madrid Tower', discount: 'Tarifa especial invitados: STEPHANIE&RODRIGO', distance: '15 min de la finca' },
+        { name: 'Eurostars Gran Madrid', discount: 'Descuento con enlace de boda', distance: '12 min de la finca' }
       ],
-      bus_info: 'Habrá servicio de autobuses de ida y vuelta con paradas en Plaza de Castilla y Moncloa.'
+      bus_info: 'Habrá servicio privado de autobuses de ida y vuelta con paradas centrales en Plaza de Castilla y Moncloa.'
     },
     display_order: 4,
     is_active: true,
@@ -333,14 +335,14 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   },
   {
     id: 'block-registry',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'registry',
     title: 'Lista de Bodas',
-    subtitle: 'El mejor regalo es tu presencia',
+    subtitle: 'Vuestra presencia es nuestro mayor regalo',
     content: {
-      message: 'Si además deseas hacernos un regalo para nuestro viaje de novios a Japón y Nueva Zelanda, os dejamos nuestra cuenta bancaria:',
+      message: 'Vuestra compañía es lo más importante para nosotros. Si deseáis hacernos un detalle para nuestra luna de miel:',
       iban: 'ES91 2100 0418 4502 0005 1234',
-      account_holder: 'Laura Mateo & Rodrigo Gómez'
+      account_holder: 'Stephanie & Rodrigo'
     },
     display_order: 5,
     is_active: true,
@@ -348,15 +350,15 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   },
   {
     id: 'block-faq',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'faq',
     title: 'Preguntas Frecuentes',
-    subtitle: 'Todo lo que necesitas saber',
+    subtitle: 'Detalles prácticos para el fin de semana',
     content: {
       faqs: [
-        { question: '¿Cuál es el dress code recomendación?', answer: 'Traje de chaqueta para ellos y vestido largo o de cóctel para ellas.' },
-        { question: '¿Puedo llevar niños?', answer: 'Queremos que sea una jornada de desconexión para los padres, por lo que será un evento orientado a adultos salvo excepciones ya indicadas en la invitación.' },
-        { question: '¿Hay aparcamiento en la finca?', answer: 'Sí, la finca cuenta con parking privado vigilado gratuito para todos los asistentes.' }
+        { question: '¿Cuál es el dress code recomendado?', answer: 'Traje formal para ellos (los tonos lino o azul marino son ideales) y vestido de cóctel, midi o largo en tonos mediterráneos para ellas.' },
+        { question: '¿Habrá opciones para alergias y dietas especiales?', answer: 'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, etc.) y adaptaremos tu menú.' },
+        { question: '¿Hay aparcamiento en la finca?', answer: 'Sí, la finca cuenta con parking privado vigilado gratuito para todos los invitados que decidan acudir en su propio vehículo.' }
       ]
     },
     display_order: 6,
@@ -368,35 +370,51 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
 export const INITIAL_GUESTBOOK: GuestBookEntry[] = [
   {
     id: 'gb-1',
-    wedding_id: 'w-laura-rodrigo-2026',
+    wedding_id: 'w-stephanie-rodrigo-2027',
     guest_name: 'Sofía Martín',
-    message: '¡Va a ser la boda del año! No veo la hora de veros en el altar. Os quiero mucho.',
-    created_at: '2026-09-25T14:36:00.000Z'
+    message: '¡Va a ser una boda absolutamente mágica! No veo la hora de veros brindar juntos.',
+    created_at: '2027-06-25T14:36:00.000Z'
   },
   {
     id: 'gb-2',
-    wedding_id: 'w-laura-rodrigo-2026',
-    guest_name: 'Familia Gómez Peláez',
-    message: 'Muchísimas felicidades parejaza. Allá estaremos para brindar fuerte por vuestra felicidad.',
-    created_at: '2026-09-20T09:42:00.000Z'
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    guest_name: 'Familia Pérez',
+    message: 'Muchísimas felicidades parejaza. Allá estaremos para celebrar vuestro amor con todo el cariño.',
+    created_at: '2027-06-20T09:42:00.000Z'
   }
 ];
 
 export const INITIAL_MEDIA: MediaPhoto[] = [
   {
     id: 'm-1',
-    wedding_id: 'w-laura-rodrigo-2026',
-    uploader_name: 'Laura & Rodrigo',
-    photo_url: 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop',
-    caption: 'Pedida de mano en los Pirineos, 2025',
-    created_at: '2026-01-10T12:00:00.000Z'
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    uploader_name: 'Stephanie & Rodrigo',
+    photo_url: '/wedding/hero-mediterranean.jpg',
+    caption: 'Finca La Alquería al atardecer',
+    created_at: '2027-01-10T12:00:00.000Z'
   },
   {
     id: 'm-2',
-    wedding_id: 'w-laura-rodrigo-2026',
-    uploader_name: 'Laura & Rodrigo',
-    photo_url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1200&auto=format&fit=crop',
-    caption: 'Finca El Olivar al atardecer',
-    created_at: '2026-02-15T15:30:00.000Z'
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    uploader_name: 'Stephanie & Rodrigo',
+    photo_url: '/wedding/table-setting.jpg',
+    caption: 'Mesas imperiales bajo los olivos',
+    created_at: '2027-02-15T15:30:00.000Z'
+  },
+  {
+    id: 'm-3',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    uploader_name: 'Stephanie & Rodrigo',
+    photo_url: '/wedding/venue-editorial.jpg',
+    caption: 'Claustro de piedra caliza',
+    created_at: '2027-03-15T15:30:00.000Z'
+  },
+  {
+    id: 'm-4',
+    wedding_id: 'w-stephanie-rodrigo-2027',
+    uploader_name: 'Stephanie & Rodrigo',
+    photo_url: '/wedding/floral-detail.jpg',
+    caption: 'Detalles florales y cerámica artesanal',
+    created_at: '2027-04-10T12:00:00.000Z'
   }
 ];

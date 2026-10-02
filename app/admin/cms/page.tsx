@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { INITIAL_CMS_BLOCKS } from '@/lib/mock-data';
 import { CMSBlock } from '@/lib/types';
-import { FileText, Eye, EyeOff, Edit3, ArrowUp, ArrowDown, Sparkles, Check } from 'lucide-react';
+import { Eye, EyeOff, Edit3, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function AdminCMSPage() {
   const [blocks, setBlocks] = useState<CMSBlock[]>(INITIAL_CMS_BLOCKS);
@@ -27,15 +27,18 @@ export default function AdminCMSPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-6">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-accent block">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-text-accent block">
             Gestor de Contenidos por Bloques
           </span>
-          <h1 className="font-serif text-3xl font-bold text-text-primary">
-            CMS de Boda
+          <h1 className="font-serif text-3xl font-normal text-text-primary">
+            CMS & Narrativa de la Boda
           </h1>
+          <p className="text-xs text-text-muted">
+            Reordena, activa o personaliza cada sección visual de la web de Stephanie & Rodrigo.
+          </p>
         </div>
       </div>
 
@@ -45,15 +48,15 @@ export default function AdminCMSPage() {
           <div
             key={block.id}
             className={`p-5 rounded-3xl bg-bg-card border transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-              block.is_active ? 'border-border-subtle shadow-soft' : 'border-border-subtle/40 opacity-60 bg-bg-secondary/20'
+              block.is_active ? 'border-border-subtle shadow-card' : 'border-border-subtle/40 opacity-60 bg-bg-secondary/20'
             }`}
           >
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-bg-secondary text-text-accent border border-border-subtle">
+                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-mono tracking-wider bg-bg-secondary text-text-accent border border-border-subtle">
                   {block.type}
                 </span>
-                <h3 className="font-serif text-xl font-semibold text-text-primary">
+                <h3 className="font-serif text-xl font-normal text-text-primary">
                   {block.title}
                 </h3>
               </div>
@@ -67,14 +70,16 @@ export default function AdminCMSPage() {
               <button
                 onClick={() => moveBlock(index, 'up')}
                 disabled={index === 0}
-                className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer"
+                className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary disabled:opacity-20 cursor-pointer transition-colors"
+                title="Mover arriba"
               >
                 <ArrowUp className="w-4 h-4" />
               </button>
               <button
                 onClick={() => moveBlock(index, 'down')}
                 disabled={index === blocks.length - 1}
-                className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer"
+                className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary disabled:opacity-20 cursor-pointer transition-colors"
+                title="Mover abajo"
               >
                 <ArrowDown className="w-4 h-4" />
               </button>
@@ -83,7 +88,7 @@ export default function AdminCMSPage() {
                 onClick={() => toggleBlockActive(block.id)}
                 className={`py-2 px-3 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
                   block.is_active
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-brand-olive/15 text-brand-olive font-semibold'
                     : 'bg-zinc-200 text-zinc-700'
                 }`}
               >
