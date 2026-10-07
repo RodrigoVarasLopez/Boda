@@ -60,7 +60,7 @@ export const INITIAL_EVENTS: Event[] = [
     id: 'evt-banquete',
     wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Banquete al Aire Libre con Música',
-    description: 'Cóctel y cena al aire libre en la terraza de la bodega con vistas a los viñedos, música en directo y maridaje con los vinos de autor de la finca.',
+    description: 'Cóctel y cena al aire libre en la terraza de la bodega con vistas a los viñedos, música en directo y maridaje con los vinos de autor de la bodega.',
     start_time: '2027-08-28T19:30:00.000Z',
     end_time: '2027-08-28T23:30:00.000Z',
     location_name: 'Bodega Concejo · Terraza Exterior & Viñedos',
@@ -391,7 +391,7 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: 'Para vuestra mayor comodidad',
     content: {
       hotels: [
-        { name: 'Posada Real Concejo', discount: 'Alojamiento boutique en la propia finca / Valoria', distance: 'En el propio complejo' },
+        { name: 'Posada Real Concejo', discount: 'Alojamiento boutique en la propia bodega / Valoria', distance: 'En el propio complejo' },
         { name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)', discount: 'Tarifa especial invitados: STEPHANIE&RODRIGO', distance: 'A 25 min en autobús' }
       ],
       bus_info: 'Habrá servicio de autobuses de ida y vuelta desde Valladolid centro (Plaza de Zorrilla) hasta Bodega Concejo para la boda y con varios turnos de regreso tras la fiesta.'

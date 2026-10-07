@@ -28,7 +28,7 @@ const PHOTO_CAPTIONS = [
   'Sala de crianza y barricas de roble en la bodega',
   'Viñedos de Valoria la Buena bajo el sol castellano',
   'Detalle floral artesanal de las mesas imperiales',
-  'Stephanie & Rodrigo en los exteriores de la finca',
+  'Stephanie & Rodrigo en los exteriores de la bodega',
   'Atardecer dorado sobre las lomas de Valoria',
   'Montaje de mesa con vajilla artesanal y olivo',
   'Panorámica editorial del claustro y patio de la bodega',

@@ -18,6 +18,7 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
+      const isProduction = process.env.NODE_ENV === 'production';
       const supabase = createClient();
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -25,7 +26,11 @@ export default function AdminLoginPage() {
       });
 
       if (authError) {
-        // Fallback for demo mode if Supabase user is not yet created
+        if (isProduction) {
+          setError('Credenciales incorrectas o usuario no registrado.');
+          return;
+        }
+        // Fallback for demo mode only in local development
         document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
         router.push('/admin');
         return;
@@ -35,7 +40,11 @@ export default function AdminLoginPage() {
         router.push('/admin');
       }
     } catch {
-      // Demo fallback
+      if (process.env.NODE_ENV === 'production') {
+        setError('Error al conectar con el servicio de autenticación.');
+        return;
+      }
+      // Demo fallback in development
       document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
       router.push('/admin');
     } finally {
@@ -43,7 +52,10 @@ export default function AdminLoginPage() {
     }
   };
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   const handleDemoAccess = () => {
+    if (isProduction) return;
     document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
     router.push('/admin');
   };
@@ -114,17 +126,24 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-border-subtle text-center space-y-2">
-          <p className="text-[11px] text-text-muted">
-            ¿Probando la plataforma en desarrollo local?
-          </p>
-          <button
-            onClick={handleDemoAccess}
-            className="w-full py-2 px-3 rounded-xl border border-border-strong text-text-secondary text-xs font-medium hover:bg-bg-secondary transition-colors cursor-pointer"
-          >
-            Entrar en Modo Demostración
-          </button>
-        </div>
+        {!isProduction ? (
+          <div className="pt-4 border-t border-border-subtle text-center space-y-2">
+            <p className="text-[11px] text-text-muted">
+              ¿Probando la plataforma en desarrollo local?
+            </p>
+            <button
+              onClick={handleDemoAccess}
+              className="w-full py-2 px-3 rounded-xl border border-border-strong text-text-secondary text-xs font-medium hover:bg-bg-secondary transition-colors cursor-pointer"
+            >
+              Entrar en Modo Demostración
+            </button>
+          </div>
+        ) : (
+          <div className="pt-4 border-t border-border-subtle text-center flex items-center justify-center gap-1.5 text-[11px] text-text-muted">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Acceso seguro protegido con Supabase Auth</span>
+          </div>
+        )}
       </div>
     </div>
   );

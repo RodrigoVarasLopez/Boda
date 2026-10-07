@@ -12,7 +12,14 @@ node_modules/
 .env*.local
 .env
 
+# Vercel
+.vercel/
+
 # Antigravity artifacts / logs
 .system_generated/
 scratch/
 *.tsbuildinfo
+
+# OS metadata
+.DS_Store
+Thumbs.db

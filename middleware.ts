@@ -6,6 +6,8 @@ export async function middleware(request: NextRequest) {
 
   // Protect /admin routes except /admin/login
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // If Supabase environment variables exist, check session
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       let response = NextResponse.next({ request });
@@ -31,13 +33,17 @@ export async function middleware(request: NextRequest) {
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      // If no auth session found and not in demo mode cookie, redirect to login
-      const demoCookie = request.cookies.get('boda_admin_demo');
+      // In production, demo cookie bypass is disabled and real Supabase Auth session is strictly required
+      const demoCookie = !isProduction ? request.cookies.get('boda_admin_demo') : null;
       if (!session && !demoCookie) {
         const url = request.nextUrl.clone();
         url.pathname = '/admin/login';
         return NextResponse.redirect(url);
       }
+    } else if (isProduction) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      return NextResponse.redirect(url);
     }
   }
 
