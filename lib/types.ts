@@ -102,22 +102,40 @@ export interface CMSBlock {
   visibility: 'everyone' | 'selected_groups';
 }
 
+export type GuestBookEntryStatus = 'pending' | 'approved' | 'hidden';
+
 export interface GuestBookEntry {
   id: string;
   wedding_id: string;
+  invitation_id?: string | null;
   guest_name: string;
   message: string;
-  status?: 'pending' | 'approved' | 'hidden';
+  photo_path?: string | null;
+  status: GuestBookEntryStatus;
   created_at: string;
+  approved_at?: string | null;
 }
+
+export type MediaPhotoStatus = 'pending' | 'approved' | 'hidden';
 
 export interface MediaPhoto {
   id: string;
   wedding_id: string;
-  uploader_name: string;
+  uploaded_by_guest_id?: string | null;
+  uploader_name?: string;
+  storage_path: string;
   photo_url: string;
-  caption?: string;
+  original_filename: string;
+  mime_type: string;
+  file_size?: number;
+  width?: number | null;
+  height?: number | null;
+  caption?: string | null;
+  is_visible: boolean;
+  is_approved: boolean;
+  status: MediaPhotoStatus;
   created_at: string;
+  updated_at?: string;
 }
 
 export const INVITATION_STATUS_LABELS: Record<InvitationStatus | 'all', string> = {

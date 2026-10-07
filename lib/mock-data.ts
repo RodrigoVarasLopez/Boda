@@ -434,64 +434,9 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
   }
 ];
 
-export const INITIAL_GUESTBOOK: GuestBookEntry[] = [
-  {
-    id: 'gb-1',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    guest_name: 'Sofía Martín',
-    message: '¡Va a ser una boda absolutamente mágica en Bodega Concejo! No veo la hora de brindar juntos.',
-    status: 'approved',
-    created_at: '2027-06-25T14:36:00.000Z'
-  },
-  {
-    id: 'gb-2',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    guest_name: 'Familia Pérez',
-    message: 'Muchísimas felicidades parejaza. Allá estaremos para celebrar vuestro amor con todo el cariño.',
-    status: 'approved',
-    created_at: '2027-06-20T09:42:00.000Z'
-  }
-];
+import { generateFixtureGuestbook, generateFixturePhotos } from './media-data';
 
-export const INITIAL_MEDIA: MediaPhoto[] = [
-  {
-    id: 'm-1',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/images/bodega/bodega-concejo-banquete-noche.png',
-    caption: 'Bodega Concejo iluminada para el banquete al aire libre',
-    created_at: '2027-01-10T12:00:00.000Z'
-  },
-  {
-    id: 'm-2',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/images/bodega/bodega-concejo-fachada-logo.png',
-    caption: 'Fachada y terraza de Bodega Concejo al atardecer',
-    created_at: '2027-02-15T15:30:00.000Z'
-  },
-  {
-    id: 'm-3',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/images/bodega/cata-vino-burro-loco.png',
-    caption: 'Cata de vino en barrica para la preboda',
-    created_at: '2027-03-15T15:30:00.000Z'
-  },
-  {
-    id: 'm-4',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/images/bodega/sala-barricas-bodega.png',
-    caption: 'Sala de crianza y barricas de roble en la bodega',
-    created_at: '2027-04-10T12:00:00.000Z'
-  },
-  {
-    id: 'm-5',
-    wedding_id: 'w-stephanie-rodrigo-2027',
-    uploader_name: 'Stephanie & Rodrigo',
-    photo_url: '/images/bodega/vinedos-valoria-barrica.png',
-    caption: 'Viñedos de Valoria la Buena bajo el sol castellano',
-    created_at: '2027-05-01T12:00:00.000Z'
-  }
-];
+export const INITIAL_GUESTBOOK: GuestBookEntry[] = generateFixtureGuestbook();
+
+export const INITIAL_MEDIA: MediaPhoto[] = generateFixturePhotos();
+

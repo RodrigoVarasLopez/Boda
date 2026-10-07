@@ -200,6 +200,8 @@ export default function PersonalizedInvitationPage() {
             wedding={INITIAL_WEDDING}
             guestbookEntries={INITIAL_GUESTBOOK}
             photos={INITIAL_MEDIA}
+            invitationId={group.id}
+            defaultGuestName={group.guests?.[0]?.first_name || group.name || ''}
           />
         </div>
 
