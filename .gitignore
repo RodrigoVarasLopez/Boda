@@ -19,6 +19,7 @@ node_modules/
 .system_generated/
 scratch/
 *.tsbuildinfo
+supabase/.temp/
 
 # OS metadata
 .DS_Store
