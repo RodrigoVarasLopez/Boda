@@ -471,63 +471,8 @@ INSERT INTO events (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- 3. Grupos de Invitados Iniciales
-INSERT INTO guest_groups (id, wedding_id, name, display_name, allow_plus_one, max_plus_ones)
-VALUES
-('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Familia García', 'Querida Familia García', false, 0),
-('c0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Sofía Alarcón', 'Querida Sofi', true, 1),
-('c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Carlos Ruiz & Andrea', 'Carlos y Andrea', false, 0)
-ON CONFLICT (id) DO NOTHING;
-
--- 4. Invitados
-INSERT INTO guests (id, group_id, first_name, last_name, is_primary_contact, allow_plus_one)
-VALUES
-('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'Carlos', 'García', true, false),
-('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'Carmen', 'Gómez', false, false),
-('d0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000002', 'Sofía', 'Alarcón', true, true),
-('d0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000003', 'Carlos', 'Ruiz', true, false),
-('d0000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000003', 'Andrea', 'Ramos', false, false)
-ON CONFLICT (id) DO NOTHING;
-
--- 5. Invitaciones con Hash SHA-256
--- token-garcia-772 -> sha256: b96184cabf763468bd88e54b19834ce53ec22bfb7720414339ac246324998114
--- token-sofia-914  -> sha256: 7ef9b6f9e3bffbca4437160c2d777dd858dfa5c08abd92d65d8988ecd9f7f41c
--- token-carlos-115 -> sha256: 91b27a3e08e061aa33912287f75417c1941ac41fbaad685397035711d0af9e9c
-INSERT INTO invitations (id, wedding_id, group_id, token_hash, token_preview, status)
-VALUES
-('e0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'b96184cabf763468bd88e54b19834ce53ec22bfb7720414339ac246324998114', 'garcia-772', 'active'),
-('e0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', '7ef9b6f9e3bffbca4437160c2d777dd858dfa5c08abd92d65d8988ecd9f7f41c', 'sofia-914', 'active'),
-('e0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', '91b27a3e08e061aa33912287f75417c1941ac41fbaad685397035711d0af9e9c', 'carlos-115', 'active')
-ON CONFLICT (id) DO NOTHING;
-
--- 6. Asignación de eventos a grupos
--- Sofía y Carlos & Andrea tienen la Preboda del viernes
-INSERT INTO group_events (group_id, event_id, is_visible)
-VALUES
-('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', true),
-('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', true),
--- Todos tienen los eventos del sábado
-('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', true),
-('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', true),
-('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000004', true),
-('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', true),
-('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', true),
-('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000004', true),
-('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000002', true),
-('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', true),
-('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000004', true)
-ON CONFLICT (group_id, event_id) DO NOTHING;
-
--- 7. Dedicatorias aprobadas iniciales del Libro de Visitas
-INSERT INTO guestbook_entries (wedding_id, author_name, message, status, is_approved)
-VALUES
-('a0000000-0000-0000-0000-000000000001', 'Familia Pérez', 'Muchísimas felicidades parejaza. Allá estaremos para celebrar vuestro amor con todo el cariño y disfrutar de la cata en Valoria.', 'approved', true),
-('a0000000-0000-0000-0000-000000000001', 'Carlos y Carmen', 'Qué ganas de acompañaros en un sitio tan especial. ¡Que este amor siga creciendo cada año como el mejor reserva de la bodega!', 'approved', true),
-('a0000000-0000-0000-0000-000000000001', 'Elena Torres', 'Queridos Stephanie y Rodrigo, os deseo toda la felicidad del mundo. Será un honor vivir ese fin de semana junto a vosotros.', 'approved', true),
-('a0000000-0000-0000-0000-000000000001', 'Alberto Gómez Peláez', '¡A preparar los zapatos de baile y las copas! No faltaremos por nada del mundo. ¡Vivan los novios!', 'approved', true),
-('a0000000-0000-0000-0000-000000000001', 'Lucía Navarro', 'Un abrazo gigantesco a los dos. Se os ve tan felices y enamorados... gracias de corazón por hacernos partícipes.', 'approved', true),
-('a0000000-0000-0000-0000-000000000001', 'David y Laura', 'Contando los días para ese 25 de agosto en Valoria la Buena. ¡Va a ser histórico!', 'approved', true)
-ON CONFLICT DO NOTHING;
+-- 3. Base de datos lista para pruebas reales desde cero
+-- Los invitados, familias, invitaciones y firmas se gestionan y crean dinámicamente desde la aplicación.
 
 -- ==============================================================================
 -- MÓDULO DE PRESUPUESTO & PROVEEDORES (FASE 20)

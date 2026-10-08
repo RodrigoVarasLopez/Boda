@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
+import { useWeddingData } from '@/lib/guest-store';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
@@ -36,6 +37,10 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { groups } = useWeddingData();
+
+  const firstToken = groups.length > 0 ? groups[0].token : null;
+  const guestUrl = firstToken ? `/i/${firstToken}` : '/admin/guests';
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col transition-colors duration-300">
@@ -66,10 +71,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Ver como invitado with quick selector */}
           <div className="relative group">
             <Link
-              href="/i/token-garcia-772"
-              target="_blank"
+              href={guestUrl}
+              target={firstToken ? '_blank' : '_self'}
               className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-border-strong text-xs font-medium text-text-primary hover:bg-bg-secondary transition-colors"
-              title="Abrir vista de invitado (por defecto Familia García)"
+              title={firstToken ? `Abrir vista de invitado (${groups[0].name})` : 'Ir a Gestión de Invitados'}
             >
               <UserCheck className="w-3.5 h-3.5 text-text-accent" />
               <span className="hidden sm:inline">Ver como invitado</span>
@@ -80,40 +85,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="hidden group-hover:block absolute right-0 top-full pt-1.5 z-50 w-64 animate-fade-in">
               <div className="bg-bg-card border border-border-subtle rounded-2xl shadow-card p-2 space-y-1 text-xs">
                 <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted px-2 py-1 block font-semibold">
-                  PROBAR COMO INVITADO:
+                  INVITACIONES REALES:
                 </span>
-                <Link
-                  href="/i/token-garcia-772"
-                  target="_blank"
-                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
-                >
-                  <span className="font-semibold text-text-primary">Familia García</span>
-                  <span className="text-[11px] text-text-muted">Solo eventos de Sábado (Boda)</span>
-                </Link>
-                <Link
-                  href="/i/token-sofia-409"
-                  target="_blank"
-                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
-                >
-                  <span className="font-semibold text-text-primary">Sofía Martín (+1)</span>
-                  <span className="text-[11px] text-brand-olive font-medium">Viernes Preboda &amp; Sábado</span>
-                </Link>
-                <Link
-                  href="/i/token-amigos-uni-118"
-                  target="_blank"
-                  className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
-                >
-                  <span className="font-semibold text-text-primary">Amigos Universidad</span>
-                  <span className="text-[11px] text-brand-olive font-medium">Viernes Preboda &amp; Sábado</span>
-                </Link>
-                <div className="pt-1 border-t border-border-subtle">
-                  <Link
-                    href="/admin/guests"
-                    className="block text-center py-1.5 text-[11px] text-text-accent hover:underline font-medium"
-                  >
-                    Ver todos los invitados en CRM →
-                  </Link>
-                </div>
+                {groups.length === 0 ? (
+                  <div className="p-3 text-center space-y-1">
+                    <p className="text-[11px] text-text-muted">Aún no hay invitados registrados.</p>
+                    <Link
+                      href="/admin/guests"
+                      className="text-xs text-primary font-semibold hover:underline block"
+                    >
+                      + Añadir primer invitado →
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    {groups.slice(0, 4).map((grp) => (
+                      <Link
+                        key={grp.id}
+                        href={`/i/${grp.token}`}
+                        target="_blank"
+                        className="flex flex-col p-2 rounded-xl hover:bg-bg-secondary transition-colors"
+                      >
+                        <span className="font-semibold text-text-primary">{grp.name}</span>
+                        <span className="text-[11px] text-text-muted">
+                          {grp.guests.length} {grp.guests.length === 1 ? 'persona' : 'personas'} · {grp.invitation_status}
+                        </span>
+                      </Link>
+                    ))}
+                    <div className="pt-1 border-t border-border-subtle">
+                      <Link
+                        href="/admin/guests"
+                        className="block text-center py-1.5 text-[11px] text-text-accent hover:underline font-medium"
+                      >
+                        Ver todos los invitados en CRM →
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

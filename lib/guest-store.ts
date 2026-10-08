@@ -3,38 +3,38 @@ import { INITIAL_GROUPS, INITIAL_RSVPS, INITIAL_EVENTS, INITIAL_WEDDING } from '
 import { GuestGroup, GroupRSVPSubmission, GuestRSVPResponse, DietaryOption, RSVPStatus } from './types';
 import { recordManualRSVPAction } from '@/app/actions';
 
-const STORAGE_KEY_GROUPS = 'boda_groups_store_v1';
-const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v1';
+const STORAGE_KEY_GROUPS = 'boda_groups_store_v2';
+const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v2';
 const UPDATE_EVENT_NAME = 'boda_store_updated';
 
 // Helper to get initial groups
 export function getStoredGroups(): GuestGroup[] {
-  if (typeof window === 'undefined') return INITIAL_GROUPS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GROUPS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn('Error reading stored groups:', e);
   }
-  return INITIAL_GROUPS;
+  return [];
 }
 
 // Helper to get initial RSVPs
 export function getStoredRSVPS(): GroupRSVPSubmission[] {
-  if (typeof window === 'undefined') return INITIAL_RSVPS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_RSVPS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn('Error reading stored RSVPs:', e);
   }
-  return INITIAL_RSVPS;
+  return [];
 }
 
 // Save groups to localStorage and memory

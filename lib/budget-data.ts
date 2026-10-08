@@ -8,10 +8,10 @@ import {
   PaymentStatus,
 } from './types';
 
-export const STORAGE_KEY_BUDGET_CATEGORIES = 'boda_budget_categories_v1';
-export const STORAGE_KEY_BUDGET_SUPPLIERS = 'boda_budget_suppliers_v1';
-export const STORAGE_KEY_BUDGET_PAYMENTS = 'boda_budget_payments_v1';
-export const STORAGE_KEY_BUDGET_MENU = 'boda_budget_menu_v1';
+export const STORAGE_KEY_BUDGET_CATEGORIES = 'boda_budget_categories_v2';
+export const STORAGE_KEY_BUDGET_SUPPLIERS = 'boda_budget_suppliers_v2';
+export const STORAGE_KEY_BUDGET_PAYMENTS = 'boda_budget_payments_v2';
+export const STORAGE_KEY_BUDGET_MENU = 'boda_budget_menu_v2';
 export const BUDGET_UPDATE_EVENT = 'boda_budget_updated';
 
 export const WEDDING_ID = 'w-stephanie-rodrigo-2027';

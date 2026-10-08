@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Wedding, GuestGroup } from '@/lib/types';
-import { INITIAL_GROUPS } from '@/lib/mock-data';
+import { Wedding } from '@/lib/types';
+import { useWeddingData } from '@/lib/guest-store';
 import { Sparkles, Search, ArrowRight, MessageCircle, UserCheck, ShieldCheck } from 'lucide-react';
 import { buildWhatsAppLink } from '@/lib/utils';
 
@@ -12,10 +12,11 @@ interface PublicRSVPPortalProps {
 }
 
 export const PublicRSVPPortal: React.FC<PublicRSVPPortalProps> = ({ wedding }) => {
+  const { groups } = useWeddingData();
   const [searchTerm, setSearchTerm] = useState('');
 
   const matchingGroups = searchTerm.trim().length >= 2
-    ? INITIAL_GROUPS.filter((g) =>
+    ? groups.filter((g) =>
         g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         g.guests.some((gst) =>
           `${gst.first_name} ${gst.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())

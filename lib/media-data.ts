@@ -1,8 +1,8 @@
 import { MediaPhoto, GuestBookEntry, MediaPhotoStatus, GuestBookEntryStatus } from './types';
 import { buildStoragePath } from './media/urls';
 
-export const STORAGE_KEY_PHOTOS = 'boda_media_photos_v1';
-export const STORAGE_KEY_GUESTBOOK = 'boda_guestbook_entries_v1';
+export const STORAGE_KEY_PHOTOS = 'boda_media_photos_v2';
+export const STORAGE_KEY_GUESTBOOK = 'boda_guestbook_entries_v2';
 export const MEDIA_UPDATE_EVENT = 'boda_media_updated';
 
 const WEDDING_ID = 'w-stephanie-rodrigo-2027';
@@ -93,90 +93,11 @@ const UPLOADERS = [
 ];
 
 export function generateFixturePhotos(): MediaPhoto[] {
-  const photos: MediaPhoto[] = [];
-
-  for (let i = 0; i < 50; i++) {
-    const asset = PHOTO_ASSETS[i % PHOTO_ASSETS.length];
-    const caption = PHOTO_CAPTIONS[i] || `Fotografía del fin de semana #${i + 1}`;
-    const uploader = UPLOADERS[i % UPLOADERS.length];
-    const id = `photo-2027-${String(i + 1).padStart(3, '0')}`;
-
-    let status: MediaPhotoStatus = 'approved';
-    if (i >= 35 && i < 45) {
-      status = 'pending';
-    } else if (i >= 45) {
-      status = 'hidden';
-    }
-
-    const is_approved = status === 'approved';
-    const is_visible = status !== 'hidden';
-
-    const safeName = `boda-concejo-${String(i + 1).padStart(2, '0')}.${asset.ext}`;
-    const storage_path = buildStoragePath(WEDDING_ID, id, safeName);
-
-    const day = (i % 28) + 1;
-    const month = i < 20 ? '06' : i < 40 ? '07' : '08';
-    const hour = 10 + (i % 12);
-    const minute = (i * 7) % 60;
-    const createdAt = `2027-${month}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00.000Z`;
-
-    photos.push({
-      id,
-      wedding_id: WEDDING_ID,
-      uploaded_by_guest_id: i % 3 === 0 ? null : `gst-mock-${i}`,
-      uploader_name: uploader,
-      storage_path,
-      photo_url: asset.url,
-      original_filename: safeName,
-      mime_type: asset.mime,
-      file_size: asset.size,
-      width: asset.w,
-      height: asset.h,
-      caption,
-      is_visible,
-      is_approved,
-      status,
-      created_at: createdAt,
-      updated_at: createdAt,
-    });
-  }
-
-  return photos;
+  return [];
 }
 
 export function generateFixtureGuestbook(): GuestBookEntry[] {
-  const messages = [
-    { name: 'Sofía Martín', msg: '¡Va a ser una boda absolutamente mágica en Bodega Concejo! No veo la hora de brindar juntos por esta historia tan bonita.', status: 'approved' },
-    { name: 'Familia Pérez', msg: 'Muchísimas felicidades parejaza. Allá estaremos para celebrar vuestro amor con todo el cariño y disfrutar de la cata en Valoria.', status: 'approved' },
-    { name: 'Carlos y Carmen', msg: 'Qué ganas de acompañaros en un sitio tan especial. ¡Que este amor siga creciendo cada año como el mejor reserva de la bodega!', status: 'approved' },
-    { name: 'Elena Torres', msg: 'Queridos Stephanie y Rodrigo, os deseo toda la felicidad del mundo. Será un honor vivir ese fin de semana junto a vosotros.', status: 'approved' },
-    { name: 'Alberto Gómez Peláez', msg: '¡A preparar los zapatos de baile y las copas! No faltaremos por nada del mundo. ¡Vivan los novios!', status: 'approved' },
-    { name: 'Lucía Navarro', msg: 'Un abrazo gigantesco a los dos. Se os ve tan felices y enamorados... gracias de corazón por hacernos partícipes.', status: 'approved' },
-    { name: 'David y Laura', msg: 'Contando los días para ese 25 de agosto en Valoria la Buena. ¡Va a ser histórico!', status: 'approved' },
-    { name: 'Marta Sánchez', msg: 'Enhorabuena amigos míos. Veros construir este camino juntos es una alegría inmensa para todos los que os queremos.', status: 'approved' },
-    { name: 'Pablo Ruiz', msg: '¡Qué pedazo de localización habéis elegido! Enhorabuena a los dos y preparaos para bailar hasta el amanecer.', status: 'approved' },
-    { name: 'Tía Concha & Tío Paco', msg: 'Hijos, qué orgullo veros dar este paso. La bendición más grande para vuestro matrimonio.', status: 'approved' },
-    { name: 'Javier y Clara', msg: 'No podemos esperar a brindar con ese Burro Loco en la preboda del viernes. ¡Mucho amor!', status: 'approved' },
-    { name: 'Beatriz Domínguez', msg: 'Sois pura inspiración. ¡Que la magia de Bodega Concejo os acompañe durante toda la vida!', status: 'approved' },
-    { name: 'Andrés Calvo', msg: '¡Enhorabuena Rodri y Steph! Un abrazo de los grandes desde Madrid, allí estaremos dándolo todo.', status: 'approved' },
-    { name: 'Sara y Dani', msg: 'La mejor pareja del mundo se merece la mejor boda del mundo. ¡Os queremos infinito!', status: 'approved' },
-    { name: 'Gonzalo Prieto', msg: 'Recién recibí la invitación, ¡espectacular el detalle de la bodega! Nos vemos muy pronto para celebrarlo.', status: 'pending' },
-    { name: 'Miriam Alarcón', msg: 'Un mensaje con todo mi cariño desde la distancia mientras confirmo el viaje. ¡Felicidades pareja bella!', status: 'pending' },
-    { name: 'Marcos & Irene', msg: '¿Habrá transporte desde Valladolid centro para la fiesta? ¡Queremos darlo todo!', status: 'pending' },
-    { name: 'Raquel Ortiz', msg: 'Muchísimas felicidades Stephanie y Rodrigo, un beso enorme a los dos.', status: 'pending' },
-    { name: 'Invitado Anónimo', msg: 'Comentario de prueba técnica para validar moderación.', status: 'hidden' },
-    { name: 'Spam Bot Filter', msg: 'Descuentos exclusivos en vuelos y reservas de hotel online.', status: 'hidden' },
-  ];
-
-  return messages.map((m, idx) => ({
-    id: `gb-entry-${String(idx + 1).padStart(3, '0')}`,
-    wedding_id: WEDDING_ID,
-    guest_name: m.name,
-    message: m.msg,
-    status: m.status as GuestBookEntryStatus,
-    created_at: `2027-06-${String((idx % 25) + 1).padStart(2, '0')}T${12 + (idx % 8)}:00:00.000Z`,
-    approved_at: m.status === 'approved' ? `2027-06-${String((idx % 25) + 1).padStart(2, '0')}T14:00:00.000Z` : null,
-  }));
+  return [];
 }
 
 let inMemoryPhotos: MediaPhoto[] | null = null;
@@ -184,17 +105,14 @@ let inMemoryGuestbook: GuestBookEntry[] | null = null;
 
 export function getStoredPhotos(): MediaPhoto[] {
   if (typeof window === 'undefined') {
-    if (!inMemoryPhotos) {
-      inMemoryPhotos = generateFixturePhotos();
-    }
-    return inMemoryPhotos;
+    return inMemoryPhotos || [];
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PHOTOS);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         inMemoryPhotos = parsed;
         return parsed;
       }
@@ -203,14 +121,8 @@ export function getStoredPhotos(): MediaPhoto[] {
     console.warn('Error reading stored photos:', e);
   }
 
-  const initial = inMemoryPhotos || generateFixturePhotos();
-  inMemoryPhotos = initial;
-  try {
-    localStorage.setItem(STORAGE_KEY_PHOTOS, JSON.stringify(initial));
-  } catch {
-    // quota exceeded or incognito
-  }
-  return initial;
+  inMemoryPhotos = [];
+  return [];
 }
 
 export function setStoredPhotos(photos: MediaPhoto[]) {
@@ -227,17 +139,14 @@ export function setStoredPhotos(photos: MediaPhoto[]) {
 
 export function getStoredGuestbook(): GuestBookEntry[] {
   if (typeof window === 'undefined') {
-    if (!inMemoryGuestbook) {
-      inMemoryGuestbook = generateFixtureGuestbook();
-    }
-    return inMemoryGuestbook;
+    return inMemoryGuestbook || [];
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GUESTBOOK);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         inMemoryGuestbook = parsed;
         return parsed;
       }
@@ -246,14 +155,8 @@ export function getStoredGuestbook(): GuestBookEntry[] {
     console.warn('Error reading stored guestbook:', e);
   }
 
-  const initial = inMemoryGuestbook || generateFixtureGuestbook();
-  inMemoryGuestbook = initial;
-  try {
-    localStorage.setItem(STORAGE_KEY_GUESTBOOK, JSON.stringify(initial));
-  } catch {
-    // quota exceeded or incognito
-  }
-  return initial;
+  inMemoryGuestbook = [];
+  return [];
 }
 
 export function setStoredGuestbook(entries: GuestBookEntry[]) {
