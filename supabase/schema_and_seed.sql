@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS guests (
   email TEXT,
   phone TEXT,
   is_child BOOLEAN NOT NULL DEFAULT false,
+  guest_type TEXT NOT NULL DEFAULT 'adult' CHECK (guest_type IN ('adult', 'child')),
   is_primary_contact BOOLEAN NOT NULL DEFAULT false,
   allow_plus_one BOOLEAN NOT NULL DEFAULT false,
   dietary_restrictions TEXT,
@@ -527,3 +528,124 @@ VALUES
 ('a0000000-0000-0000-0000-000000000001', 'Lucía Navarro', 'Un abrazo gigantesco a los dos. Se os ve tan felices y enamorados... gracias de corazón por hacernos partícipes.', 'approved', true),
 ('a0000000-0000-0000-0000-000000000001', 'David y Laura', 'Contando los días para ese 25 de agosto en Valoria la Buena. ¡Va a ser histórico!', 'approved', true)
 ON CONFLICT DO NOTHING;
+
+-- ==============================================================================
+-- MÓDULO DE PRESUPUESTO & PROVEEDORES (FASE 20)
+-- ==============================================================================
+
+-- 14. Categorías de presupuesto
+CREATE TABLE IF NOT EXISTS budget_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wedding_id UUID NOT NULL REFERENCES weddings(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  budget_type TEXT NOT NULL DEFAULT 'fixed' CHECK (budget_type IN ('fixed', 'per_guest', 'mixed')),
+  icon TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 15. Proveedores por categoría
+CREATE TABLE IF NOT EXISTS budget_suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID NOT NULL REFERENCES budget_categories(id) ON DELETE CASCADE,
+  wedding_id UUID NOT NULL REFERENCES weddings(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  contact_name TEXT,
+  email TEXT,
+  phone TEXT,
+  website TEXT,
+  instagram TEXT,
+  estimated_price NUMERIC(12,2),
+  quoted_price NUMERIC(12,2),
+  final_price NUMERIC(12,2),
+  currency TEXT NOT NULL DEFAULT 'EUR',
+  rating INTEGER CHECK (rating >= 1 AND rating <= 10),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'contacted', 'quoted', 'finalist', 'selected', 'discarded')),
+  comments TEXT,
+  notes TEXT,
+  is_selected BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índice único parcial: máximo un proveedor seleccionado por categoría
+CREATE UNIQUE INDEX IF NOT EXISTS unique_selected_supplier_per_category
+  ON budget_suppliers (category_id)
+  WHERE is_selected = true;
+
+-- 16. Pagos a proveedores
+CREATE TABLE IF NOT EXISTS budget_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  supplier_id UUID NOT NULL REFERENCES budget_suppliers(id) ON DELETE CASCADE,
+  wedding_id UUID NOT NULL REFERENCES weddings(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  due_date DATE,
+  paid_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'partial', 'paid')),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 17. Configuración del menú de la boda
+CREATE TABLE IF NOT EXISTS budget_menu_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wedding_id UUID NOT NULL UNIQUE REFERENCES weddings(id) ON DELETE CASCADE,
+  supplier_id UUID REFERENCES budget_suppliers(id) ON DELETE SET NULL,
+  adult_price NUMERIC(12,2) NOT NULL DEFAULT 145.00 CHECK (adult_price >= 0),
+  child_price NUMERIC(12,2) NOT NULL DEFAULT 75.00 CHECK (child_price >= 0),
+  adult_count_override INTEGER CHECK (adult_count_override >= 0),
+  child_count_override INTEGER CHECK (child_count_override >= 0),
+  use_manual_counts BOOLEAN NOT NULL DEFAULT false,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS en tablas de presupuesto
+ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_menu_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins manage budget_categories" ON budget_categories;
+CREATE POLICY "Admins manage budget_categories" ON budget_categories
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_categories.wedding_id AND weddings.owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins manage budget_suppliers" ON budget_suppliers;
+CREATE POLICY "Admins manage budget_suppliers" ON budget_suppliers
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_suppliers.wedding_id AND weddings.owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins manage budget_payments" ON budget_payments;
+CREATE POLICY "Admins manage budget_payments" ON budget_payments
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_payments.wedding_id AND weddings.owner_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Admins manage budget_menu_config" ON budget_menu_config;
+CREATE POLICY "Admins manage budget_menu_config" ON budget_menu_config
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_menu_config.wedding_id AND weddings.owner_id = auth.uid()));
+
+-- Categorías iniciales oficiales para Stephanie & Rodrigo
+INSERT INTO budget_categories (wedding_id, name, budget_type, icon, sort_order)
+VALUES
+  ('a0000000-0000-0000-0000-000000000001', 'Flores Iglesia', 'fixed', 'Flower2', 1),
+  ('a0000000-0000-0000-0000-000000000001', 'Decoración Concejo', 'fixed', 'Sparkles', 2),
+  ('a0000000-0000-0000-0000-000000000001', 'DJ', 'fixed', 'Music', 3),
+  ('a0000000-0000-0000-0000-000000000001', 'Estación DJ', 'fixed', 'Headphones', 4),
+  ('a0000000-0000-0000-0000-000000000001', 'Vestido Novia', 'fixed', 'Crown', 5),
+  ('a0000000-0000-0000-0000-000000000001', 'Vestido Novio', 'fixed', 'Shirt', 6),
+  ('a0000000-0000-0000-0000-000000000001', 'Pirotecnia', 'fixed', 'Flame', 7),
+  ('a0000000-0000-0000-0000-000000000001', 'Fotógrafo', 'fixed', 'Camera', 8),
+  ('a0000000-0000-0000-0000-000000000001', 'Grupo de música 1', 'fixed', 'Guitar', 9),
+  ('a0000000-0000-0000-0000-000000000001', 'Grupo de música 2', 'fixed', 'Mic2', 10),
+  ('a0000000-0000-0000-0000-000000000001', 'Preboda', 'mixed', 'Wine', 11),
+  ('a0000000-0000-0000-0000-000000000001', 'Menú', 'per_guest', 'UtensilsCrossed', 12)
+ON CONFLICT DO NOTHING;
+
+-- Configuración de menú predeterminada
+INSERT INTO budget_menu_config (wedding_id, adult_price, child_price, use_manual_counts)
+VALUES ('a0000000-0000-0000-0000-000000000001', 145.00, 75.00, false)
+ON CONFLICT (wedding_id) DO NOTHING;
+

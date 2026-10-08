@@ -46,6 +46,8 @@ export interface Guest {
   dietary_restrictions?: string;
   allergies?: string;
   notes?: string;
+  guest_type?: 'adult' | 'child';
+  is_child?: boolean;
 }
 
 export interface Event {
@@ -152,3 +154,106 @@ export const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
   declined: 'No asiste',
   pending: 'Pendiente',
 };
+
+// ==========================================
+// BUDGET & SUPPLIER MODULE TYPES (PHASE 20)
+// ==========================================
+
+export type GuestType = 'adult' | 'child';
+
+export type BudgetType = 'fixed' | 'per_guest' | 'mixed';
+
+export type SupplierStatus =
+  | 'pending'
+  | 'contacted'
+  | 'quoted'
+  | 'finalist'
+  | 'selected'
+  | 'discarded';
+
+export type PaymentStatus = 'pending' | 'partial' | 'paid';
+
+export interface BudgetCategory {
+  id: string;
+  wedding_id: string;
+  name: string;
+  description?: string | null;
+  budget_type: BudgetType;
+  icon?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BudgetSupplier {
+  id: string;
+  category_id: string;
+  wedding_id: string;
+  name: string;
+  contact_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  instagram?: string | null;
+  estimated_price?: number | null;
+  quoted_price?: number | null;
+  final_price?: number | null;
+  currency: string;
+  rating?: number | null; // 1 to 10
+  status: SupplierStatus;
+  comments?: string | null;
+  notes?: string | null;
+  is_selected: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BudgetPayment {
+  id: string;
+  supplier_id: string;
+  wedding_id: string;
+  amount: number;
+  due_date?: string | null;
+  paid_at?: string | null;
+  status: PaymentStatus;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BudgetMenuConfig {
+  id: string;
+  wedding_id: string;
+  supplier_id?: string | null;
+  adult_price: number;
+  child_price: number;
+  adult_count_override?: number | null;
+  child_count_override?: number | null;
+  use_manual_counts: boolean;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const SUPPLIER_STATUS_LABELS: Record<SupplierStatus, string> = {
+  pending: 'Pendiente',
+  contacted: 'Contactado',
+  quoted: 'Presupuesto recibido',
+  finalist: 'Finalista',
+  selected: 'Seleccionado',
+  discarded: 'Descartado',
+};
+
+export const BUDGET_TYPE_LABELS: Record<BudgetType, string> = {
+  fixed: 'Fijo',
+  per_guest: 'Por invitado',
+  mixed: 'Mixto',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending: 'Pendiente',
+  partial: 'Parcial',
+  paid: 'Pagado',
+};
+

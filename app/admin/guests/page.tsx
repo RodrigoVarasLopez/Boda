@@ -23,7 +23,7 @@ import { useWeddingData } from '@/lib/guest-store';
 import { buildWhatsAppLink } from '@/lib/utils';
 
 export default function AdminGuestsPage() {
-  const { groups, stats, refresh } = useWeddingData();
+  const { groups, stats, refresh, updateGuestType } = useWeddingData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [selectedDrawerGroup, setSelectedDrawerGroup] = useState<GuestGroup | null>(null);
@@ -394,6 +394,8 @@ export default function AdminGuestsPage() {
         wedding={INITIAL_WEDDING}
         events={INITIAL_EVENTS}
         onClose={() => setSelectedDrawerGroup(null)}
+        onUpdateGroup={() => refresh()}
+        onUpdateGuestType={updateGuestType}
       />
     </div>
   );

@@ -15,7 +15,8 @@ import {
   Eye,
   Menu,
   X,
-  UserCheck
+  UserCheck,
+  Receipt
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
@@ -26,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
     { href: '/admin/guests', label: 'Invitados', icon: Users },
     { href: '/admin/rsvp', label: 'RSVP', icon: ClipboardCheck },
     { href: '/admin/events', label: 'Eventos', icon: CalendarDays },

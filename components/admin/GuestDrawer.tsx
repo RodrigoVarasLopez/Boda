@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
-import { regenerateInvitationTokenAction, revokeInvitationAction } from '@/app/actions';
+import { regenerateInvitationTokenAction, revokeInvitationAction, updateGuestTypeAction } from '@/app/actions';
 import { ManualRSVPModal } from './ManualRSVPModal';
 
 interface GuestDrawerProps {
@@ -32,6 +32,7 @@ interface GuestDrawerProps {
   existingRSVP?: GuestRSVPResponse[];
   onClose: () => void;
   onUpdateGroup?: (updatedGroup: GuestGroup) => void;
+  onUpdateGuestType?: (guestId: string, guestType: 'adult' | 'child') => void;
 }
 
 export const GuestDrawer: React.FC<GuestDrawerProps> = ({
@@ -41,6 +42,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   existingRSVP,
   onClose,
   onUpdateGroup,
+  onUpdateGuestType,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -107,6 +109,23 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
       }
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleToggleGuestType = async (guestId: string, type: 'adult' | 'child') => {
+    if (onUpdateGuestType) {
+      onUpdateGuestType(guestId, type);
+    }
+    if (group && onUpdateGroup) {
+      const updatedGuests = group.guests.map((g) =>
+        g.id === guestId ? { ...g, guest_type: type, is_child: type === 'child' } : g
+      );
+      onUpdateGroup({ ...group, guests: updatedGuests });
+    }
+    try {
+      await updateGuestTypeAction({ guest_id: guestId, guest_type: type });
+    } catch (e) {
+      console.warn('Error updating guest type:', e);
     }
   };
 
@@ -230,6 +249,33 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
                   {gst.allergies && (
                     <p className="text-[11px] text-brand-terracotta font-medium">Alergia: {gst.allergies}</p>
                   )}
+                  <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-border-subtle/50">
+                    <span className="text-[10px] text-text-muted">Tipo comensal:</span>
+                    <div className="inline-flex rounded-lg bg-bg-secondary p-0.5 border border-border-subtle">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleGuestType(gst.id, 'adult')}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${
+                          gst.guest_type !== 'child' && !gst.is_child
+                            ? 'bg-primary text-primary-text shadow-xs'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        Adulto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleGuestType(gst.id, 'child')}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${
+                          gst.guest_type === 'child' || gst.is_child
+                            ? 'bg-primary text-primary-text shadow-xs'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        Niño
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

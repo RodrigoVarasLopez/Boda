@@ -242,13 +242,11 @@ export function useWeddingData() {
   const totalConfirmedHeadcount = confirmedAttendingGuests + confirmedPlusOnes;
   const confirmedDeclined = allResponses.filter((r) => r.status === 'declined').length;
   const pendingCount = Math.max(0, totalGuests - (confirmedAttendingGuests + confirmedDeclined));
-
   const rsvpCompletionRate =
     totalGuests > 0
       ? Math.round(((confirmedAttendingGuests + confirmedDeclined) / totalGuests) * 100)
       : 0;
 
-  // Breakdown by event
   const eventAttendance = INITIAL_EVENTS.map((evt) => {
     const attendees = allResponses.filter(
       (r) => r.status === 'attending' && r.attending_event_ids.includes(evt.id)
@@ -259,6 +257,47 @@ export function useWeddingData() {
       attendees,
     };
   });
+
+  // Adult vs Child headcount
+  const allGuests = groups.flatMap((g) => g.guests);
+  const guestMap = new Map(allGuests.map((g) => [g.id, g]));
+  let attendingAdults = 0;
+  let attendingChildren = 0;
+
+  for (const resp of allResponses) {
+    if (resp.status === 'attending') {
+      const guest = guestMap.get(resp.guest_id);
+      const isChild = guest?.guest_type === 'child' || guest?.is_child === true;
+      if (isChild) {
+        attendingChildren++;
+      } else {
+        attendingAdults++;
+      }
+      if (resp.plus_one_attending) {
+        attendingAdults++;
+      }
+    }
+  }
+
+  // Update Guest Type function
+  const updateGuestType = (guestId: string, guestType: 'adult' | 'child') => {
+    const currentGroups = getStoredGroups();
+    let updated = false;
+
+    for (const group of currentGroups) {
+      const targetGuest = group.guests.find((g) => g.id === guestId);
+      if (targetGuest) {
+        targetGuest.guest_type = guestType;
+        targetGuest.is_child = guestType === 'child';
+        updated = true;
+        break;
+      }
+    }
+
+    if (updated) {
+      setStoredGroups([...currentGroups]);
+    }
+  };
 
   return {
     isLoaded,
@@ -276,9 +315,12 @@ export function useWeddingData() {
       pendingCount,
       rsvpCompletionRate,
       eventAttendance,
+      attendingAdults,
+      attendingChildren,
     },
     saveManualRSVP: saveManualGroupRSVP,
     quickConfirmGroup: quickConfirmGroupAttendance,
+    updateGuestType,
     refresh: reloadData,
   };
 }
