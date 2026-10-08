@@ -4,7 +4,47 @@
 -- Ejecutar en: https://supabase.com/dashboard/project/oskbafwqreeqxfwnwbzv/sql/new
 -- ==============================================================================
 
--- 1. Asegurar que las tablas de presupuesto existen
+-- 1. Extensiones requeridas
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 2. Asegurar que la tabla principal de bodas existe
+CREATE TABLE IF NOT EXISTS weddings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  couple_name_1 TEXT NOT NULL,
+  couple_name_2 TEXT NOT NULL,
+  wedding_date TIMESTAMPTZ NOT NULL,
+  venue_name TEXT NOT NULL,
+  venue_address TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
+  theme TEXT NOT NULL DEFAULT 'mediterranean',
+  rsvp_deadline TIMESTAMPTZ,
+  iban_details JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Asegurar registro oficial de la boda de Stephanie & Rodrigo
+INSERT INTO weddings (
+  id, slug, couple_name_1, couple_name_2, wedding_date, venue_name, venue_address, status, theme, rsvp_deadline
+) VALUES (
+  'a0000000-0000-0000-0000-000000000001',
+  'stephanie-y-rodrigo',
+  'Stephanie',
+  'Rodrigo',
+  '2027-08-28 18:00:00+02',
+  'Bodega Concejo',
+  'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+  'published',
+  'mediterranean',
+  '2027-07-20 23:59:59+02'
+) ON CONFLICT (slug) DO UPDATE SET
+  venue_name = EXCLUDED.venue_name,
+  venue_address = EXCLUDED.venue_address,
+  wedding_date = EXCLUDED.wedding_date;
+
+-- 3. Tablas del módulo de presupuesto
 CREATE TABLE IF NOT EXISTS budget_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   wedding_id UUID NOT NULL REFERENCES weddings(id) ON DELETE CASCADE,
@@ -72,29 +112,33 @@ CREATE TABLE IF NOT EXISTS budget_menu_config (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Asegurar RLS con acceso garantizado para service_role y owners
+-- 4. RLS y Políticas de Acceso
+ALTER TABLE weddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_menu_config ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can view published weddings" ON weddings;
+CREATE POLICY "Public can view published weddings" ON weddings FOR SELECT USING (status = 'published');
+
 DROP POLICY IF EXISTS "Admins manage budget_categories" ON budget_categories;
 CREATE POLICY "Admins manage budget_categories" ON budget_categories
-  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_categories.wedding_id AND weddings.owner_id = auth.uid()));
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_categories.wedding_id));
 
 DROP POLICY IF EXISTS "Admins manage budget_suppliers" ON budget_suppliers;
 CREATE POLICY "Admins manage budget_suppliers" ON budget_suppliers
-  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_suppliers.wedding_id AND weddings.owner_id = auth.uid()));
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_suppliers.wedding_id));
 
 DROP POLICY IF EXISTS "Admins manage budget_payments" ON budget_payments;
 CREATE POLICY "Admins manage budget_payments" ON budget_payments
-  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_payments.wedding_id AND weddings.owner_id = auth.uid()));
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_payments.wedding_id));
 
 DROP POLICY IF EXISTS "Admins manage budget_menu_config" ON budget_menu_config;
 CREATE POLICY "Admins manage budget_menu_config" ON budget_menu_config
-  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_menu_config.wedding_id AND weddings.owner_id = auth.uid()));
+  FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_menu_config.wedding_id));
 
--- 3. Sembrar o actualizar las 12 categorías oficiales con sus UUIDs exactos
+-- 5. Sembrar o actualizar las 12 categorías oficiales con sus UUIDs exactos
 INSERT INTO budget_categories (id, wedding_id, name, budget_type, icon, sort_order)
 VALUES
   ('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Flores Iglesia', 'fixed', 'Flower2', 1),
@@ -115,13 +159,14 @@ ON CONFLICT (id) DO UPDATE SET
   icon = EXCLUDED.icon,
   sort_order = EXCLUDED.sort_order;
 
--- 4. Configuración del Menú inicial
+-- 6. Configuración del Menú inicial
 INSERT INTO budget_menu_config (wedding_id, adult_price, child_price, use_manual_counts)
 VALUES ('a0000000-0000-0000-0000-000000000001', 145.00, 75.00, false)
 ON CONFLICT (wedding_id) DO NOTHING;
 
--- 5. Comprobación de estado
+-- 7. Comprobación de estado
 SELECT 
+  (SELECT COUNT(*) FROM weddings) AS bodas_registradas,
   (SELECT COUNT(*) FROM budget_categories) AS categorias_activas,
   (SELECT COUNT(*) FROM budget_suppliers) AS proveedores_registrados,
   (SELECT COUNT(*) FROM budget_payments) AS pagos_registrados;
