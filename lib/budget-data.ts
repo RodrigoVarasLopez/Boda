@@ -8,19 +8,41 @@ import {
   PaymentStatus,
 } from './types';
 
-export const STORAGE_KEY_BUDGET_CATEGORIES = 'boda_budget_categories_v2';
-export const STORAGE_KEY_BUDGET_SUPPLIERS = 'boda_budget_suppliers_v2';
-export const STORAGE_KEY_BUDGET_PAYMENTS = 'boda_budget_payments_v2';
-export const STORAGE_KEY_BUDGET_MENU = 'boda_budget_menu_v2';
+export const STORAGE_KEY_BUDGET_CATEGORIES = 'boda_budget_categories_v3';
+export const STORAGE_KEY_BUDGET_SUPPLIERS = 'boda_budget_suppliers_v3';
+export const STORAGE_KEY_BUDGET_PAYMENTS = 'boda_budget_payments_v3';
+export const STORAGE_KEY_BUDGET_MENU = 'boda_budget_menu_v3';
 export const BUDGET_UPDATE_EVENT = 'boda_budget_updated';
 
-export const WEDDING_ID = 'w-stephanie-rodrigo-2027';
+export const WEDDING_UUID = 'a0000000-0000-0000-0000-000000000001';
+export const WEDDING_ID = WEDDING_UUID;
 
-// 1. Initial 12 Official Categories for Stephanie & Rodrigo
+// Legacy category ID translation map
+export const LEGACY_CATEGORY_MAP: Record<string, string> = {
+  'cat-flores-iglesia': 'c0000000-0000-0000-0000-000000000001',
+  'cat-decoracion-concejo': 'c0000000-0000-0000-0000-000000000002',
+  'cat-dj': 'c0000000-0000-0000-0000-000000000003',
+  'cat-estacion-dj': 'c0000000-0000-0000-0000-000000000004',
+  'cat-vestido-novia': 'c0000000-0000-0000-0000-000000000005',
+  'cat-vestido-novio': 'c0000000-0000-0000-0000-000000000006',
+  'cat-pirotecnia': 'c0000000-0000-0000-0000-000000000007',
+  'cat-fotografo': 'c0000000-0000-0000-0000-000000000008',
+  'cat-musica-1': 'c0000000-0000-0000-0000-000000000009',
+  'cat-musica-2': 'c0000000-0000-0000-0000-000000000010',
+  'cat-preboda': 'c0000000-0000-0000-0000-000000000011',
+  'cat-menu': 'c0000000-0000-0000-0000-000000000012',
+};
+
+export function normalizeCategoryId(id: string): string {
+  if (LEGACY_CATEGORY_MAP[id]) return LEGACY_CATEGORY_MAP[id];
+  return id;
+}
+
+// 1. Initial 12 Official Categories for Stephanie & Rodrigo with UUIDs
 export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
   {
-    id: 'cat-flores-iglesia',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000001',
+    wedding_id: WEDDING_UUID,
     name: 'Flores Iglesia',
     description: 'Arreglos florales para el altar, bancos y entrada del templo/jardín',
     budget_type: 'fixed',
@@ -29,8 +51,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-decoracion-concejo',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000002',
+    wedding_id: WEDDING_UUID,
     name: 'Decoración Concejo',
     description: 'Iluminación, mobiliario, vajilla especial y rincones temáticos en la bodega',
     budget_type: 'fixed',
@@ -39,8 +61,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-dj',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000003',
+    wedding_id: WEDDING_UUID,
     name: 'DJ',
     description: 'DJ principal para la fiesta, barra libre y sonido durante el cóctel',
     budget_type: 'fixed',
@@ -49,8 +71,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-estacion-dj',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000004',
+    wedding_id: WEDDING_UUID,
     name: 'Estación DJ',
     description: 'Cabina, iluminación láser, máquina de humo y altavoces adicionales',
     budget_type: 'fixed',
@@ -59,8 +81,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-vestido-novia',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000005',
+    wedding_id: WEDDING_UUID,
     name: 'Vestido Novia',
     description: 'Vestido de novia, velo, arreglos de modistería y complementos',
     budget_type: 'fixed',
@@ -69,8 +91,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-vestido-novio',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000006',
+    wedding_id: WEDDING_UUID,
     name: 'Vestido Novio',
     description: 'Traje a medida, chaleco, corbata y gemelos para Rodrigo',
     budget_type: 'fixed',
@@ -79,8 +101,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-pirotecnia',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000007',
+    wedding_id: WEDDING_UUID,
     name: 'Pirotecnia',
     description: 'Fuegos fríos en el corte de tarta / primer baile y castillo nocturno',
     budget_type: 'fixed',
@@ -89,8 +111,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-fotografo',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000008',
+    wedding_id: WEDDING_UUID,
     name: 'Fotógrafo',
     description: 'Reportaje completo de preparativos, ceremonia, banquete y fiesta',
     budget_type: 'fixed',
@@ -99,8 +121,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-musica-1',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000009',
+    wedding_id: WEDDING_UUID,
     name: 'Grupo de música 1',
     description: 'Música en directo para la ceremonia (cuerda o acústico)',
     budget_type: 'fixed',
@@ -109,8 +131,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-musica-2',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000010',
+    wedding_id: WEDDING_UUID,
     name: 'Grupo de música 2',
     description: 'Banda en directo durante el cóctel al atardecer en los viñedos',
     budget_type: 'fixed',
@@ -119,8 +141,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-preboda',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000011',
+    wedding_id: WEDDING_UUID,
     name: 'Preboda',
     description: 'Cata privada de vinos Burro Loco, aperitivos y visitas en la bodega el viernes',
     budget_type: 'mixed',
@@ -129,8 +151,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
     is_active: true,
   },
   {
-    id: 'cat-menu',
-    wedding_id: WEDDING_ID,
+    id: 'c0000000-0000-0000-0000-000000000012',
+    wedding_id: WEDDING_UUID,
     name: 'Menú',
     description: 'Banquete nupcial de Bodega Concejo por comensal (adultos y niños)',
     budget_type: 'per_guest',
@@ -142,8 +164,8 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
 
 // Default Menu Configuration
 export const DEFAULT_MENU_CONFIG: BudgetMenuConfig = {
-  id: 'menu-config-concejo',
-  wedding_id: WEDDING_ID,
+  id: 'm0000000-0000-0000-0000-000000000001',
+  wedding_id: WEDDING_UUID,
   adult_price: 145.0,
   child_price: 75.0,
   adult_count_override: null,

@@ -573,21 +573,25 @@ CREATE POLICY "Admins manage budget_menu_config" ON budget_menu_config
   FOR ALL USING (auth.role() = 'service_role' OR EXISTS (SELECT 1 FROM weddings WHERE weddings.id = budget_menu_config.wedding_id AND weddings.owner_id = auth.uid()));
 
 -- Categorías iniciales oficiales para Stephanie & Rodrigo
-INSERT INTO budget_categories (wedding_id, name, budget_type, icon, sort_order)
+INSERT INTO budget_categories (id, wedding_id, name, budget_type, icon, sort_order)
 VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'Flores Iglesia', 'fixed', 'Flower2', 1),
-  ('a0000000-0000-0000-0000-000000000001', 'Decoración Concejo', 'fixed', 'Sparkles', 2),
-  ('a0000000-0000-0000-0000-000000000001', 'DJ', 'fixed', 'Music', 3),
-  ('a0000000-0000-0000-0000-000000000001', 'Estación DJ', 'fixed', 'Headphones', 4),
-  ('a0000000-0000-0000-0000-000000000001', 'Vestido Novia', 'fixed', 'Crown', 5),
-  ('a0000000-0000-0000-0000-000000000001', 'Vestido Novio', 'fixed', 'Shirt', 6),
-  ('a0000000-0000-0000-0000-000000000001', 'Pirotecnia', 'fixed', 'Flame', 7),
-  ('a0000000-0000-0000-0000-000000000001', 'Fotógrafo', 'fixed', 'Camera', 8),
-  ('a0000000-0000-0000-0000-000000000001', 'Grupo de música 1', 'fixed', 'Guitar', 9),
-  ('a0000000-0000-0000-0000-000000000001', 'Grupo de música 2', 'fixed', 'Mic2', 10),
-  ('a0000000-0000-0000-0000-000000000001', 'Preboda', 'mixed', 'Wine', 11),
-  ('a0000000-0000-0000-0000-000000000001', 'Menú', 'per_guest', 'UtensilsCrossed', 12)
-ON CONFLICT DO NOTHING;
+  ('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Flores Iglesia', 'fixed', 'Flower2', 1),
+  ('c0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Decoración Concejo', 'fixed', 'Sparkles', 2),
+  ('c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'DJ', 'fixed', 'Music', 3),
+  ('c0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Estación DJ', 'fixed', 'Headphones', 4),
+  ('c0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Vestido Novia', 'fixed', 'Crown', 5),
+  ('c0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Vestido Novio', 'fixed', 'Shirt', 6),
+  ('c0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'Pirotecnia', 'fixed', 'Flame', 7),
+  ('c0000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'Fotógrafo', 'fixed', 'Camera', 8),
+  ('c0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'Grupo de música 1', 'fixed', 'Guitar', 9),
+  ('c0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001', 'Grupo de música 2', 'fixed', 'Mic2', 10),
+  ('c0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000001', 'Preboda', 'mixed', 'Wine', 11),
+  ('c0000000-0000-0000-0000-000000000012', 'a0000000-0000-0000-0000-000000000001', 'Menú', 'per_guest', 'UtensilsCrossed', 12)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  budget_type = EXCLUDED.budget_type,
+  icon = EXCLUDED.icon,
+  sort_order = EXCLUDED.sort_order;
 
 -- Configuración de menú predeterminada
 INSERT INTO budget_menu_config (wedding_id, adult_price, child_price, use_manual_counts)

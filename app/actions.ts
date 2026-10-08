@@ -20,7 +20,7 @@ import {
   GuestTypeUpdateSchema,
 } from '@/lib/schemas';
 import { createClient as createServerSupabase } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { INITIAL_GROUPS, INITIAL_WEDDING, INITIAL_EVENTS, INITIAL_RSVPS, INITIAL_CMS_BLOCKS } from '@/lib/mock-data';
 import {
   GuestGroup,
@@ -42,7 +42,9 @@ import {
   setStoredBudgetPayments,
   getStoredBudgetMenuConfig,
   setStoredBudgetMenuConfig,
-  WEDDING_ID as BUDGET_WEDDING_ID,
+  WEDDING_UUID,
+  INITIAL_BUDGET_CATEGORIES,
+  normalizeCategoryId,
 } from '@/lib/budget-data';
 import { revalidatePath } from 'next/cache';
 
@@ -915,28 +917,163 @@ export async function deleteGuestbookAction(entryId: string) {
 // BUDGET MODULE SERVER ACTIONS (PHASE 20)
 // ==========================================
 
+async function resolveWeddingUuid(supabaseClient: any): Promise<string> {
+  try {
+    const { data } = await supabaseClient
+      .from('weddings')
+      .select('id')
+      .eq('slug', 'stephanie-y-rodrigo')
+      .maybeSingle();
+    if (data?.id) return data.id;
+  } catch {}
+  return WEDDING_UUID;
+}
+
+/**
+ * 0. Get Live Budget Data from Supabase
+ */
+export async function getBudgetDataAction() {
+  if (isSupabaseConfigured()) {
+    try {
+      const adminClient = createAdminClient();
+      const weddingId = await resolveWeddingUuid(adminClient);
+
+      // 1. Categories
+      let { data: categories, error: catErr } = await adminClient
+        .from('budget_categories')
+        .select('*')
+        .eq('wedding_id', weddingId)
+        .order('sort_order', { ascending: true });
+
+      if (catErr) {
+        console.error('Error fetching categories from Supabase:', catErr);
+      }
+
+      // If no categories exist yet in Supabase, seed the 12 official ones
+      if (!categories || categories.length === 0) {
+        const seedPayload = INITIAL_BUDGET_CATEGORIES.map((c) => ({
+          id: c.id,
+          wedding_id: weddingId,
+          name: c.name,
+          description: c.description,
+          budget_type: c.budget_type,
+          icon: c.icon,
+          sort_order: c.sort_order,
+          is_active: true,
+        }));
+
+        const { data: insertedCats, error: seedErr } = await adminClient
+          .from('budget_categories')
+          .upsert(seedPayload, { onConflict: 'id' })
+          .select();
+
+        if (!seedErr && insertedCats && insertedCats.length > 0) {
+          categories = insertedCats;
+        }
+      }
+
+      // 2. Suppliers
+      const { data: suppliers, error: supErr } = await adminClient
+        .from('budget_suppliers')
+        .select('*')
+        .eq('wedding_id', weddingId)
+        .order('created_at', { ascending: true });
+
+      if (supErr) {
+        console.error('Error fetching suppliers from Supabase:', supErr);
+      }
+
+      // 3. Payments
+      const { data: payments, error: payErr } = await adminClient
+        .from('budget_payments')
+        .select('*')
+        .eq('wedding_id', weddingId)
+        .order('created_at', { ascending: true });
+
+      if (payErr) {
+        console.error('Error fetching payments from Supabase:', payErr);
+      }
+
+      // 4. Menu Config
+      let { data: menuConfig, error: menuErr } = await adminClient
+        .from('budget_menu_config')
+        .select('*')
+        .eq('wedding_id', weddingId)
+        .maybeSingle();
+
+      if (menuErr) {
+        console.error('Error fetching menu config from Supabase:', menuErr);
+      }
+
+      if (!menuConfig) {
+        const { data: insertedMenu } = await adminClient
+          .from('budget_menu_config')
+          .upsert(
+            {
+              wedding_id: weddingId,
+              adult_price: 145.0,
+              child_price: 75.0,
+              use_manual_counts: false,
+            },
+            { onConflict: 'wedding_id' }
+          )
+          .select()
+          .maybeSingle();
+        if (insertedMenu) menuConfig = insertedMenu;
+      }
+
+      return {
+        success: true,
+        source: 'supabase',
+        categories: categories || getStoredBudgetCategories(),
+        suppliers: suppliers || [],
+        payments: payments || [],
+        menuConfig: menuConfig || getStoredBudgetMenuConfig(),
+      };
+    } catch (err) {
+      console.warn('Supabase budget fetch error, falling back to local store:', err);
+    }
+  }
+
+  return {
+    success: false,
+    source: 'local',
+    categories: getStoredBudgetCategories(),
+    suppliers: getStoredBudgetSuppliers(),
+    payments: getStoredBudgetPayments(),
+    menuConfig: getStoredBudgetMenuConfig(),
+  };
+}
+
 /**
  * 1. Create Budget Category
  */
 export async function createCategoryAction(rawInput: unknown) {
   const validated = BudgetCategoryCreateSchema.parse(rawInput);
-  const newId = `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newId = crypto.randomUUID();
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_categories').insert({
+      const weddingId = await resolveWeddingUuid(adminClient);
+      const { error } = await adminClient.from('budget_categories').insert({
         id: newId,
-        wedding_id: BUDGET_WEDDING_ID,
+        wedding_id: weddingId,
         name: validated.name,
         description: validated.description,
         budget_type: validated.budget_type,
         icon: validated.icon,
         sort_order: validated.sort_order,
       });
+
+      if (error) {
+        console.error('Supabase create category error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB create category exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB create category fallback:', err);
   }
 
   const stored = getStoredBudgetCategories();
@@ -944,7 +1081,7 @@ export async function createCategoryAction(rawInput: unknown) {
     ...stored,
     {
       id: newId,
-      wedding_id: BUDGET_WEDDING_ID,
+      wedding_id: WEDDING_UUID,
       name: validated.name,
       description: validated.description || null,
       budget_type: validated.budget_type,
@@ -967,14 +1104,23 @@ export async function createCategoryAction(rawInput: unknown) {
 export async function updateCategoryAction(rawInput: unknown) {
   const validated = BudgetCategoryUpdateSchema.parse(rawInput);
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
       const { id, ...updates } = validated;
-      await adminClient.from('budget_categories').update(updates).eq('id', id);
+      const { error } = await adminClient
+        .from('budget_categories')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase update category error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB update category exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB update category fallback:', err);
   }
 
   const stored = getStoredBudgetCategories();
@@ -993,13 +1139,19 @@ export async function updateCategoryAction(rawInput: unknown) {
  * 3. Delete Budget Category
  */
 export async function deleteCategoryAction(categoryId: string) {
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_categories').delete().eq('id', categoryId);
+      const { error } = await adminClient.from('budget_categories').delete().eq('id', categoryId);
+
+      if (error) {
+        console.error('Supabase delete category error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB delete category exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB delete category fallback:', err);
   }
 
   const storedCats = getStoredBudgetCategories().filter((c) => c.id !== categoryId);
@@ -1016,21 +1168,25 @@ export async function deleteCategoryAction(categoryId: string) {
  */
 export async function createSupplierAction(rawInput: unknown) {
   const validated = BudgetSupplierCreateSchema.parse(rawInput);
-  const newId = `sup-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newId = crypto.randomUUID();
+  const categoryId = normalizeCategoryId(validated.category_id);
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
+      const weddingId = await resolveWeddingUuid(adminClient);
+
       if (validated.is_selected) {
         await adminClient
           .from('budget_suppliers')
           .update({ is_selected: false, status: 'quoted' })
-          .eq('category_id', validated.category_id);
+          .eq('category_id', categoryId);
       }
-      await adminClient.from('budget_suppliers').insert({
+
+      const { error } = await adminClient.from('budget_suppliers').insert({
         id: newId,
-        wedding_id: BUDGET_WEDDING_ID,
-        category_id: validated.category_id,
+        wedding_id: weddingId,
+        category_id: categoryId,
         name: validated.name,
         contact_name: validated.contact_name,
         email: validated.email,
@@ -1047,24 +1203,30 @@ export async function createSupplierAction(rawInput: unknown) {
         notes: validated.notes,
         is_selected: validated.is_selected,
       });
+
+      if (error) {
+        console.error('Supabase create supplier error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB create supplier exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB create supplier fallback:', err);
   }
 
   const stored = getStoredBudgetSuppliers();
   let nextSuppliers = stored;
   if (validated.is_selected) {
     nextSuppliers = stored.map((s) =>
-      s.category_id === validated.category_id ? { ...s, is_selected: false } : s
+      s.category_id === categoryId ? { ...s, is_selected: false } : s
     );
   }
   setStoredBudgetSuppliers([
     ...nextSuppliers,
     {
       id: newId,
-      wedding_id: BUDGET_WEDDING_ID,
-      category_id: validated.category_id,
+      wedding_id: WEDDING_UUID,
+      category_id: categoryId,
       name: validated.name,
       contact_name: validated.contact_name || null,
       email: validated.email || null,
@@ -1094,35 +1256,48 @@ export async function createSupplierAction(rawInput: unknown) {
  */
 export async function updateSupplierAction(rawInput: unknown) {
   const validated = BudgetSupplierUpdateSchema.parse(rawInput);
+  const categoryId = validated.category_id ? normalizeCategoryId(validated.category_id) : undefined;
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      if (validated.is_selected && validated.category_id) {
+      if (validated.is_selected && categoryId) {
         await adminClient
           .from('budget_suppliers')
           .update({ is_selected: false })
-          .eq('category_id', validated.category_id)
+          .eq('category_id', categoryId)
           .neq('id', validated.id);
       }
       const { id, ...updates } = validated;
-      await adminClient.from('budget_suppliers').update(updates).eq('id', id);
+      if (categoryId) updates.category_id = categoryId;
+      const { error } = await adminClient
+        .from('budget_suppliers')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase update supplier error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB update supplier exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB update supplier fallback:', err);
   }
 
   const stored = getStoredBudgetSuppliers();
   let nextSuppliers = stored;
-  if (validated.is_selected && validated.category_id) {
+  if (validated.is_selected && categoryId) {
     nextSuppliers = stored.map((s) =>
-      s.category_id === validated.category_id && s.id !== validated.id
+      s.category_id === categoryId && s.id !== validated.id
         ? { ...s, is_selected: false }
         : s
     );
   }
   nextSuppliers = nextSuppliers.map((s) =>
-    s.id === validated.id ? { ...s, ...validated, updated_at: new Date().toISOString() } : s
+    s.id === validated.id
+      ? { ...s, ...validated, ...(categoryId ? { category_id: categoryId } : {}), updated_at: new Date().toISOString() }
+      : s
   );
   setStoredBudgetSuppliers(nextSuppliers);
 
@@ -1135,34 +1310,39 @@ export async function updateSupplierAction(rawInput: unknown) {
  */
 export async function selectSupplierAction(rawInput: unknown) {
   const validated = BudgetSupplierSelectSchema.parse(rawInput);
+  const categoryId = normalizeCategoryId(validated.category_id);
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
       // Step 1: unselect all in category
       await adminClient
         .from('budget_suppliers')
-        .update({ is_selected: false })
-        .eq('category_id', validated.category_id);
+        .update({ is_selected: false, status: 'quoted' })
+        .eq('category_id', categoryId);
       // Step 2: select target supplier
-      await adminClient
+      const { error } = await adminClient
         .from('budget_suppliers')
-        .update({ is_selected: true, status: 'selected' })
+        .update({ is_selected: true, status: 'selected', updated_at: new Date().toISOString() })
         .eq('id', validated.supplier_id);
+
+      if (error) {
+        console.error('Supabase select supplier error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB select supplier exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB select supplier fallback:', err);
   }
 
   const stored = getStoredBudgetSuppliers();
   const nextSuppliers = stored.map((s) => {
-    if (s.category_id === validated.category_id) {
-      if (s.id === validated.supplier_id) {
-        return { ...s, is_selected: true, status: 'selected' as const, updated_at: new Date().toISOString() };
-      }
-      return { ...s, is_selected: false, status: s.status === 'selected' ? ('quoted' as const) : s.status };
+    if (s.category_id !== categoryId) return s;
+    if (s.id === validated.supplier_id) {
+      return { ...s, is_selected: true, status: 'selected' as const, updated_at: new Date().toISOString() };
     }
-    return s;
+    return { ...s, is_selected: false, status: s.status === 'selected' ? ('quoted' as const) : s.status, updated_at: new Date().toISOString() };
   });
   setStoredBudgetSuppliers(nextSuppliers);
 
@@ -1174,13 +1354,19 @@ export async function selectSupplierAction(rawInput: unknown) {
  * 7. Delete Supplier
  */
 export async function deleteSupplierAction(supplierId: string) {
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_suppliers').delete().eq('id', supplierId);
+      const { error } = await adminClient.from('budget_suppliers').delete().eq('id', supplierId);
+
+      if (error) {
+        console.error('Supabase delete supplier error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB delete supplier exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB delete supplier fallback:', err);
   }
 
   const stored = getStoredBudgetSuppliers().filter((s) => s.id !== supplierId);
@@ -1197,14 +1383,15 @@ export async function deleteSupplierAction(supplierId: string) {
  */
 export async function createPaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentCreateSchema.parse(rawInput);
-  const newId = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newId = crypto.randomUUID();
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_payments').insert({
+      const weddingId = await resolveWeddingUuid(adminClient);
+      const { error } = await adminClient.from('budget_payments').insert({
         id: newId,
-        wedding_id: BUDGET_WEDDING_ID,
+        wedding_id: weddingId,
         supplier_id: validated.supplier_id,
         amount: validated.amount,
         due_date: validated.due_date,
@@ -1212,9 +1399,15 @@ export async function createPaymentAction(rawInput: unknown) {
         status: validated.status,
         notes: validated.notes,
       });
+
+      if (error) {
+        console.error('Supabase create payment error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB create payment exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB create payment fallback:', err);
   }
 
   const stored = getStoredBudgetPayments();
@@ -1222,7 +1415,7 @@ export async function createPaymentAction(rawInput: unknown) {
     ...stored,
     {
       id: newId,
-      wedding_id: BUDGET_WEDDING_ID,
+      wedding_id: WEDDING_UUID,
       supplier_id: validated.supplier_id,
       amount: validated.amount,
       due_date: validated.due_date || null,
@@ -1244,14 +1437,23 @@ export async function createPaymentAction(rawInput: unknown) {
 export async function updatePaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentUpdateSchema.parse(rawInput);
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
       const { id, ...updates } = validated;
-      await adminClient.from('budget_payments').update(updates).eq('id', id);
+      const { error } = await adminClient
+        .from('budget_payments')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase update payment error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB update payment exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB update payment fallback:', err);
   }
 
   const stored = getStoredBudgetPayments();
@@ -1268,13 +1470,19 @@ export async function updatePaymentAction(rawInput: unknown) {
  * 10. Delete Payment
  */
 export async function deletePaymentAction(paymentId: string) {
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_payments').delete().eq('id', paymentId);
+      const { error } = await adminClient.from('budget_payments').delete().eq('id', paymentId);
+
+      if (error) {
+        console.error('Supabase delete payment error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB delete payment exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB delete payment fallback:', err);
   }
 
   const stored = getStoredBudgetPayments().filter((p) => p.id !== paymentId);
@@ -1290,12 +1498,13 @@ export async function deletePaymentAction(paymentId: string) {
 export async function updateMenuConfigAction(rawInput: unknown) {
   const validated = BudgetMenuConfigUpdateSchema.parse(rawInput);
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+  if (isSupabaseConfigured()) {
+    try {
       const adminClient = createAdminClient();
-      await adminClient.from('budget_menu_config').upsert(
+      const weddingId = await resolveWeddingUuid(adminClient);
+      const { error } = await adminClient.from('budget_menu_config').upsert(
         {
-          wedding_id: BUDGET_WEDDING_ID,
+          wedding_id: weddingId,
           adult_price: validated.adult_price,
           child_price: validated.child_price,
           adult_count_override: validated.adult_count_override,
@@ -1303,12 +1512,19 @@ export async function updateMenuConfigAction(rawInput: unknown) {
           use_manual_counts: validated.use_manual_counts,
           supplier_id: validated.supplier_id,
           notes: validated.notes,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: 'wedding_id' }
       );
+
+      if (error) {
+        console.error('Supabase update menu config error:', error);
+        return { success: false, error: error.message };
+      }
+    } catch (err: any) {
+      console.warn('DB update menu config exception:', err);
+      return { success: false, error: err?.message || 'Error al conectar con la base de datos' };
     }
-  } catch (err) {
-    console.warn('DB update menu config fallback:', err);
   }
 
   const stored = getStoredBudgetMenuConfig();

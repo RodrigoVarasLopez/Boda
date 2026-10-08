@@ -30,6 +30,7 @@ import {
 } from './budget-data';
 import { useWeddingData } from './guest-store';
 import {
+  getBudgetDataAction,
   createCategoryAction,
   updateCategoryAction,
   deleteCategoryAction,
@@ -62,6 +63,31 @@ export function useBudgetStore() {
     reloadData();
     setIsLoaded(true);
 
+    // Hydrate live from Supabase
+    let isMounted = true;
+    getBudgetDataAction().then((res) => {
+      if (res && res.success && isMounted) {
+        if (res.categories && res.categories.length > 0) {
+          setCategories(res.categories);
+          setStoredBudgetCategories(res.categories);
+        }
+        if (res.suppliers) {
+          setSuppliers(res.suppliers);
+          setStoredBudgetSuppliers(res.suppliers);
+        }
+        if (res.payments) {
+          setPayments(res.payments);
+          setStoredBudgetPayments(res.payments);
+        }
+        if (res.menuConfig) {
+          setMenuConfig(res.menuConfig);
+          setStoredBudgetMenuConfig(res.menuConfig);
+        }
+      }
+    }).catch((err) => {
+      console.warn('Initial Supabase budget sync notice:', err);
+    });
+
     const handleUpdate = () => reloadData();
     const handleStorage = (e: StorageEvent) => {
       if (
@@ -78,6 +104,7 @@ export function useBudgetStore() {
     window.addEventListener('storage', handleStorage);
 
     return () => {
+      isMounted = false;
       window.removeEventListener(BUDGET_UPDATE_EVENT, handleUpdate);
       window.removeEventListener('storage', handleStorage);
     };
@@ -109,8 +136,9 @@ export function useBudgetStore() {
     icon?: string | null;
     sort_order?: number;
   }) => {
+    const newCatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `c0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const newCat: BudgetCategory = {
-      id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: newCatId,
       wedding_id: WEDDING_ID,
       name: data.name,
       description: data.description || null,
@@ -125,7 +153,11 @@ export function useBudgetStore() {
     setStoredBudgetCategories(nextCats);
 
     try {
-      await createCategoryAction(data);
+      const res = await createCategoryAction(data);
+      if (res && res.id && res.id !== newCatId) {
+        newCat.id = res.id;
+        setStoredBudgetCategories(categories.map(c => c.id === newCatId ? { ...c, id: res.id } : c));
+      }
     } catch (e) {
       console.warn('Backend category sync notice:', e);
     }
@@ -191,7 +223,7 @@ export function useBudgetStore() {
     notes?: string | null;
     is_selected?: boolean;
   }) => {
-    const newSupplierId = `sup-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newSupplierId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `s0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const isSelected = Boolean(data.is_selected);
 
     // If marked selected, unselect others in same category
@@ -228,7 +260,11 @@ export function useBudgetStore() {
     setStoredBudgetSuppliers([...nextSuppliers, newSupplier]);
 
     try {
-      await createSupplierAction(data);
+      const res = await createSupplierAction(data);
+      if (res && res.id && res.id !== newSupplierId) {
+        newSupplier.id = res.id;
+        setStoredBudgetSuppliers([...nextSuppliers, { ...newSupplier, id: res.id }]);
+      }
     } catch (e) {
       console.warn('Backend supplier sync notice:', e);
     }
@@ -351,8 +387,9 @@ export function useBudgetStore() {
     status?: 'pending' | 'partial' | 'paid';
     notes?: string | null;
   }) => {
+    const newPaymentId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `p0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const newPayment: BudgetPayment = {
-      id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: newPaymentId,
       supplier_id: data.supplier_id,
       wedding_id: WEDDING_ID,
       amount: Number(data.amount),
@@ -367,7 +404,11 @@ export function useBudgetStore() {
     setStoredBudgetPayments([...payments, newPayment]);
 
     try {
-      await createPaymentAction(data);
+      const res = await createPaymentAction(data);
+      if (res && res.id && res.id !== newPaymentId) {
+        newPayment.id = res.id;
+        setStoredBudgetPayments([...payments, { ...newPayment, id: res.id }]);
+      }
     } catch (e) {
       console.warn('Backend payment create notice:', e);
     }
