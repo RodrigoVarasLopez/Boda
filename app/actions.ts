@@ -24,6 +24,7 @@ import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { INITIAL_GROUPS, INITIAL_WEDDING, INITIAL_EVENTS, INITIAL_RSVPS, INITIAL_CMS_BLOCKS } from '@/lib/mock-data';
 import {
   GuestGroup,
+  GroupRSVPSubmission,
   GuestRSVPResponse,
   Event,
   MediaPhoto,
@@ -255,6 +256,415 @@ export async function revokeInvitationAction(groupId: string) {
 
   revalidatePath('/admin/guests');
   return { success: true };
+}
+
+/**
+ * GET GUESTS DATA ACTION (Server Action)
+ * Loads groups, guests, invitations and RSVP responses directly from Supabase
+ */
+export async function getGuestsDataAction() {
+  if (isSupabaseConfigured()) {
+    try {
+      const adminClient = createAdminClient();
+      const weddingId = await resolveWeddingUuid(adminClient);
+
+      // 1. Fetch guest_groups
+      const { data: groupsData, error: grpErr } = await adminClient
+        .from('guest_groups')
+        .select(`
+          id,
+          wedding_id,
+          name,
+          display_name,
+          notes,
+          allow_plus_one,
+          max_plus_ones,
+          created_at,
+          updated_at
+        `)
+        .eq('wedding_id', weddingId)
+        .order('created_at', { ascending: true });
+
+      if (grpErr) {
+        console.error('Error fetching guest groups from Supabase:', grpErr);
+      }
+
+      if (groupsData && groupsData.length > 0) {
+        const groupIds = groupsData.map((g) => g.id);
+
+        // 2. Fetch guests for these groups
+        const { data: guestsData, error: gstErr } = await adminClient
+          .from('guests')
+          .select('*')
+          .in('group_id', groupIds);
+
+        if (gstErr) console.error('Error fetching guests from Supabase:', gstErr);
+
+        // 3. Fetch invitations for these groups
+        const { data: invitationsData, error: invErr } = await adminClient
+          .from('invitations')
+          .select('*')
+          .in('group_id', groupIds);
+
+        if (invErr) console.error('Error fetching invitations from Supabase:', invErr);
+
+        // 4. Fetch group_events
+        const { data: groupEventsData, error: geErr } = await adminClient
+          .from('group_events')
+          .select('group_id, event_id, is_visible')
+          .in('group_id', groupIds)
+          .eq('is_visible', true);
+
+        if (geErr) console.error('Error fetching group events from Supabase:', geErr);
+
+        // 5. Fetch rsvp_responses for these invitations
+        const invIds = (invitationsData || []).map((i) => i.id);
+        let rsvpsData: any[] = [];
+        if (invIds.length > 0) {
+          const { data: rsvps, error: rsvpErr } = await adminClient
+            .from('rsvp_responses')
+            .select('*')
+            .in('invitation_id', invIds);
+          if (rsvpErr) console.error('Error fetching rsvp responses from Supabase:', rsvpErr);
+          if (rsvps) rsvpsData = rsvps;
+        }
+
+        // Map into GuestGroup[]
+        const mappedGroups: GuestGroup[] = groupsData.map((g) => {
+          const inv = invitationsData?.find((i) => i.group_id === g.id);
+          const grpGuests = (guestsData || []).filter((gst) => gst.group_id === g.id);
+          const allowedEvents = (groupEventsData || [])
+            .filter((ge) => ge.group_id === g.id)
+            .map((ge) => ge.event_id);
+
+          const mappedEventIds = allowedEvents.map((eid) => {
+            if (eid === 'b0000000-0000-0000-0000-000000000001') return 'evt-preboda-cata';
+            if (eid === 'b0000000-0000-0000-0000-000000000002') return 'evt-ceremonia';
+            if (eid === 'b0000000-0000-0000-0000-000000000003') return 'evt-banquete';
+            if (eid === 'b0000000-0000-0000-0000-000000000004') return 'evt-fiesta-dj';
+            return eid;
+          });
+
+          let status: any = 'draft';
+          if (inv) {
+            if (inv.status === 'revoked') status = 'revoked';
+            else if (inv.responded_at || rsvpsData.some((r) => r.invitation_id === inv.id)) status = 'responded';
+            else if (inv.opened_at) status = 'opened';
+            else status = 'sent';
+          }
+
+          return {
+            id: g.id,
+            wedding_id: g.wedding_id,
+            name: g.name,
+            token: inv?.token_preview || `token-${g.id.substring(0, 8)}`,
+            invitation_status: status,
+            opened_at: inv?.opened_at || undefined,
+            responded_at: inv?.responded_at || undefined,
+            custom_message: g.notes || undefined,
+            allowed_event_ids: mappedEventIds.length > 0 ? mappedEventIds : ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
+            guests: grpGuests.map((gst) => ({
+              id: gst.id,
+              wedding_id: g.wedding_id,
+              group_id: g.id,
+              first_name: gst.first_name,
+              last_name: gst.last_name || '',
+              email: gst.email || undefined,
+              phone: gst.phone || undefined,
+              is_child: Boolean(gst.is_child || gst.guest_type === 'child'),
+              guest_type: (gst.guest_type as any) || (gst.is_child ? 'child' : 'adult'),
+              is_plus_one_allowed: Boolean(gst.allow_plus_one),
+              dietary_restrictions: (gst.dietary_restrictions as any) || undefined,
+              allergies: gst.allergies || undefined,
+              notes: gst.notes || undefined,
+            })),
+          };
+        });
+
+        // Map into GroupRSVPSubmission[]
+        const mappedRSVPs: GroupRSVPSubmission[] = (invitationsData || []).map((inv) => {
+          const invResponses = rsvpsData.filter((r) => r.invitation_id === inv.id);
+          const grp = mappedGroups.find((g) => g.id === inv.group_id);
+          return {
+            group_id: inv.group_id,
+            token: inv.token_preview,
+            submitted_at: inv.responded_at || new Date().toISOString(),
+            responses: invResponses.map((r) => {
+              const gst = grp?.guests.find((g) => g.id === r.guest_id);
+              return {
+                guest_id: r.guest_id,
+                guest_name: gst ? `${gst.first_name} ${gst.last_name}`.trim() : 'Invitado',
+                status: r.status,
+                attending_event_ids: r.status === 'attending' ? (grp?.allowed_event_ids || []) : [],
+                dietary_choice: r.menu_choice || 'standard',
+                allergies: r.allergies || undefined,
+                plus_one_attending: r.plus_one_attending,
+                plus_one_name: r.plus_one_name || undefined,
+                message: r.message || undefined,
+              };
+            }),
+          };
+        }).filter((r) => r.responses.length > 0);
+
+        return {
+          success: true,
+          source: 'supabase',
+          groups: mappedGroups,
+          rsvps: mappedRSVPs,
+        };
+      }
+    } catch (err) {
+      console.warn('Error fetching guests from Supabase:', err);
+    }
+  }
+
+  return {
+    success: false,
+    source: 'local',
+    groups: [],
+    rsvps: [],
+  };
+}
+
+/**
+ * CREATE GUEST GROUP ACTION (Server Action)
+ * Persists group, guests, allowed events and invitation token to Supabase
+ */
+export async function createGuestGroupAction(rawInput: unknown) {
+  const validated = GuestGroupCreateSchema.parse(rawInput);
+  const groupId = crypto.randomUUID();
+  const rawToken = `token-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`;
+  const tokenHash = await hashToken(rawToken);
+
+  let weddingId = WEDDING_UUID;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const adminClient = createAdminClient();
+      weddingId = await resolveWeddingUuid(adminClient);
+
+      // 1. Insert guest_group
+      const { error: grpErr } = await adminClient.from('guest_groups').insert({
+        id: groupId,
+        wedding_id: weddingId,
+        name: validated.name,
+        notes: validated.custom_message || null,
+        allow_plus_one: validated.guests.some((g) => g.is_plus_one_allowed),
+        max_plus_ones: validated.guests.filter((g) => g.is_plus_one_allowed).length || 1,
+      });
+
+      if (grpErr) {
+        console.error('Supabase create guest group error:', grpErr);
+        return { success: false, error: grpErr.message };
+      }
+
+      // 2. Insert guests
+      const guestRows = validated.guests.map((g, idx) => ({
+        id: crypto.randomUUID(),
+        group_id: groupId,
+        first_name: g.first_name,
+        last_name: g.last_name || '',
+        email: g.email || null,
+        phone: g.phone || null,
+        is_child: Boolean(g.is_child),
+        guest_type: g.is_child ? 'child' : 'adult',
+        is_primary_contact: idx === 0,
+        allow_plus_one: Boolean(g.is_plus_one_allowed),
+        dietary_restrictions: g.dietary_restrictions || null,
+        allergies: g.allergies || null,
+        notes: g.notes || null,
+        status: 'pending',
+      }));
+
+      const { error: gstErr } = await adminClient.from('guests').insert(guestRows);
+      if (gstErr) console.error('Supabase create guests error:', gstErr);
+
+      // 3. Insert invitation
+      const { error: invErr } = await adminClient.from('invitations').insert({
+        id: crypto.randomUUID(),
+        wedding_id: weddingId,
+        group_id: groupId,
+        token_hash: tokenHash,
+        token_preview: rawToken,
+        status: 'active',
+      });
+      if (invErr) console.error('Supabase create invitation error:', invErr);
+
+      // 4. Insert group_events
+      const eventUuidMap: Record<string, string> = {
+        'evt-preboda-cata': 'b0000000-0000-0000-0000-000000000001',
+        'evt-ceremonia': 'b0000000-0000-0000-0000-000000000002',
+        'evt-banquete': 'b0000000-0000-0000-0000-000000000003',
+        'evt-fiesta-dj': 'b0000000-0000-0000-0000-000000000004',
+      };
+
+      const groupEventRows = validated.allowed_event_ids.map((eid) => ({
+        id: crypto.randomUUID(),
+        group_id: groupId,
+        event_id: eventUuidMap[eid] || eid,
+        is_visible: true,
+      }));
+
+      if (groupEventRows.length > 0) {
+        const { error: geErr } = await adminClient.from('group_events').insert(groupEventRows);
+        if (geErr) console.error('Supabase create group_events error:', geErr);
+      }
+    } catch (err: any) {
+      console.warn('DB create guest group exception:', err);
+      return { success: false, error: err?.message || 'Error al guardar invitado en Supabase' };
+    }
+  }
+
+  // Create GuestGroup DTO
+  const newGroup: GuestGroup = {
+    id: groupId,
+    wedding_id: weddingId,
+    name: validated.name,
+    token: rawToken,
+    invitation_status: 'draft',
+    custom_message: validated.custom_message,
+    allowed_event_ids: validated.allowed_event_ids,
+    guests: validated.guests.map((g) => ({
+      id: crypto.randomUUID(),
+      wedding_id: weddingId,
+      group_id: groupId,
+      first_name: g.first_name,
+      last_name: g.last_name || '',
+      email: g.email || undefined,
+      phone: g.phone || undefined,
+      is_child: Boolean(g.is_child),
+      guest_type: g.is_child ? 'child' : 'adult',
+      is_plus_one_allowed: Boolean(g.is_plus_one_allowed),
+      dietary_restrictions: (g.dietary_restrictions as any) || undefined,
+      allergies: g.allergies || undefined,
+      notes: g.notes || undefined,
+    })),
+  };
+
+  INITIAL_GROUPS.push(newGroup);
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin');
+  return { success: true, group: newGroup, token: rawToken };
+}
+
+/**
+ * DELETE GUEST GROUP ACTION (Server Action)
+ */
+export async function deleteGuestGroupAction(groupId: string) {
+  if (isSupabaseConfigured()) {
+    try {
+      const adminClient = createAdminClient();
+      const { data: invs } = await adminClient.from('invitations').select('id').eq('group_id', groupId);
+      if (invs && invs.length > 0) {
+        const invIds = invs.map((i: any) => i.id);
+        await adminClient.from('rsvp_responses').delete().in('invitation_id', invIds);
+        await adminClient.from('invitations').delete().eq('group_id', groupId);
+      }
+      await adminClient.from('group_events').delete().eq('group_id', groupId);
+      await adminClient.from('guests').delete().eq('group_id', groupId);
+      await adminClient.from('guest_groups').delete().eq('id', groupId);
+    } catch (err) {
+      console.warn('Error deleting guest group from Supabase:', err);
+    }
+  }
+
+  const idx = INITIAL_GROUPS.findIndex((g) => g.id === groupId);
+  if (idx >= 0) INITIAL_GROUPS.splice(idx, 1);
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+/**
+ * SYNC ALL LOCAL GUESTS TO SUPABASE ACTION (Server Action)
+ */
+export async function syncAllLocalGuestsToSupabaseAction(localGroups: GuestGroup[]) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado aún' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const weddingId = await resolveWeddingUuid(adminClient);
+    let synced = 0;
+
+    for (const grp of localGroups) {
+      const token = grp.token || `token-${Math.random().toString(36).substring(2, 8)}`;
+      const tokenHash = await hashToken(token);
+
+      // Check if group already in Supabase
+      const { data: existing } = await adminClient
+        .from('guest_groups')
+        .select('id')
+        .eq('name', grp.name)
+        .eq('wedding_id', weddingId)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const groupId = crypto.randomUUID();
+      await adminClient.from('guest_groups').insert({
+        id: groupId,
+        wedding_id: weddingId,
+        name: grp.name,
+        notes: grp.custom_message || null,
+        allow_plus_one: grp.guests.some((g) => g.is_plus_one_allowed),
+        max_plus_ones: 1,
+      });
+
+      const guestRows = grp.guests.map((g, idx) => ({
+        id: crypto.randomUUID(),
+        group_id: groupId,
+        first_name: g.first_name,
+        last_name: g.last_name || '',
+        email: g.email || null,
+        phone: g.phone || null,
+        is_child: Boolean(g.is_child || g.guest_type === 'child'),
+        guest_type: g.is_child || g.guest_type === 'child' ? 'child' : 'adult',
+        is_primary_contact: idx === 0,
+        allow_plus_one: Boolean(g.is_plus_one_allowed),
+        status: 'pending',
+      }));
+      await adminClient.from('guests').insert(guestRows);
+
+      await adminClient.from('invitations').insert({
+        id: crypto.randomUUID(),
+        wedding_id: weddingId,
+        group_id: groupId,
+        token_hash: tokenHash,
+        token_preview: token,
+        status: grp.invitation_status === 'revoked' ? 'revoked' : 'active',
+      });
+
+      const eventUuidMap: Record<string, string> = {
+        'evt-preboda-cata': 'b0000000-0000-0000-0000-000000000001',
+        'evt-ceremonia': 'b0000000-0000-0000-0000-000000000002',
+        'evt-banquete': 'b0000000-0000-0000-0000-000000000003',
+        'evt-fiesta-dj': 'b0000000-0000-0000-0000-000000000004',
+      };
+      const allowedEvents = grp.allowed_event_ids || ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'];
+      const geRows = allowedEvents.map((eid) => ({
+        id: crypto.randomUUID(),
+        group_id: groupId,
+        event_id: eventUuidMap[eid] || eid,
+        is_visible: true,
+      }));
+      if (geRows.length > 0) {
+        await adminClient.from('group_events').insert(geRows);
+      }
+
+      synced++;
+    }
+
+    revalidatePath('/admin/guests');
+    revalidatePath('/admin');
+    return { success: true, count: synced };
+  } catch (err: any) {
+    console.error('Error syncing local guests to Supabase:', err);
+    return { success: false, error: err?.message };
+  }
 }
 
 /**

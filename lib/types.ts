@@ -42,6 +42,8 @@ export interface Guest {
   group_id: string;
   first_name: string;
   last_name: string;
+  email?: string;
+  phone?: string;
   is_plus_one_allowed: boolean;
   dietary_restrictions?: string;
   allergies?: string;

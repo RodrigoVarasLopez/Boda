@@ -18,7 +18,8 @@ import {
   Clock,
   Sparkles,
   UserCheck,
-  PhoneCall
+  PhoneCall,
+  Trash2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
@@ -33,6 +34,7 @@ interface GuestDrawerProps {
   onClose: () => void;
   onUpdateGroup?: (updatedGroup: GuestGroup) => void;
   onUpdateGuestType?: (guestId: string, guestType: 'adult' | 'child') => void;
+  onDeleteGroup?: (groupId: string) => void | Promise<any>;
 }
 
 export const GuestDrawer: React.FC<GuestDrawerProps> = ({
@@ -43,6 +45,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   onClose,
   onUpdateGroup,
   onUpdateGuestType,
+  onDeleteGroup,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -107,6 +110,20 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
         group.invitation_status = 'revoked';
         alert('Invitación revocada.');
       }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!group) return;
+    if (!confirm(`¿Estás seguro de eliminar permanentemente a "${group.name}" y todos sus invitados?`)) return;
+    setIsProcessing(true);
+    try {
+      if (onDeleteGroup) {
+        await onDeleteGroup(group.id);
+      }
+      onClose();
     } finally {
       setIsProcessing(false);
     }
@@ -375,24 +392,37 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
               )}
             </div>
 
-            {/* Danger Actions: Regenerate / Revoke */}
-            <div className="flex gap-2 pt-3 border-t border-border-subtle">
-              <button
-                onClick={handleRegenerate}
-                disabled={isProcessing}
-                className="flex-1 py-2 px-3 rounded-xl border border-border-subtle text-[11px] font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Regenerar</span>
-              </button>
-              <button
-                onClick={handleRevoke}
-                disabled={isProcessing}
-                className="flex-1 py-2 px-3 rounded-xl border border-rose-200 text-[11px] font-medium text-rose-700 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Ban className="w-3.5 h-3.5" />
-                <span>Revocar</span>
-              </button>
+            {/* Danger Actions: Regenerate / Revoke / Delete */}
+            <div className="space-y-2 pt-3 border-t border-border-subtle">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRegenerate}
+                  disabled={isProcessing}
+                  className="flex-1 py-2 px-3 rounded-xl border border-border-subtle text-[11px] font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Regenerar</span>
+                </button>
+                <button
+                  onClick={handleRevoke}
+                  disabled={isProcessing}
+                  className="flex-1 py-2 px-3 rounded-xl border border-rose-200 text-[11px] font-medium text-rose-700 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Revocar</span>
+                </button>
+              </div>
+
+              {onDeleteGroup && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isProcessing}
+                  className="w-full py-2 px-3 rounded-xl border border-rose-300 text-[11px] font-medium text-rose-700 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Eliminar invitación permanentemente</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

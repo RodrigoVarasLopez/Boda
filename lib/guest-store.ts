@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { INITIAL_GROUPS, INITIAL_RSVPS, INITIAL_EVENTS, INITIAL_WEDDING } from './mock-data';
 import { GuestGroup, GroupRSVPSubmission, GuestRSVPResponse, DietaryOption, RSVPStatus } from './types';
-import { recordManualRSVPAction } from '@/app/actions';
+import {
+  recordManualRSVPAction,
+  getGuestsDataAction,
+  createGuestGroupAction,
+  deleteGuestGroupAction,
+  syncAllLocalGuestsToSupabaseAction,
+  updateGuestTypeAction,
+} from '@/app/actions';
 
 const STORAGE_KEY_GROUPS = 'boda_groups_store_v2';
 const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v2';
@@ -9,7 +16,7 @@ const UPDATE_EVENT_NAME = 'boda_store_updated';
 
 // Helper to get initial groups
 export function getStoredGroups(): GuestGroup[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return INITIAL_GROUPS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GROUPS);
     if (raw !== null) {
@@ -19,12 +26,12 @@ export function getStoredGroups(): GuestGroup[] {
   } catch (e) {
     console.warn('Error reading stored groups:', e);
   }
-  return [];
+  return INITIAL_GROUPS;
 }
 
 // Helper to get initial RSVPs
 export function getStoredRSVPS(): GroupRSVPSubmission[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return INITIAL_RSVPS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_RSVPS);
     if (raw !== null) {
@@ -34,7 +41,7 @@ export function getStoredRSVPS(): GroupRSVPSubmission[] {
   } catch (e) {
     console.warn('Error reading stored RSVPs:', e);
   }
-  return [];
+  return INITIAL_RSVPS;
 }
 
 // Save groups to localStorage and memory
@@ -207,16 +214,45 @@ export function useWeddingData() {
   const [groups, setGroups] = useState<GuestGroup[]>(INITIAL_GROUPS);
   const [rsvps, setRsvps] = useState<GroupRSVPSubmission[]>(INITIAL_RSVPS);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSupabaseOnline, setIsSupabaseOnline] = useState(false);
 
   const reloadData = useCallback(() => {
     setGroups(getStoredGroups());
     setRsvps(getStoredRSVPS());
   }, []);
 
+  // Hydrate from Supabase and sync with localStorage
+  const fetchSupabaseData = useCallback(async () => {
+    setIsLoadingSupabase(true);
+    try {
+      const res = await getGuestsDataAction();
+      if (res && res.success && res.source === 'supabase') {
+        setIsSupabaseOnline(true);
+        if (res.groups && res.groups.length > 0) {
+          setGroups(res.groups);
+          setRsvps(res.rsvps || []);
+          setStoredGroups(res.groups);
+          setStoredRSVPs(res.rsvps || []);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching guests from Supabase:', err);
+    } finally {
+      setIsLoadingSupabase(false);
+    }
+  }, []);
+
   useEffect(() => {
+    // 1. Initial fast local load
     reloadData();
     setIsLoaded(true);
 
+    // 2. Network hydration from Supabase
+    fetchSupabaseData();
+
+    // 3. Event listeners for cross-tab or cross-component state updates
     const handleUpdate = () => reloadData();
     window.addEventListener(UPDATE_EVENT_NAME, handleUpdate);
     window.addEventListener('storage', handleUpdate);
@@ -225,7 +261,67 @@ export function useWeddingData() {
       window.removeEventListener(UPDATE_EVENT_NAME, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [reloadData]);
+  }, [reloadData, fetchSupabaseData]);
+
+  // Create Guest Group
+  const createGroup = async (input: unknown) => {
+    setIsSyncing(true);
+    try {
+      const res = await createGuestGroupAction(input);
+      if (res.success && res.group) {
+        const current = getStoredGroups();
+        const updated = [res.group, ...current.filter((g) => g.id !== res.group.id)];
+        setStoredGroups(updated);
+        setGroups(updated);
+        return res;
+      }
+      return res;
+    } catch (err: any) {
+      console.error('Failed to create guest group:', err);
+      return { success: false, error: err?.message || 'Error al crear grupo' };
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Delete Guest Group
+  const deleteGroup = async (groupId: string) => {
+    setIsSyncing(true);
+    try {
+      const res = await deleteGuestGroupAction(groupId);
+      if (res.success) {
+        const current = getStoredGroups();
+        const updated = current.filter((g) => g.id !== groupId);
+        setStoredGroups(updated);
+        setGroups(updated);
+        return res;
+      }
+      return res;
+    } catch (err: any) {
+      console.error('Failed to delete guest group:', err);
+      return { success: false, error: err?.message || 'Error al eliminar grupo' };
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Sync all local guests to Supabase
+  const syncLocalGuestsToSupabase = async () => {
+    setIsSyncing(true);
+    try {
+      const current = getStoredGroups();
+      const res = await syncAllLocalGuestsToSupabaseAction(current);
+      if (res.success) {
+        await fetchSupabaseData();
+      }
+      return res;
+    } catch (err: any) {
+      console.error('Failed to sync guests to Supabase:', err);
+      return { success: false, error: err?.message || 'Error al sincronizar con Supabase' };
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Compute Headcount & Analytics
   const totalGuests = groups.reduce((acc, g) => acc + g.guests.length, 0);
@@ -296,11 +392,20 @@ export function useWeddingData() {
 
     if (updated) {
       setStoredGroups([...currentGroups]);
+      setGroups([...currentGroups]);
     }
+
+    // Call server action to persist in Supabase as well
+    updateGuestTypeAction({ guest_id: guestId, guest_type: guestType }).catch((e) =>
+      console.warn('Error syncing guest_type to server:', e)
+    );
   };
 
   return {
     isLoaded,
+    isLoadingSupabase,
+    isSyncing,
+    isSupabaseOnline,
     groups,
     rsvps,
     allResponses,
@@ -321,6 +426,10 @@ export function useWeddingData() {
     saveManualRSVP: saveManualGroupRSVP,
     quickConfirmGroup: quickConfirmGroupAttendance,
     updateGuestType,
+    createGroup,
+    deleteGroup,
+    syncLocalGuestsToSupabase,
     refresh: reloadData,
+    refreshSupabase: fetchSupabaseData,
   };
 }
