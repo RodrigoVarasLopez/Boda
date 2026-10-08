@@ -59,6 +59,20 @@ async function run() {
     // Enable domains
     await send('Network.enable');
     await send('Page.enable');
+    await send('Runtime.enable');
+
+    ws.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.method === 'Runtime.consoleAPICalled') {
+        const text = data.params.args.map((a) => a.value || a.description || '').join(' ');
+        if (data.params.type === 'error' || data.params.type === 'warning') {
+          console.log(`[BROWSER ${data.params.type.toUpperCase()}]:`, text);
+        }
+      }
+      if (data.method === 'Runtime.exceptionThrown') {
+        console.error('[BROWSER EXCEPTION]:', data.params.exceptionDetails.text);
+      }
+    });
 
     // Set demo cookie
     await send('Network.setCookie', {
@@ -70,6 +84,12 @@ async function run() {
     console.log('[CDP] Demo cookie set successfully');
 
     const tasks = [
+      {
+        name: 'evidence_admin_overview.png',
+        url: 'http://localhost:3000/admin',
+        width: 1440,
+        height: 1100,
+      },
       {
         name: 'evidence_admin_budget_desktop.png',
         url: 'http://localhost:3000/admin/budget',

@@ -21,21 +21,21 @@ import {
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
 
+const NAV_ITEMS = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
+  { href: '/admin/guests', label: 'Invitados', icon: Users },
+  { href: '/admin/rsvp', label: 'RSVP', icon: ClipboardCheck },
+  { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
+  { href: '/admin/cms', label: 'Web & CMS', icon: PanelsTopLeft },
+  { href: '/admin/guestbook', label: 'Firmas', icon: BookOpen },
+  { href: '/admin/media', label: 'Memorias', icon: ImageIcon },
+  { href: '/admin/settings', label: 'Ajustes', icon: Settings2 },
+];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const navItems = [
-    { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-    { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
-    { href: '/admin/guests', label: 'Invitados', icon: Users },
-    { href: '/admin/rsvp', label: 'RSVP', icon: ClipboardCheck },
-    { href: '/admin/events', label: 'Eventos', icon: CalendarDays },
-    { href: '/admin/cms', label: 'Web & CMS', icon: PanelsTopLeft },
-    { href: '/admin/guestbook', label: 'Firmas', icon: BookOpen },
-    { href: '/admin/media', label: 'Memorias', icon: ImageIcon },
-    { href: '/admin/settings', label: 'Ajustes', icon: Settings2 },
-  ];
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col transition-colors duration-300">
@@ -140,7 +140,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex md:w-56 bg-bg-card border-r border-border-subtle flex-col justify-between p-4 sticky top-[61px] h-[calc(100vh-61px)] z-30">
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-bg-card border-b border-border-subtle p-4 space-y-1.5 animate-fade-in z-30">
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
