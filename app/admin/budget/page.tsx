@@ -10,7 +10,11 @@ import {
   BUDGET_TYPE_LABELS,
   SUPPLIER_STATUS_LABELS,
 } from '@/lib/types';
-import { getEffectiveSupplierPrice } from '@/lib/budget-data';
+import {
+  getEffectiveSupplierPrice,
+  isPaymentSettled,
+  getSupplierFinalPaymentInfo,
+} from '@/lib/budget-data';
 import { BudgetDashboard } from '@/components/admin/budget/BudgetDashboard';
 import { MenuCostCalculator } from '@/components/admin/budget/MenuCostCalculator';
 import { CategoryCard } from '@/components/admin/budget/CategoryCard';
@@ -47,6 +51,8 @@ export default function AdminBudgetPage() {
     createPayment,
     updatePayment,
     deletePayment,
+    markPaymentAsPaid,
+    setSupplierFinalPaymentDate,
     updateMenuConfig,
   } = useBudgetStore();
 
@@ -86,6 +92,9 @@ export default function AdminBudgetPage() {
         pendingAmount: number;
         paymentStatus: 'none' | 'pending' | 'partial' | 'paid';
         selectedSupplier: BudgetSupplier | null;
+        categoryPayments: BudgetPayment[];
+        finalPaymentDueDate: string | null;
+        daysUntilFinalPayment: number | null;
       }
     > = {};
 
@@ -96,6 +105,9 @@ export default function AdminBudgetPage() {
         pendingAmount: item.pendingAmount,
         paymentStatus: item.paymentStatus,
         selectedSupplier: item.selectedSupplier,
+        categoryPayments: item.categoryPayments,
+        finalPaymentDueDate: item.finalPaymentDueDate,
+        daysUntilFinalPayment: item.daysUntilFinalPayment,
       };
     }
     return map;
@@ -142,6 +154,7 @@ export default function AdminBudgetPage() {
         'Total Pagado (€)',
         'Total Pendiente (€)',
         'Estado Pago',
+        'Fecha Pago Final',
         'Notas / Comentarios',
       ];
 
@@ -192,6 +205,7 @@ export default function AdminBudgetPage() {
           Number(paidPrice).toFixed(2),
           Number(pendingPrice).toFixed(2),
           `"${paymentStatusLabel}"`,
+          `"${catMetric?.finalPaymentDueDate || ''}"`,
           `"${notes.replace(/"/g, '""')}"`,
         ].join(',');
       });
@@ -208,6 +222,7 @@ export default function AdminBudgetPage() {
         Number(metrics.totalContracted).toFixed(2),
         Number(metrics.totalPaid).toFixed(2),
         Number(metrics.totalPending).toFixed(2),
+        '""',
         '""',
         `"Generado: ${new Date().toLocaleDateString('es-ES')}"`,
       ].join(',');
@@ -272,7 +287,7 @@ export default function AdminBudgetPage() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-card hover:bg-neutral-50 text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
+            className="px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-card hover:bg-neutral-50 text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             title="Descargar presupuesto completo en formato CSV / Excel"
           >
             <Download className="w-4 h-4 text-text-muted" />
@@ -285,7 +300,7 @@ export default function AdminBudgetPage() {
               setSupplierModalCategory(categories[0] || null);
               setIsSupplierModalOpen(true);
             }}
-            className="px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-card hover:bg-neutral-50 text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
+            className="px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-card hover:bg-neutral-50 text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
           >
             <Building className="w-4 h-4 text-primary" />
             <span>+ Proveedor</span>
@@ -296,7 +311,7 @@ export default function AdminBudgetPage() {
               setCategoryToEdit(null);
               setIsCategoryModalOpen(true);
             }}
-            className="px-4 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md"
+            className="px-4 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>+ Añadir Categoría</span>
@@ -315,6 +330,15 @@ export default function AdminBudgetPage() {
           setSupplierToEdit(null);
           setSupplierModalCategory(categories[0] || null);
           setIsSupplierModalOpen(true);
+        }}
+        onOpenSupplierPayment={(sup) => {
+          setPaymentModalSupplier(sup);
+          setPaymentToEdit(null);
+          setIsPaymentModalOpen(true);
+        }}
+        onMarkPaymentPaid={async (payId) => {
+          await markPaymentAsPaid(payId);
+          showToast('¡Pago marcado como abonado!');
         }}
       />
 
@@ -359,7 +383,7 @@ export default function AdminBudgetPage() {
             <div className="flex items-center gap-1 bg-neutral-100/70 p-1 rounded-xl border border-neutral-200/60 text-xs">
               <button
                 onClick={() => setTypeFilter('all')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                   typeFilter === 'all'
                     ? 'bg-white text-text-primary shadow-2xs font-semibold'
                     : 'text-text-secondary hover:text-text-primary'
@@ -369,7 +393,7 @@ export default function AdminBudgetPage() {
               </button>
               <button
                 onClick={() => setTypeFilter('fixed')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                   typeFilter === 'fixed'
                     ? 'bg-white text-text-primary shadow-2xs font-semibold'
                     : 'text-text-secondary hover:text-text-primary'
@@ -379,7 +403,7 @@ export default function AdminBudgetPage() {
               </button>
               <button
                 onClick={() => setTypeFilter('per_guest')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                   typeFilter === 'per_guest'
                     ? 'bg-white text-text-primary shadow-2xs font-semibold'
                     : 'text-text-secondary hover:text-text-primary'
@@ -389,7 +413,7 @@ export default function AdminBudgetPage() {
               </button>
               <button
                 onClick={() => setTypeFilter('mixed')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                   typeFilter === 'mixed'
                     ? 'bg-white text-text-primary shadow-2xs font-semibold'
                     : 'text-text-secondary hover:text-text-primary'
@@ -399,7 +423,7 @@ export default function AdminBudgetPage() {
               </button>
               <button
                 onClick={() => setTypeFilter('unpaid')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                   typeFilter === 'unpaid'
                     ? 'bg-amber-100 text-amber-900 shadow-2xs font-semibold'
                     : 'text-amber-800 hover:text-amber-900'
@@ -428,7 +452,7 @@ export default function AdminBudgetPage() {
                 setCategoryToEdit(null);
                 setIsCategoryModalOpen(true);
               }}
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover inline-flex items-center gap-1.5"
+              className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Añadir primera categoría</span>
@@ -445,6 +469,9 @@ export default function AdminBudgetPage() {
                 pendingAmount: 0,
                 paymentStatus: 'none' as const,
                 selectedSupplier: null,
+                categoryPayments: [],
+                finalPaymentDueDate: null,
+                daysUntilFinalPayment: null,
               };
 
               return (
@@ -457,6 +484,9 @@ export default function AdminBudgetPage() {
                   paidAmount={catMetric.paidAmount}
                   pendingAmount={catMetric.pendingAmount}
                   paymentStatus={catMetric.paymentStatus}
+                  categoryPayments={catMetric.categoryPayments}
+                  finalPaymentDueDate={catMetric.finalPaymentDueDate}
+                  daysUntilFinalPayment={catMetric.daysUntilFinalPayment}
                   onOpenComparator={(cat) => {
                     setComparatorCategory(cat);
                   }}
@@ -465,10 +495,20 @@ export default function AdminBudgetPage() {
                     setSupplierModalCategory(cat);
                     setIsSupplierModalOpen(true);
                   }}
-                  onOpenAddPayment={(sup) => {
+                  onOpenAddPayment={(sup, payEdit = null) => {
                     setPaymentModalSupplier(sup);
-                    setPaymentToEdit(null);
+                    setPaymentToEdit(payEdit);
                     setIsPaymentModalOpen(true);
+                  }}
+                  onMarkPaymentPaid={async (payId) => {
+                    await markPaymentAsPaid(payId);
+                    showToast('¡Pago marcado como abonado!');
+                  }}
+                  onDeletePayment={async (payId) => {
+                    if (window.confirm('¿Eliminar este registro de pago?')) {
+                      await deletePayment(payId);
+                      showToast('Pago eliminado');
+                    }
                   }}
                   onEditCategory={(cat) => {
                     setCategoryToEdit(cat);
@@ -529,12 +569,16 @@ export default function AdminBudgetPage() {
         categories={categories}
         initialCategory={supplierModalCategory}
         supplierToEdit={supplierToEdit}
+        initialFinalPaymentDate={
+          supplierToEdit ? getSupplierFinalPaymentInfo(supplierToEdit.id, payments).dueDate : null
+        }
         onClose={() => {
           setIsSupplierModalOpen(false);
           setSupplierToEdit(null);
           setSupplierModalCategory(null);
         }}
         onSubmit={async (data) => {
+          const effPrice = getEffectiveSupplierPrice(data);
           if (data.id) {
             await updateSupplier({
               id: data.id,
@@ -554,9 +598,12 @@ export default function AdminBudgetPage() {
               notes: data.notes,
               is_selected: data.is_selected,
             });
+            if (data.final_payment_date !== undefined) {
+              await setSupplierFinalPaymentDate(data.id, data.final_payment_date || null, effPrice);
+            }
             showToast(`Proveedor "${data.name}" actualizado`);
           } else {
-            await createSupplier({
+            const created = await createSupplier({
               category_id: data.category_id,
               name: data.name,
               contact_name: data.contact_name,
@@ -573,6 +620,9 @@ export default function AdminBudgetPage() {
               notes: data.notes,
               is_selected: data.is_selected,
             });
+            if (data.final_payment_date && created?.id) {
+              await setSupplierFinalPaymentDate(created.id, data.final_payment_date, effPrice);
+            }
             showToast(`Proveedor "${data.name}" registrado`);
           }
         }}
@@ -622,15 +672,36 @@ export default function AdminBudgetPage() {
         <PaymentFormModal
           isOpen={isPaymentModalOpen}
           supplier={paymentModalSupplier}
+          supplierPayments={payments.filter((p) => p.supplier_id === paymentModalSupplier.id)}
           paymentToEdit={paymentToEdit}
           contractedTotal={getEffectiveSupplierPrice(paymentModalSupplier)}
           alreadyPaidAmount={payments
-            .filter((p) => p.supplier_id === paymentModalSupplier.id && p.status === 'paid')
-            .reduce((acc, p) => acc + p.amount, 0)}
+            .filter((p) => p.supplier_id === paymentModalSupplier.id && isPaymentSettled(p))
+            .reduce((acc, p) => acc + Number(p.amount), 0)}
           onClose={() => {
             setIsPaymentModalOpen(false);
             setPaymentModalSupplier(null);
             setPaymentToEdit(null);
+          }}
+          onSelectPaymentToEdit={(pay) => setPaymentToEdit(pay)}
+          onDeletePayment={async (payId) => {
+            if (window.confirm('¿Eliminar este registro de pago?')) {
+              await deletePayment(payId);
+              if (paymentToEdit?.id === payId) setPaymentToEdit(null);
+              showToast('Pago eliminado');
+            }
+          }}
+          onMarkPaymentPaid={async (payId) => {
+            await markPaymentAsPaid(payId);
+            showToast('¡Pago marcado como abonado!');
+          }}
+          onSetFinalPaymentDate={async (supId, dueDate, total) => {
+            await setSupplierFinalPaymentDate(supId, dueDate, total);
+            showToast(
+              dueDate
+                ? 'Fecha límite de pago final guardada'
+                : 'Fecha límite de pago final eliminada'
+            );
           }}
           onSubmit={async (data) => {
             if (data.id) {
@@ -642,6 +713,13 @@ export default function AdminBudgetPage() {
                 status: data.status,
                 notes: data.notes,
               });
+              if (data.final_payment_date) {
+                await setSupplierFinalPaymentDate(
+                  data.supplier_id,
+                  data.final_payment_date,
+                  getEffectiveSupplierPrice(paymentModalSupplier)
+                );
+              }
               showToast('Pago actualizado con éxito');
             } else {
               await createPayment({
@@ -652,6 +730,13 @@ export default function AdminBudgetPage() {
                 status: data.status,
                 notes: data.notes,
               });
+              if (data.final_payment_date) {
+                await setSupplierFinalPaymentDate(
+                  data.supplier_id,
+                  data.final_payment_date,
+                  getEffectiveSupplierPrice(paymentModalSupplier)
+                );
+              }
               showToast('Pago registrado con éxito');
             }
           }}

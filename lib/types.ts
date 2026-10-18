@@ -254,8 +254,9 @@ export const BUDGET_TYPE_LABELS: Record<BudgetType, string> = {
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending: 'Pendiente',
-  partial: 'Parcial',
+  pending: 'Programado (Pendiente)',
+  partial: 'Señal / Parcial abonado',
   paid: 'Pagado',
 };
+
 

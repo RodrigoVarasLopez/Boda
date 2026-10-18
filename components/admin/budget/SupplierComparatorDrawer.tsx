@@ -363,15 +363,13 @@ export const SupplierComparatorDrawer: React.FC<SupplierComparatorDrawerProps> =
                         <span>Eliminar</span>
                       </button>
 
-                      {supplier.is_selected && (
-                        <button
-                          onClick={() => onAddPayment(supplier)}
-                          className="px-2.5 py-1.5 rounded-lg border border-border-subtle hover:border-border-strong text-text-primary text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer"
-                        >
-                          <CreditCard className="w-3 h-3 text-text-accent" />
-                          <span>Registrar pago</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => onAddPayment(supplier)}
+                        className="px-2.5 py-1.5 rounded-lg border border-border-subtle hover:border-border-strong text-text-primary text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <CreditCard className="w-3 h-3 text-text-accent" />
+                        <span>Registrar / Ver pagos</span>
+                      </button>
                     </div>
 
                     {!supplier.is_selected ? (

@@ -259,6 +259,108 @@ export function calculateMenuTotal(
   };
 }
 
+/**
+ * Determines whether a payment record represents money already paid/settled
+ * ('paid' or 'partial' deposit/installment) vs a future scheduled payment ('pending').
+ */
+export function isPaymentSettled(payment: BudgetPayment): boolean {
+  return payment.status === 'paid' || payment.status === 'partial';
+}
+
+/**
+ * Calculates calendar days from today to a target date string (YYYY-MM-DD or ISO).
+ * Negative = overdue, 0 = due today, Positive = days remaining.
+ */
+export function calculateDaysUntil(dateStr?: string | null): number | null {
+  if (!dateStr) return null;
+  const raw = dateStr.split('T')[0];
+  const parts = raw.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const target = new Date(parts[0], parts[1] - 1, parts[2]);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffMs = target.getTime() - today.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Formats a YYYY-MM-DD or ISO date string into Spanish readable format (e.g., 15 jul 2027)
+ */
+export function formatDateES(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const raw = dateStr.split('T')[0];
+  const parts = raw.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+  const date = new Date(parts[0], parts[1] - 1, parts[2]);
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Finds the scheduled final payment or latest due_date for a supplier
+ */
+export function getSupplierFinalPaymentInfo(
+  supplierId: string,
+  payments: BudgetPayment[]
+): {
+  scheduledPayment: BudgetPayment | null;
+  dueDate: string | null;
+  daysUntilDue: number | null;
+} {
+  const supPayments = payments.filter((p) => p.supplier_id === supplierId);
+  // Look first for pending payments with a due_date (or notes mentioning Pago final)
+  const pendingWithDue = supPayments
+    .filter((p) => p.status === 'pending' && p.due_date)
+    .sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''));
+
+  if (pendingWithDue.length > 0) {
+    const finalCandidate =
+      pendingWithDue.find((p) => p.notes?.toLowerCase().includes('pago final')) ||
+      pendingWithDue[0];
+    const dueDate = finalCandidate.due_date ? finalCandidate.due_date.split('T')[0] : null;
+    return {
+      scheduledPayment: finalCandidate,
+      dueDate,
+      daysUntilDue: calculateDaysUntil(dueDate),
+    };
+  }
+
+  // Fallback: check if any payment (even partial) recorded a due_date in the future for final payment
+  const anyWithDue = supPayments
+    .filter((p) => p.due_date)
+    .sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''));
+
+  if (anyWithDue.length > 0) {
+    const dueDate = anyWithDue[0].due_date ? anyWithDue[0].due_date.split('T')[0] : null;
+    return {
+      scheduledPayment: anyWithDue[0].status === 'pending' ? anyWithDue[0] : null,
+      dueDate,
+      daysUntilDue: calculateDaysUntil(dueDate),
+    };
+  }
+
+  return {
+    scheduledPayment: null,
+    dueDate: null,
+    daysUntilDue: null,
+  };
+}
+
+export interface UpcomingFinalPaymentItem {
+  category: BudgetCategory;
+  supplier: BudgetSupplier;
+  effectivePrice: number;
+  paidAmount: number;
+  pendingAmount: number;
+  dueDate: string | null;
+  daysUntilDue: number | null;
+  urgency: 'overdue' | 'urgent' | 'upcoming' | 'scheduled' | 'unscheduled';
+  scheduledPayment: BudgetPayment | null;
+}
+
 export interface BudgetMetrics {
   totalEstimated: number;
   totalContracted: number;
@@ -281,11 +383,18 @@ export interface BudgetMetrics {
     paidAmount: number;
     pendingAmount: number;
     paymentStatus: 'none' | 'pending' | 'partial' | 'paid';
+    categoryPayments: BudgetPayment[];
+    finalPaymentDueDate: string | null;
+    daysUntilFinalPayment: number | null;
+    scheduledFinalPayment: BudgetPayment | null;
   }>;
+  upcomingFinalPayments: UpcomingFinalPaymentItem[];
   alerts: Array<{
     type: 'warning' | 'info' | 'error';
     message: string;
     categoryId?: string;
+    supplierId?: string;
+    dueDate?: string | null;
   }>;
 }
 
@@ -307,16 +416,24 @@ export function calculateBudgetMetrics(
   let totalPaid = 0;
 
   const alerts: BudgetMetrics['alerts'] = [];
+  const upcomingFinalPayments: UpcomingFinalPaymentItem[] = [];
 
   const categoryBreakdown = categories.map((cat) => {
     const catSuppliers = suppliers.filter((s) => s.category_id === cat.id);
-    const selectedSupplier = catSuppliers.find((s) => s.is_selected) || null;
+    const selectedSupplier =
+      catSuppliers.find((s) => s.is_selected) ||
+      (catSuppliers.length === 1 ? catSuppliers[0] : null);
 
     let effectivePrice = 0;
 
     if (cat.name.toLowerCase() === 'menú' || cat.budget_type === 'per_guest') {
-      // Menu category price comes from calculated menu total
-      effectivePrice = menuSummary.total;
+      // Menu category price comes from calculated menu total (unless a supplier has a higher explicit final price)
+      effectivePrice =
+        menuSummary.total > 0
+          ? menuSummary.total
+          : selectedSupplier
+          ? getEffectiveSupplierPrice(selectedSupplier)
+          : 0;
     } else if (selectedSupplier) {
       effectivePrice = getEffectiveSupplierPrice(selectedSupplier);
     } else {
@@ -330,19 +447,22 @@ export function calculateBudgetMetrics(
     }
     totalEstimated += effectivePrice;
 
-    // Payments for this category's suppliers
+    // Payments for this category's active supplier (or all suppliers in category if none selected)
     const supplierIds = selectedSupplier ? [selectedSupplier.id] : catSuppliers.map((s) => s.id);
-    const catPayments = payments.filter((p) => supplierIds.includes(p.supplier_id));
+    const catPayments = payments
+      .filter((p) => supplierIds.includes(p.supplier_id))
+      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
 
+    // Both 'paid' and 'partial' (señal/adelanto) represent money already paid
     const paidAmount = catPayments
-      .filter((p) => p.status === 'paid' || p.paid_at != null)
+      .filter((p) => isPaymentSettled(p))
       .reduce((sum, p) => sum + Number(p.amount), 0);
 
     const pendingAmount = Math.max(0, effectivePrice - paidAmount);
     totalPaid += paidAmount;
 
     let paymentStatus: 'none' | 'pending' | 'partial' | 'paid' = 'none';
-    if (!selectedSupplier && cat.budget_type !== 'per_guest') {
+    if (!selectedSupplier && cat.budget_type !== 'per_guest' && paidAmount === 0) {
       paymentStatus = 'none';
     } else if (effectivePrice > 0 && paidAmount >= effectivePrice) {
       paymentStatus = 'paid';
@@ -352,7 +472,72 @@ export function calculateBudgetMetrics(
       paymentStatus = 'pending';
     }
 
-    // Alerts generation
+    // Check Final Payment Due Date for active supplier
+    const finalPaymentInfo = selectedSupplier
+      ? getSupplierFinalPaymentInfo(selectedSupplier.id, payments)
+      : { scheduledPayment: null, dueDate: null, daysUntilDue: null };
+
+    const finalPaymentDueDate = pendingAmount > 0 ? finalPaymentInfo.dueDate : null;
+    const daysUntilFinalPayment = pendingAmount > 0 ? finalPaymentInfo.daysUntilDue : null;
+
+    if (selectedSupplier && pendingAmount > 0) {
+      let urgency: UpcomingFinalPaymentItem['urgency'] = 'unscheduled';
+      if (daysUntilFinalPayment !== null) {
+        if (daysUntilFinalPayment < 0) {
+          urgency = 'overdue';
+          alerts.unshift({
+            type: 'error',
+            message: `¡PAGO VENCIDO! El pago final de ${selectedSupplier.name} (${cat.name}) por ${formatCurrency(pendingAmount)} venció el ${formatDateES(finalPaymentDueDate)} (hace ${Math.abs(daysUntilFinalPayment)} días).`,
+            categoryId: cat.id,
+            supplierId: selectedSupplier.id,
+            dueDate: finalPaymentDueDate,
+          });
+        } else if (daysUntilFinalPayment === 0) {
+          urgency = 'overdue';
+          alerts.unshift({
+            type: 'error',
+            message: `¡VENCE HOY! Hoy es la fecha límite del pago final a ${selectedSupplier.name} (${cat.name}): ${formatCurrency(pendingAmount)}.`,
+            categoryId: cat.id,
+            supplierId: selectedSupplier.id,
+            dueDate: finalPaymentDueDate,
+          });
+        } else if (daysUntilFinalPayment <= 30) {
+          urgency = 'urgent';
+          alerts.unshift({
+            type: 'warning',
+            message: `Pago final próximo (en ${daysUntilFinalPayment} días): ${selectedSupplier.name} (${cat.name}) — Pendiente ${formatCurrency(pendingAmount)} (Límite: ${formatDateES(finalPaymentDueDate)}).`,
+            categoryId: cat.id,
+            supplierId: selectedSupplier.id,
+            dueDate: finalPaymentDueDate,
+          });
+        } else if (daysUntilFinalPayment <= 60) {
+          urgency = 'upcoming';
+          alerts.push({
+            type: 'info',
+            message: `Recordatorio de pago final (en ${daysUntilFinalPayment} días): ${selectedSupplier.name} (${cat.name}) — ${formatCurrency(pendingAmount)} el ${formatDateES(finalPaymentDueDate)}.`,
+            categoryId: cat.id,
+            supplierId: selectedSupplier.id,
+            dueDate: finalPaymentDueDate,
+          });
+        } else {
+          urgency = 'scheduled';
+        }
+      }
+
+      upcomingFinalPayments.push({
+        category: cat,
+        supplier: selectedSupplier,
+        effectivePrice,
+        paidAmount,
+        pendingAmount,
+        dueDate: finalPaymentDueDate,
+        daysUntilDue: daysUntilFinalPayment,
+        urgency,
+        scheduledPayment: finalPaymentInfo.scheduledPayment,
+      });
+    }
+
+    // Alerts generation for missing suppliers or price overruns
     if (cat.is_active && !selectedSupplier && cat.name.toLowerCase() !== 'menú') {
       if (catSuppliers.length === 0) {
         alerts.push({
@@ -387,21 +572,24 @@ export function calculateBudgetMetrics(
       paidAmount,
       pendingAmount,
       paymentStatus,
+      categoryPayments: catPayments,
+      finalPaymentDueDate,
+      daysUntilFinalPayment,
+      scheduledFinalPayment: finalPaymentInfo.scheduledPayment,
     };
+  });
+
+  // Sort upcomingFinalPayments: those with a dueDate sorted chronologically first, then unscheduled ones
+  upcomingFinalPayments.sort((a, b) => {
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if (a.dueDate && !b.dueDate) return -1;
+    if (!a.dueDate && b.dueDate) return 1;
+    return b.pendingAmount - a.pendingAmount;
   });
 
   const totalPending = Math.max(0, totalContracted - totalPaid);
   const percentContracted = totalEstimated > 0 ? Math.min(100, Math.round((totalContracted / totalEstimated) * 100)) : 0;
   const percentPaid = totalContracted > 0 ? Math.min(100, Math.round((totalPaid / totalContracted) * 100)) : 0;
-
-  // Add payments due soon alerts
-  const pendingPayments = payments.filter((p) => p.status === 'pending');
-  if (pendingPayments.length > 0) {
-    alerts.push({
-      type: 'info',
-      message: `Tienes ${pendingPayments.length} pago(s) pendiente(s) programado(s) por un total de ${formatCurrency(pendingPayments.reduce((s, p) => s + Number(p.amount), 0))}`,
-    });
-  }
 
   return {
     totalEstimated,
@@ -412,6 +600,7 @@ export function calculateBudgetMetrics(
     percentPaid,
     menuSummary,
     categoryBreakdown,
+    upcomingFinalPayments,
     alerts,
   };
 }

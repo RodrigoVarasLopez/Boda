@@ -2,27 +2,42 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BudgetSupplier, BudgetPayment, PaymentStatus, PAYMENT_STATUS_LABELS } from '@/lib/types';
-import { formatCurrency } from '@/lib/budget-data';
+import { BudgetSupplier, BudgetPayment, PaymentStatus } from '@/lib/types';
+import {
+  formatCurrency,
+  isPaymentSettled,
+  formatDateES,
+  calculateDaysUntil,
+  getSupplierFinalPaymentInfo,
+} from '@/lib/budget-data';
 import {
   X,
   CreditCard,
   Calendar,
   FileText,
-  DollarSign,
   CheckCircle2,
   Clock,
   AlertCircle,
   Building,
+  Trash2,
+  Edit2,
+  Bell,
+  Check,
+  Plus,
 } from 'lucide-react';
 
 interface PaymentFormModalProps {
   isOpen: boolean;
   supplier: BudgetSupplier | null;
+  supplierPayments?: BudgetPayment[];
   paymentToEdit?: BudgetPayment | null;
   contractedTotal: number;
   alreadyPaidAmount: number;
   onClose: () => void;
+  onSelectPaymentToEdit?: (payment: BudgetPayment | null) => void;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
+  onMarkPaymentPaid?: (paymentId: string) => Promise<void>;
+  onSetFinalPaymentDate?: (supplierId: string, dueDate: string | null, contractedTotal: number) => Promise<void>;
   onSubmit: (data: {
     id?: string;
     supplier_id: string;
@@ -31,77 +46,147 @@ interface PaymentFormModalProps {
     paid_at?: string | null;
     status: PaymentStatus;
     notes?: string | null;
+    final_payment_date?: string | null;
   }) => Promise<void>;
 }
 
 export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   isOpen,
   supplier,
+  supplierPayments = [],
   paymentToEdit,
   contractedTotal,
   alreadyPaidAmount,
   onClose,
+  onSelectPaymentToEdit,
+  onDeletePayment,
+  onMarkPaymentPaid,
+  onSetFinalPaymentDate,
   onSubmit,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [paidAt, setPaidAt] = useState('');
-  const [status, setStatus] = useState<PaymentStatus>('pending');
+  const [status, setStatus] = useState<PaymentStatus>('paid');
   const [notes, setNotes] = useState('');
+  const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [savingFinalDate, setSavingFinalDate] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const finalInfo = supplier
+    ? getSupplierFinalPaymentInfo(supplier.id, supplierPayments)
+    : { scheduledPayment: null, dueDate: null, daysUntilDue: null };
+
   useEffect(() => {
+    if (!isOpen || !supplier) return;
+    const today = new Date().toISOString().split('T')[0];
+
     if (paymentToEdit) {
       setAmount(String(paymentToEdit.amount));
-      setDueDate(paymentToEdit.due_date || '');
-      setPaidAt(paymentToEdit.paid_at || '');
+      setDueDate(paymentToEdit.due_date ? paymentToEdit.due_date.split('T')[0] : '');
+      setPaidAt(paymentToEdit.paid_at ? paymentToEdit.paid_at.split('T')[0] : '');
       setStatus(paymentToEdit.status);
       setNotes(paymentToEdit.notes || '');
     } else {
       setAmount('');
       setDueDate('');
-      setPaidAt('');
-      setStatus('pending');
+      setPaidAt(today);
+      setStatus('paid');
       setNotes('');
     }
-  }, [paymentToEdit, isOpen]);
+
+    const currentFinalInfo = getSupplierFinalPaymentInfo(supplier.id, supplierPayments);
+    setFinalPaymentDate(currentFinalInfo.dueDate || '');
+  }, [paymentToEdit, isOpen, supplier?.id]);
 
   if (!isOpen || !mounted || !supplier) return null;
 
   // Calculate pending remaining on supplier
-  const editingAmount = paymentToEdit?.status === 'paid' ? paymentToEdit.amount : 0;
+  const editingAmount =
+    paymentToEdit && isPaymentSettled(paymentToEdit) ? Number(paymentToEdit.amount) : 0;
   const currentPaid = Math.max(0, alreadyPaidAmount - editingAmount);
   const remainingTotal = Math.max(0, contractedTotal - currentPaid);
+  const percentPaid =
+    contractedTotal > 0 ? Math.min(100, Math.round((alreadyPaidAmount / contractedTotal) * 100)) : 0;
+
+  const parsedInputAmount = parseFloat(amount) || 0;
+  const isSettledSelection = status === 'paid' || status === 'partial';
+  const remainingAfterThisPayment = isSettledSelection
+    ? Math.max(0, remainingTotal - parsedInputAmount)
+    : remainingTotal;
 
   const handleQuickPercent = (pct: number) => {
     const val = (contractedTotal * pct) / 100;
     setAmount(val.toFixed(2));
+    setStatus('partial');
+    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+    if (!notes) setNotes(`Señal / Pago parcial (${pct}%)`);
   };
 
   const handleQuickRemaining = () => {
     setAmount(remainingTotal.toFixed(2));
+    setStatus('paid');
+    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+    if (!notes) setNotes(currentPaid > 0 ? 'Liquidación / Pago final' : 'Pago completo');
+  };
+
+  const handleSaveFinalDateOnly = async () => {
+    if (!onSetFinalPaymentDate) return;
+    setSavingFinalDate(true);
+    try {
+      await onSetFinalPaymentDate(supplier.id, finalPaymentDate || null, contractedTotal);
+    } finally {
+      setSavingFinalDate(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
+
+    // If user didn't enter a new payment amount, but changed/entered finalPaymentDate, save the final payment date!
+    if ((isNaN(parsedAmount) || parsedAmount <= 0) && finalPaymentDate && onSetFinalPaymentDate) {
+      setLoading(true);
+      try {
+        await onSetFinalPaymentDate(supplier.id, finalPaymentDate, contractedTotal);
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
 
     setLoading(true);
     try {
+      const today = new Date().toISOString().split('T')[0];
       await onSubmit({
         id: paymentToEdit?.id,
         supplier_id: supplier.id,
         amount: parsedAmount,
-        due_date: dueDate || null,
-        paid_at: status === 'paid' ? (paidAt || new Date().toISOString().split('T')[0]) : (paidAt || null),
+        due_date: status === 'pending' ? dueDate || finalPaymentDate || null : dueDate || null,
+        paid_at:
+          status === 'paid' || status === 'partial'
+            ? paidAt || today
+            : null,
         status,
-        notes: notes.trim() || null,
+        notes:
+          notes.trim() ||
+          (status === 'partial'
+            ? 'Señal / Pago parcial'
+            : status === 'pending'
+            ? 'Pago final'
+            : 'Pago registrado'),
+        final_payment_date:
+          status !== 'pending' && remainingAfterThisPayment > 0 && finalPaymentDate
+            ? finalPaymentDate
+            : null,
       });
       onClose();
     } catch (err) {
@@ -110,6 +195,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       setLoading(false);
     }
   };
+
+  const daysUntilFinal = calculateDaysUntil(finalPaymentDate || finalInfo.dueDate);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -120,214 +207,437 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg bg-bg-card border border-border-subtle rounded-3xl shadow-2xl overflow-hidden z-10 my-8">
+      <div className="relative w-full max-w-xl bg-bg-card border border-border-subtle rounded-3xl shadow-2xl overflow-hidden z-10 my-8 max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border-subtle bg-bg-canvas/40">
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-border-subtle bg-bg-canvas/40 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium flex items-center gap-1">
+              <span className="text-xs px-2.5 py-0.5 rounded-md bg-primary/10 text-primary font-semibold flex items-center gap-1">
                 <Building className="w-3 h-3" />
                 {supplier.name}
               </span>
             </div>
-            <h3 className="font-serif text-2xl text-text-primary font-medium tracking-tight">
-              {paymentToEdit ? 'Editar Pago / Hito' : 'Registrar Pago / Hito'}
+            <h3 className="font-serif text-xl sm:text-2xl text-text-primary font-medium tracking-tight">
+              {paymentToEdit ? 'Editar Pago / Hito' : 'Gestión de Pagos y Vencimientos'}
             </h3>
             <p className="text-xs text-text-muted mt-0.5">
-              Controla las entregas de señal, cuotas y liquidación final
+              Registra señales abonadas, pagos realizados y la fecha límite del pago final
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-text-primary rounded-full hover:bg-neutral-100 transition-colors"
+            className="p-2 text-text-muted hover:text-text-primary rounded-full hover:bg-neutral-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Contract Info Banner */}
-        <div className="p-4 mx-6 mt-6 rounded-2xl bg-neutral-50 border border-neutral-200/80 grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-medium">Contratado</p>
-            <p className="text-sm font-semibold font-mono text-text-primary mt-0.5">
-              {formatCurrency(contractedTotal)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-medium">Ya Pagado</p>
-            <p className="text-sm font-semibold font-mono text-emerald-700 mt-0.5">
-              {formatCurrency(currentPaid)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-medium">Pendiente</p>
-            <p className="text-sm font-semibold font-mono text-amber-700 mt-0.5">
-              {formatCurrency(remainingTotal)}
-            </p>
-          </div>
-        </div>
+        <div className="overflow-y-auto p-5 sm:p-6 space-y-6 flex-1">
+          {/* 1. Contract Info Banner + Progress Bar */}
+          <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                  Contratado
+                </p>
+                <p className="text-sm sm:text-base font-bold font-mono text-text-primary mt-0.5">
+                  {formatCurrency(contractedTotal)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                  Ya Pagado
+                </p>
+                <p className="text-sm sm:text-base font-bold font-mono text-emerald-700 mt-0.5">
+                  {formatCurrency(alreadyPaidAmount)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                  Pendiente
+                </p>
+                <p className="text-sm sm:text-base font-bold font-mono text-amber-700 mt-0.5">
+                  {formatCurrency(Math.max(0, contractedTotal - alreadyPaidAmount))}
+                </p>
+              </div>
+            </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Amount */}
-          <div className="space-y-1.5">
+            {contractedTotal > 0 && (
+              <div className="space-y-1">
+                <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-600 rounded-full transition-all duration-300"
+                    style={{ width: `${percentPaid}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted font-medium">
+                  <span>{percentPaid}% abonado</span>
+                  <span>{100 - percentPaid}% pendiente</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Dedicated Final Payment Date & Warning Box */}
+          {contractedTotal - alreadyPaidAmount > 0 && (
+            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                  <Bell className="w-4 h-4 text-amber-600" />
+                  <span>Fecha límite del Pago Final (Aviso automático)</span>
+                </div>
+                {daysUntilFinal !== null && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      daysUntilFinal < 0
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : daysUntilFinal <= 30
+                        ? 'bg-amber-200/80 text-amber-900 border-amber-400'
+                        : 'bg-white text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {daysUntilFinal < 0
+                      ? `Vencido hace ${Math.abs(daysUntilFinal)} días`
+                      : daysUntilFinal === 0
+                      ? '¡Vence hoy!'
+                      : `Faltan ${daysUntilFinal} días`}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-amber-800/90 leading-relaxed">
+                Indica cuándo hay que abonar el resto pendiente (
+                <strong>{formatCurrency(Math.max(0, contractedTotal - alreadyPaidAmount))}</strong>) para que el panel te avise con antelación.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={finalPaymentDate}
+                  onChange={(e) => setFinalPaymentDate(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-amber-300 bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                />
+                {onSetFinalPaymentDate && finalPaymentDate !== (finalInfo.dueDate || '') && (
+                  <button
+                    type="button"
+                    onClick={handleSaveFinalDateOnly}
+                    disabled={savingFinalDate}
+                    className="px-3 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{savingFinalDate ? 'Guardando...' : 'Fijar fecha'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Existing Payments List for this Supplier */}
+          {supplierPayments.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Pagos e hitos registrados ({supplierPayments.length})
+                </span>
+                {paymentToEdit && onSelectPaymentToEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectPaymentToEdit(null)}
+                    className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Nuevo pago</span>
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {supplierPayments.map((pay) => {
+                  const settled = isPaymentSettled(pay);
+                  const isBeingEdited = paymentToEdit?.id === pay.id;
+                  return (
+                    <div
+                      key={pay.id}
+                      className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 transition-all ${
+                        isBeingEdited
+                          ? 'bg-primary/5 border-primary ring-1 ring-primary/30'
+                          : settled
+                          ? 'bg-emerald-50/40 border-emerald-200/80'
+                          : 'bg-amber-50/40 border-amber-200/80'
+                      }`}
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-sm text-text-primary">
+                            {formatCurrency(Number(pay.amount))}
+                          </span>
+                          {settled ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              {pay.status === 'partial' ? 'Señal / Parcial abonado' : 'Pagado'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                              <Clock className="w-2.5 h-2.5" />
+                              Pendiente de pago
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-text-muted flex items-center gap-2 flex-wrap">
+                          {pay.notes && <span className="font-medium text-text-secondary">{pay.notes}</span>}
+                          {settled && pay.paid_at && (
+                            <span>· Abonado el {formatDateES(pay.paid_at)}</span>
+                          )}
+                          {!settled && pay.due_date && (
+                            <span className="text-amber-800 font-medium">
+                              · Fecha límite: {formatDateES(pay.due_date)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!settled && onMarkPaymentPaid && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkPaymentPaid(pay.id)}
+                            title="Marcar como pagado hoy"
+                            className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Pagado</span>
+                          </button>
+                        )}
+                        {onSelectPaymentToEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onSelectPaymentToEdit(pay)}
+                            title="Editar este pago"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDeletePayment && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePayment(pay.id)}
+                            title="Eliminar este pago"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Form to Add or Edit a Payment */}
+          <form onSubmit={handleSubmit} className="space-y-4 pt-3 border-t border-border-subtle">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                Importe del pago (€) *
+              <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary">
+                {paymentToEdit ? 'Modificar pago seleccionado' : 'Registrar nuevo pago o señal'}
+              </h4>
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <label className="text-xs font-semibold text-text-secondary">
+                  Importe del pago (€) *
+                </label>
+                {/* Quick suggestions */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickPercent(30)}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-100 hover:bg-neutral-200 text-text-secondary transition-colors cursor-pointer"
+                    title="30% de señal del total contratado"
+                  >
+                    30% señal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickPercent(50)}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-100 hover:bg-neutral-200 text-text-secondary transition-colors cursor-pointer"
+                    title="50% del total contratado"
+                  >
+                    50%
+                  </button>
+                  {remainingTotal > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleQuickRemaining}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors cursor-pointer"
+                      title="Resto pendiente completo"
+                    >
+                      Resto ({formatCurrency(remainingTotal)})
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted text-base font-semibold">
+                  €
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full pl-8 pr-3.5 py-2.5 text-base font-mono font-medium rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text-secondary block">
+                Tipo / Estado de este pago
               </label>
-              {/* Quick suggestions */}
-              <div className="flex items-center gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleQuickPercent(30)}
-                  className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-100 hover:bg-neutral-200 text-text-secondary transition-colors"
-                  title="30% de señal del total contratado"
+                  onClick={() => {
+                    setStatus('paid');
+                    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-left transition-all flex items-center gap-2 cursor-pointer ${
+                    status === 'paid'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-semibold shadow-2xs'
+                      : 'border-border-subtle bg-bg-card text-text-secondary hover:border-neutral-300'
+                  }`}
                 >
-                  30% señal
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="leading-tight">Pagado</div>
+                    <div className="text-[10px] text-emerald-700/80 font-normal">Ya abonado</div>
+                  </div>
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => handleQuickPercent(50)}
-                  className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-100 hover:bg-neutral-200 text-text-secondary transition-colors"
-                  title="50% del total contratado"
+                  onClick={() => {
+                    setStatus('partial');
+                    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-left transition-all flex items-center gap-2 cursor-pointer ${
+                    status === 'partial'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-semibold shadow-2xs'
+                      : 'border-border-subtle bg-bg-card text-text-secondary hover:border-neutral-300'
+                  }`}
                 >
-                  50%
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="leading-tight">Señal / Parcial</div>
+                    <div className="text-[10px] text-emerald-700/80 font-normal">Adelanto abonado</div>
+                  </div>
                 </button>
+
                 <button
                   type="button"
-                  onClick={handleQuickRemaining}
-                  className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors"
-                  title="Resto pendiente completo"
+                  onClick={() => {
+                    setStatus('pending');
+                  }}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-left transition-all flex items-center gap-2 cursor-pointer ${
+                    status === 'pending'
+                      ? 'border-amber-600 bg-amber-50 text-amber-900 font-semibold shadow-2xs'
+                      : 'border-border-subtle bg-bg-card text-text-secondary hover:border-neutral-300'
+                  }`}
                 >
-                  Resto ({formatCurrency(remainingTotal)})
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="leading-tight">Programado</div>
+                    <div className="text-[10px] text-amber-700/80 font-normal">Pendiente futuro</div>
+                  </div>
                 </button>
               </div>
             </div>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted text-base font-semibold">
-                €
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-3.5 py-2.5 text-base font-mono font-medium rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-          </div>
 
-          {/* Status */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Estado del pago
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['pending', 'partial', 'paid'] as PaymentStatus[]).map((st) => {
-                const isCurrent = status === st;
-                return (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => {
-                      setStatus(st);
-                      if (st === 'paid' && !paidAt) {
-                        setPaidAt(new Date().toISOString().split('T')[0]);
-                      }
+            {/* Dates Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {status !== 'pending' ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-text-secondary flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Fecha en que se hizo el pago
+                  </label>
+                  <input
+                    type="date"
+                    value={paidAt}
+                    onChange={(e) => setPaidAt(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-amber-900 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                    Fecha de vencimiento / pago final *
+                  </label>
+                  <input
+                    type="date"
+                    value={dueDate || finalPaymentDate}
+                    onChange={(e) => {
+                      setDueDate(e.target.value);
+                      setFinalPaymentDate(e.target.value);
                     }}
-                    className={`py-2 px-2.5 rounded-xl border text-xs font-medium text-center transition-all flex items-center justify-center gap-1.5 ${
-                      isCurrent
-                        ? st === 'paid'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-semibold shadow-2xs'
-                          : st === 'partial'
-                          ? 'border-amber-600 bg-amber-50 text-amber-800 font-semibold shadow-2xs'
-                          : 'border-neutral-500 bg-neutral-100 text-neutral-800 font-semibold shadow-2xs'
-                        : 'border-border-subtle bg-bg-card text-text-secondary hover:border-neutral-300'
-                    }`}
-                  >
-                    {st === 'paid' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                    {st === 'pending' && <Clock className="w-3.5 h-3.5 text-neutral-500" />}
-                    {st === 'partial' && <AlertCircle className="w-3.5 h-3.5 text-amber-600" />}
-                    <span>{PAYMENT_STATUS_LABELS[st]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-amber-300 bg-amber-50/40 text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                </div>
+              )}
 
-          {/* Dates Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Fecha vencimiento / límite
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+              {/* Concept / Notes */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-secondary flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5" />
+                  Concepto / Nota
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Señal 50% por transferencia..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Fecha de pago efectivo
-              </label>
-              <input
-                type="date"
-                value={paidAt}
-                onChange={(e) => {
-                  setPaidAt(e.target.value);
-                  if (e.target.value && status === 'pending') {
-                    setStatus('paid');
-                  }
-                }}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+
+            {/* Actions */}
+            <div className="pt-3 flex items-center justify-end gap-3 border-t border-border-subtle">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-4 py-2.5 rounded-xl border border-border-subtle text-text-secondary hover:bg-neutral-100 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+              <button
+                type="submit"
+                disabled={loading || (!amount && !finalPaymentDate)}
+                className="px-5 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover text-xs font-semibold transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>
+                  {loading
+                    ? 'Guardando...'
+                    : paymentToEdit
+                    ? 'Actualizar Pago'
+                    : amount
+                    ? 'Guardar Pago'
+                    : 'Guardar Fecha de Pago Final'}
+                </span>
+              </button>
             </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5" />
-              Concepto / Notas internas
-            </label>
-            <input
-              type="text"
-              placeholder="Ej. Señal del 30% vía transferencia bancaria..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border-subtle bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-border-subtle">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2.5 rounded-xl border border-border-subtle text-text-secondary hover:bg-neutral-100 text-sm font-medium transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !amount}
-              className="px-5 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover text-sm font-semibold transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>{paymentToEdit ? 'Actualizar Pago' : 'Guardar Pago'}</span>
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>,
     document.body
   );
 };
+

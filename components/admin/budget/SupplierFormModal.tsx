@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { BudgetCategory, BudgetSupplier, SupplierStatus } from '@/lib/types';
-import { X, Star, Check, Sparkles, Building, Phone, Mail, Globe, Instagram, DollarSign } from 'lucide-react';
+import { X, Star, Check, Sparkles, Building, Phone, Mail, Globe, Instagram, DollarSign, Calendar, Bell } from 'lucide-react';
 
 interface SupplierFormModalProps {
   isOpen: boolean;
   categories: BudgetCategory[];
   initialCategory?: BudgetCategory | null;
   supplierToEdit?: BudgetSupplier | null;
+  initialFinalPaymentDate?: string | null;
   onClose: () => void;
   onSubmit: (data: {
     id?: string;
@@ -28,6 +29,7 @@ interface SupplierFormModalProps {
     comments?: string | null;
     notes?: string | null;
     is_selected: boolean;
+    final_payment_date?: string | null;
   }) => Promise<void>;
 }
 
@@ -36,6 +38,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
   categories,
   initialCategory,
   supplierToEdit,
+  initialFinalPaymentDate,
   onClose,
   onSubmit,
 }) => {
@@ -50,6 +53,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
   const [estimatedPrice, setEstimatedPrice] = useState('');
   const [quotedPrice, setQuotedPrice] = useState('');
   const [finalPrice, setFinalPrice] = useState('');
+  const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [rating, setRating] = useState<number | ''>('');
   const [status, setStatus] = useState<SupplierStatus>('pending');
   const [comments, setComments] = useState('');
@@ -73,6 +77,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
       setEstimatedPrice(supplierToEdit.estimated_price != null ? String(supplierToEdit.estimated_price) : '');
       setQuotedPrice(supplierToEdit.quoted_price != null ? String(supplierToEdit.quoted_price) : '');
       setFinalPrice(supplierToEdit.final_price != null ? String(supplierToEdit.final_price) : '');
+      setFinalPaymentDate(initialFinalPaymentDate || '');
       setRating(supplierToEdit.rating != null ? supplierToEdit.rating : '');
       setStatus(supplierToEdit.status);
       setComments(supplierToEdit.comments || '');
@@ -89,13 +94,14 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
       setEstimatedPrice('');
       setQuotedPrice('');
       setFinalPrice('');
+      setFinalPaymentDate('');
       setRating('');
       setStatus('pending');
       setComments('');
       setNotes('');
-      setIsSelected(false);
+      setIsSelected(true);
     }
-  }, [supplierToEdit, initialCategory, categories, isOpen]);
+  }, [supplierToEdit, initialCategory, initialFinalPaymentDate, categories, isOpen]);
 
   if (!isOpen || !mounted) return null;
 
@@ -122,6 +128,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         comments: comments.trim() || null,
         notes: notes.trim() || null,
         is_selected: isSelected,
+        final_payment_date: finalPaymentDate || null,
       });
       onClose();
     } finally {
@@ -302,6 +309,25 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
             <p className="text-[10px] text-text-muted">
               * El sistema utilizará: Precio final &gt; Presupuesto recibido &gt; Precio estimado
             </p>
+
+            {/* Fecha límite de Pago Final */}
+            <div className="pt-2.5 border-t border-border-subtle/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <label className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Fecha límite del Pago Final (Aviso automático)</span>
+                </label>
+                <p className="text-[10px] text-text-muted">
+                  Si tiene saldo pendiente, el sistema os avisará antes de esta fecha
+                </p>
+              </div>
+              <input
+                type="date"
+                value={finalPaymentDate}
+                onChange={(e) => setFinalPaymentDate(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-bg-card border border-amber-300 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
           </div>
 
           {/* Rating & Estado */}

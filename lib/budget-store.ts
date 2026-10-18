@@ -19,6 +19,7 @@ import {
   calculateBudgetMetrics,
   calculateMenuTotal,
   getEffectiveSupplierPrice,
+  isPaymentSettled,
   formatCurrency,
   BudgetMetrics,
   BUDGET_UPDATE_EVENT,
@@ -136,7 +137,11 @@ export function useBudgetStore() {
     icon?: string | null;
     sort_order?: number;
   }) => {
-    const newCatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `c0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+    const currentCats = getStoredBudgetCategories();
+    const newCatId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `c0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const newCat: BudgetCategory = {
       id: newCatId,
       wedding_id: WEDDING_ID,
@@ -144,19 +149,21 @@ export function useBudgetStore() {
       description: data.description || null,
       budget_type: data.budget_type,
       icon: data.icon || 'Sparkles',
-      sort_order: data.sort_order ?? categories.length + 1,
+      sort_order: data.sort_order ?? currentCats.length + 1,
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const nextCats = [...categories, newCat];
+    const nextCats = [...currentCats, newCat];
     setStoredBudgetCategories(nextCats);
 
     try {
-      const res = await createCategoryAction(data);
+      const res = await createCategoryAction({ ...data, id: newCatId });
       if (res && res.id && res.id !== newCatId) {
         newCat.id = res.id;
-        setStoredBudgetCategories(categories.map(c => c.id === newCatId ? { ...c, id: res.id } : c));
+        setStoredBudgetCategories(
+          getStoredBudgetCategories().map((c) => (c.id === newCatId ? { ...c, id: res.id } : c))
+        );
       }
     } catch (e) {
       console.warn('Backend category sync notice:', e);
@@ -173,7 +180,8 @@ export function useBudgetStore() {
     sort_order?: number;
     is_active?: boolean;
   }) => {
-    const nextCats = categories.map((c) =>
+    const currentCats = getStoredBudgetCategories();
+    const nextCats = currentCats.map((c) =>
       c.id === data.id
         ? {
             ...c,
@@ -192,8 +200,8 @@ export function useBudgetStore() {
   };
 
   const deleteCategory = async (id: string) => {
-    const nextCats = categories.filter((c) => c.id !== id);
-    const nextSuppliers = suppliers.filter((s) => s.category_id !== id);
+    const nextCats = getStoredBudgetCategories().filter((c) => c.id !== id);
+    const nextSuppliers = getStoredBudgetSuppliers().filter((s) => s.category_id !== id);
     setStoredBudgetCategories(nextCats);
     setStoredBudgetSuppliers(nextSuppliers);
 
@@ -223,13 +231,17 @@ export function useBudgetStore() {
     notes?: string | null;
     is_selected?: boolean;
   }) => {
-    const newSupplierId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `s0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+    const currentSuppliers = getStoredBudgetSuppliers();
+    const newSupplierId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `s0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const isSelected = Boolean(data.is_selected);
 
     // If marked selected, unselect others in same category
-    let nextSuppliers = suppliers;
+    let nextSuppliers = currentSuppliers;
     if (isSelected) {
-      nextSuppliers = suppliers.map((s) =>
+      nextSuppliers = currentSuppliers.map((s) =>
         s.category_id === data.category_id ? { ...s, is_selected: false } : s
       );
     }
@@ -260,10 +272,12 @@ export function useBudgetStore() {
     setStoredBudgetSuppliers([...nextSuppliers, newSupplier]);
 
     try {
-      const res = await createSupplierAction(data);
+      const res = await createSupplierAction({ ...data, id: newSupplierId });
       if (res && res.id && res.id !== newSupplierId) {
         newSupplier.id = res.id;
-        setStoredBudgetSuppliers([...nextSuppliers, { ...newSupplier, id: res.id }]);
+        setStoredBudgetSuppliers(
+          getStoredBudgetSuppliers().map((s) => (s.id === newSupplierId ? { ...s, id: res.id } : s))
+        );
       }
     } catch (e) {
       console.warn('Backend supplier sync notice:', e);
@@ -290,8 +304,8 @@ export function useBudgetStore() {
     notes?: string | null;
     is_selected?: boolean;
   }) => {
-    let nextSuppliers = suppliers;
-    const current = suppliers.find((s) => s.id === data.id);
+    let nextSuppliers = getStoredBudgetSuppliers();
+    const current = nextSuppliers.find((s) => s.id === data.id);
     const targetCatId = data.category_id || current?.category_id;
 
     if (data.is_selected && targetCatId) {
@@ -346,7 +360,8 @@ export function useBudgetStore() {
   };
 
   const selectSupplier = async (supplierId: string, categoryId: string) => {
-    const nextSuppliers = suppliers.map((s) => {
+    const currentSuppliers = getStoredBudgetSuppliers();
+    const nextSuppliers = currentSuppliers.map((s) => {
       if (s.category_id === categoryId) {
         if (s.id === supplierId) {
           return { ...s, is_selected: true, status: 'selected' as const, updated_at: new Date().toISOString() };
@@ -366,8 +381,8 @@ export function useBudgetStore() {
   };
 
   const deleteSupplier = async (id: string) => {
-    const nextSuppliers = suppliers.filter((s) => s.id !== id);
-    const nextPayments = payments.filter((p) => p.supplier_id !== id);
+    const nextSuppliers = getStoredBudgetSuppliers().filter((s) => s.id !== id);
+    const nextPayments = getStoredBudgetPayments().filter((p) => p.supplier_id !== id);
     setStoredBudgetSuppliers(nextSuppliers);
     setStoredBudgetPayments(nextPayments);
 
@@ -387,31 +402,76 @@ export function useBudgetStore() {
     status?: 'pending' | 'partial' | 'paid';
     notes?: string | null;
   }) => {
-    const newPaymentId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `p0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+    const currentPayments = getStoredBudgetPayments();
+    const newPaymentId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `p0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+    const paymentStatus = data.status || 'paid';
     const newPayment: BudgetPayment = {
       id: newPaymentId,
       supplier_id: data.supplier_id,
       wedding_id: WEDDING_ID,
       amount: Number(data.amount),
       due_date: data.due_date || null,
-      paid_at: data.paid_at || (data.status === 'paid' ? new Date().toISOString() : null),
-      status: data.status || 'pending',
+      paid_at:
+        data.paid_at ||
+        (paymentStatus === 'paid' || paymentStatus === 'partial'
+          ? new Date().toISOString().split('T')[0]
+          : null),
+      status: paymentStatus,
       notes: data.notes || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    setStoredBudgetPayments([...payments, newPayment]);
+    const nextPayments = [...currentPayments, newPayment];
+    setStoredBudgetPayments(nextPayments);
 
     try {
-      const res = await createPaymentAction(data);
+      const res = await createPaymentAction({
+        ...data,
+        id: newPaymentId,
+        status: paymentStatus,
+        paid_at: newPayment.paid_at,
+      });
       if (res && res.id && res.id !== newPaymentId) {
         newPayment.id = res.id;
-        setStoredBudgetPayments([...payments, { ...newPayment, id: res.id }]);
+        setStoredBudgetPayments(
+          getStoredBudgetPayments().map((p) => (p.id === newPaymentId ? { ...p, id: res.id } : p))
+        );
       }
     } catch (e) {
       console.warn('Backend payment create notice:', e);
     }
+
+    // If this payment was settled ('paid' or 'partial'), auto-adjust any existing scheduled 'Pago final' pending payment
+    if (isPaymentSettled(newPayment)) {
+      const sup = getStoredBudgetSuppliers().find((s) => s.id === data.supplier_id);
+      if (sup) {
+        const effPrice = getEffectiveSupplierPrice(sup);
+        const allSupPayments = getStoredBudgetPayments().filter((p) => p.supplier_id === data.supplier_id);
+        const totalSettled = allSupPayments
+          .filter((p) => isPaymentSettled(p))
+          .reduce((sum, p) => sum + Number(p.amount), 0);
+        const remaining = Math.max(0, effPrice - totalSettled);
+
+        const scheduledFinal = allSupPayments.find(
+          (p) => p.status === 'pending' && p.id !== newPayment.id
+        );
+        if (scheduledFinal) {
+          if (remaining <= 0) {
+            await deletePayment(scheduledFinal.id);
+          } else if (Math.abs(scheduledFinal.amount - remaining) > 0.01) {
+            await updatePayment({
+              id: scheduledFinal.id,
+              amount: remaining,
+            });
+          }
+        }
+      }
+    }
+
     return newPayment;
   };
 
@@ -423,15 +483,18 @@ export function useBudgetStore() {
     status?: 'pending' | 'partial' | 'paid';
     notes?: string | null;
   }) => {
-    const nextPayments = payments.map((p) =>
+    const currentPayments = getStoredBudgetPayments();
+    const nextPayments = currentPayments.map((p) =>
       p.id === data.id
         ? {
             ...p,
             ...data,
             amount: data.amount != null ? Number(data.amount) : p.amount,
             paid_at:
-              data.status === 'paid' && !data.paid_at
-                ? p.paid_at || new Date().toISOString()
+              (data.status === 'paid' || data.status === 'partial') && !data.paid_at
+                ? p.paid_at || new Date().toISOString().split('T')[0]
+                : data.status === 'pending' && data.paid_at === undefined
+                ? null
                 : data.paid_at !== undefined
                 ? data.paid_at
                 : p.paid_at,
@@ -442,21 +505,96 @@ export function useBudgetStore() {
 
     setStoredBudgetPayments(nextPayments);
 
+    const updatedTarget = nextPayments.find((p) => p.id === data.id);
+
     try {
-      await updatePaymentAction(data);
+      await updatePaymentAction({
+        ...data,
+        paid_at: updatedTarget ? updatedTarget.paid_at : data.paid_at,
+      });
     } catch (e) {
       console.warn('Backend payment update notice:', e);
     }
   };
 
   const deletePayment = async (id: string) => {
-    const nextPayments = payments.filter((p) => p.id !== id);
+    const nextPayments = getStoredBudgetPayments().filter((p) => p.id !== id);
     setStoredBudgetPayments(nextPayments);
 
     try {
       await deletePaymentAction(id);
     } catch (e) {
       console.warn('Backend payment delete notice:', e);
+    }
+  };
+
+  /**
+   * Marks a scheduled ('pending') payment as paid today with 1 click
+   */
+  const markPaymentAsPaid = async (paymentId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    await updatePayment({
+      id: paymentId,
+      status: 'paid',
+      paid_at: today,
+    });
+  };
+
+  /**
+   * Sets or updates the Final Payment Due Date for a supplier.
+   * Stores it as a scheduled ('pending') payment in budget_payments so Supabase persists it natively.
+   */
+  const setSupplierFinalPaymentDate = async (
+    supplierId: string,
+    dueDate: string | null,
+    overrideEffectivePrice?: number
+  ) => {
+    const currentSuppliers = getStoredBudgetSuppliers();
+    const sup = currentSuppliers.find((s) => s.id === supplierId);
+    const effPrice =
+      overrideEffectivePrice !== undefined
+        ? overrideEffectivePrice
+        : sup
+        ? getEffectiveSupplierPrice(sup)
+        : 0;
+
+    const supPayments = getStoredBudgetPayments().filter((p) => p.supplier_id === supplierId);
+    const totalSettled = supPayments
+      .filter((p) => isPaymentSettled(p))
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const remainingAmount = Math.max(0, effPrice - totalSettled);
+
+    // Find existing pending payment for this supplier
+    const existingPending = supPayments.find((p) => p.status === 'pending');
+
+    if (!dueDate) {
+      if (existingPending && existingPending.notes?.toLowerCase().includes('pago final')) {
+        await deletePayment(existingPending.id);
+      } else if (existingPending) {
+        await updatePayment({ id: existingPending.id, due_date: null });
+      }
+      return;
+    }
+
+    const targetAmount = remainingAmount > 0 ? remainingAmount : effPrice > 0 ? effPrice : 1;
+
+    if (existingPending) {
+      await updatePayment({
+        id: existingPending.id,
+        due_date: dueDate,
+        amount: remainingAmount > 0 ? remainingAmount : existingPending.amount,
+        notes: existingPending.notes || 'Pago final',
+      });
+    } else if (remainingAmount > 0 || effPrice > 0) {
+      await createPayment({
+        supplier_id: supplierId,
+        amount: targetAmount,
+        due_date: dueDate,
+        paid_at: null,
+        status: 'pending',
+        notes: 'Pago final',
+      });
     }
   };
 
@@ -470,8 +608,9 @@ export function useBudgetStore() {
     supplier_id?: string | null;
     notes?: string | null;
   }) => {
+    const currentMenu = getStoredBudgetMenuConfig();
     const nextConfig: BudgetMenuConfig = {
-      ...menuConfig,
+      ...currentMenu,
       ...data,
       adult_price: Number(data.adult_price),
       child_price: Number(data.child_price),
@@ -508,6 +647,8 @@ export function useBudgetStore() {
     createPayment,
     updatePayment,
     deletePayment,
+    markPaymentAsPaid,
+    setSupplierFinalPaymentDate,
     updateMenuConfig,
     updateGuestType,
     refresh: reloadData,

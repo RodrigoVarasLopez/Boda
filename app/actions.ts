@@ -1460,7 +1460,7 @@ export async function getBudgetDataAction() {
  */
 export async function createCategoryAction(rawInput: unknown) {
   const validated = BudgetCategoryCreateSchema.parse(rawInput);
-  const newId = crypto.randomUUID();
+  const newId = validated.id || crypto.randomUUID();
 
   if (isSupabaseConfigured()) {
     try {
@@ -1578,7 +1578,7 @@ export async function deleteCategoryAction(categoryId: string) {
  */
 export async function createSupplierAction(rawInput: unknown) {
   const validated = BudgetSupplierCreateSchema.parse(rawInput);
-  const newId = crypto.randomUUID();
+  const newId = validated.id || crypto.randomUUID();
   const categoryId = normalizeCategoryId(validated.category_id);
 
   if (isSupabaseConfigured()) {
@@ -1793,7 +1793,7 @@ export async function deleteSupplierAction(supplierId: string) {
  */
 export async function createPaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentCreateSchema.parse(rawInput);
-  const newId = crypto.randomUUID();
+  const newId = validated.id || crypto.randomUUID();
 
   if (isSupabaseConfigured()) {
     try {
@@ -1804,10 +1804,10 @@ export async function createPaymentAction(rawInput: unknown) {
         wedding_id: weddingId,
         supplier_id: validated.supplier_id,
         amount: validated.amount,
-        due_date: validated.due_date,
-        paid_at: validated.paid_at,
+        due_date: validated.due_date || null,
+        paid_at: validated.paid_at || null,
         status: validated.status,
-        notes: validated.notes,
+        notes: validated.notes || null,
       });
 
       if (error) {

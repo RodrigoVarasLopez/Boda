@@ -94,6 +94,7 @@ export const BulkMediaModerateSchema = z.object({
 // ==========================================
 
 export const BudgetCategoryCreateSchema = z.object({
+  id: z.string().uuid().optional(),
   name: z.string().trim().min(1, 'El nombre de la categoría es obligatorio').max(100),
   description: z.string().trim().max(300).optional().nullable(),
   budget_type: z.enum(['fixed', 'per_guest', 'mixed']).default('fixed'),
@@ -112,6 +113,7 @@ export const BudgetCategoryUpdateSchema = z.object({
 });
 
 export const BudgetSupplierCreateSchema = z.object({
+  id: z.string().uuid().optional(),
   category_id: z.string().min(1, 'ID de categoría obligatorio'),
   name: z.string().trim().min(1, 'El nombre del proveedor es obligatorio').max(150),
   contact_name: z.string().trim().max(100).optional().nullable(),
@@ -156,11 +158,12 @@ export const BudgetSupplierSelectSchema = z.object({
 });
 
 export const BudgetPaymentCreateSchema = z.object({
+  id: z.string().uuid().optional(),
   supplier_id: z.string().min(1, 'ID de proveedor obligatorio'),
   amount: z.coerce.number().min(0.01, 'El importe debe ser mayor que 0'),
   due_date: z.string().optional().nullable(),
   paid_at: z.string().optional().nullable(),
-  status: z.enum(['pending', 'partial', 'paid']).default('pending'),
+  status: z.enum(['pending', 'partial', 'paid']).default('paid'),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
