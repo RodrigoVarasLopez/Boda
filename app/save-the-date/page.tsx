@@ -9,8 +9,12 @@ import { AmbientAudioButton } from '@/components/save-the-date/AmbientAudioButto
 export const metadata: Metadata = {
   title: 'Rodrigo & Stephanie — Save the Date',
   description:
-    'Rodrigo & Stephanie se casan el 28 de agosto de 2027 en Villamuriel de Cerrato, Palencia. Guarda la fecha.',
+    '28 · 08 · 2027 · Villamuriel de Cerrato, Palencia. Guarda la fecha.',
   manifest: '/save-the-date/manifest.json',
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: '/save-the-date/icon.svg',
     apple: '/save-the-date/icon.svg',
@@ -24,15 +28,16 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'es_ES',
     url: '/save-the-date',
-    siteName: 'Rodrigo & Stephanie · 28 · 08 · 2027',
-    title: 'Rodrigo & Stephanie — 28 · 08 · 2027 · Villamuriel de Cerrato · Palencia',
+    siteName: 'Rodrigo & Stephanie · Save the Date',
+    title: 'Rodrigo & Stephanie — Save the Date',
     description:
-      'Rodrigo & Stephanie se casan el 28 de agosto de 2027 en Villamuriel de Cerrato, Palencia. Guarda la fecha.',
+      '28 · 08 · 2027 · Villamuriel de Cerrato · Palencia',
     images: [
       {
         url: '/save-the-date/og-save-the-date.jpg',
         width: 1200,
         height: 630,
+        type: 'image/jpeg',
         alt: 'Rodrigo & Stephanie — 28 · 08 · 2027 — Villamuriel de Cerrato · Palencia',
       },
     ],
@@ -41,7 +46,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Rodrigo & Stephanie — Save the Date',
     description:
-      '28 · 08 · 2027 · Villamuriel de Cerrato · Palencia. Guarda la fecha.',
+      '28 · 08 · 2027 · Villamuriel de Cerrato · Palencia',
     images: ['/save-the-date/og-save-the-date.jpg'],
   },
 };

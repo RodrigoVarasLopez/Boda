@@ -18,10 +18,26 @@ const plusJakarta = Plus_Jakarta_Sans({
   display: 'swap',
 });
 
+function getMetadataBaseUrl(): string {
+  if (
+    process.env.NEXT_PUBLIC_SITE_URL &&
+    !process.env.NEXT_PUBLIC_SITE_URL.includes('localhost')
+  ) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'https://stephanieyrodrigo.com';
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://stephanieyrodrigo.com'),
-  title: 'Stephanie & Rodrigo — Nuestra Boda',
-  description: 'Plataforma y Concierge Digital de Boda para Stephanie & Rodrigo · 25 de Agosto de 2027',
+  metadataBase: new URL(getMetadataBaseUrl()),
+  title: 'Rodrigo & Stephanie — Nuestra Boda',
+  description: 'Rodrigo & Stephanie · 28 de agosto de 2027 · Villamuriel de Cerrato, Palencia',
   robots: {
     index: false,
     follow: false,
