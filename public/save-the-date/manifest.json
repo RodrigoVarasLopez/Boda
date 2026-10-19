@@ -1,0 +1,20 @@
+{
+  "name": "Rodrigo & Stephanie — Save the Date",
+  "short_name": "R & S · 28.08.27",
+  "description": "Rodrigo & Stephanie se casan el 28 de agosto de 2027 en Villamuriel de Cerrato, Palencia. Guarda la fecha.",
+  "start_url": "/save-the-date",
+  "scope": "/save-the-date",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF8F5",
+  "theme_color": "#FAF8F5",
+  "lang": "es-ES",
+  "icons": [
+    {
+      "src": "/save-the-date/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
