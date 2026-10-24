@@ -8,6 +8,11 @@ import {
   deleteGuestGroupAction,
   syncAllLocalGuestsToSupabaseAction,
   updateGuestTypeAction,
+  updateGroupNameAction,
+  updateGuestDetailsAction,
+  addGuestToGroupAction,
+  removeGuestFromGroupAction,
+  toggleGroupEventAction,
 } from '@/app/actions';
 
 const STORAGE_KEY_GROUPS = 'boda_groups_store_v2';
@@ -356,6 +361,8 @@ export function useWeddingData() {
 
   // Adult vs Child headcount
   const allGuests = groups.flatMap((g) => g.guests);
+  const totalChildren = allGuests.filter((g) => g.guest_type === 'child' || g.is_child === true).length;
+  const totalAdults = Math.max(0, totalGuests - totalChildren);
   const guestMap = new Map(allGuests.map((g) => [g.id, g]));
   let attendingAdults = 0;
   let attendingChildren = 0;
@@ -401,6 +408,101 @@ export function useWeddingData() {
     );
   };
 
+  // Update Group / Family Name
+  const updateGroupName = async (groupId: string, newName: string) => {
+    const cleanName = newName.trim();
+    if (!cleanName) return { success: false, error: 'El nombre no puede estar vacío' };
+
+    const currentGroups = getStoredGroups();
+    const targetGroup = currentGroups.find((g) => g.id === groupId);
+    if (targetGroup) {
+      targetGroup.name = cleanName;
+      setStoredGroups([...currentGroups]);
+      setGroups([...currentGroups]);
+    }
+
+    return await updateGroupNameAction({ groupId, name: cleanName });
+  };
+
+  // Update Individual Guest Name & Surname
+  const updateGuestDetails = async (
+    guestId: string,
+    first_name: string,
+    last_name: string,
+    guest_type?: 'adult' | 'child'
+  ) => {
+    const cleanFirst = first_name.trim();
+    const cleanLast = last_name.trim();
+    if (!cleanFirst) return { success: false, error: 'El nombre no puede estar vacío' };
+
+    const currentGroups = getStoredGroups();
+    for (const group of currentGroups) {
+      const gst = group.guests.find((g) => g.id === guestId);
+      if (gst) {
+        gst.first_name = cleanFirst;
+        gst.last_name = cleanLast;
+        if (guest_type) {
+          gst.guest_type = guest_type;
+          gst.is_child = guest_type === 'child';
+        }
+        break;
+      }
+    }
+    setStoredGroups([...currentGroups]);
+    setGroups([...currentGroups]);
+
+    return await updateGuestDetailsAction({ guestId, first_name: cleanFirst, last_name: cleanLast, guest_type });
+  };
+
+  // Add Guest to Existing Group
+  const addGuestToGroup = async (
+    groupId: string,
+    first_name: string,
+    last_name?: string,
+    guest_type?: 'adult' | 'child'
+  ) => {
+    const res = await addGuestToGroupAction({ groupId, first_name, last_name, guest_type });
+    if (res.success && res.guest) {
+      const currentGroups = getStoredGroups();
+      const targetGroup = currentGroups.find((g) => g.id === groupId);
+      if (targetGroup) {
+        targetGroup.guests.push(res.guest as any);
+        setStoredGroups([...currentGroups]);
+        setGroups([...currentGroups]);
+      }
+    }
+    return res;
+  };
+
+  // Remove Guest from Group
+  const removeGuestFromGroup = async (groupId: string, guestId: string) => {
+    const currentGroups = getStoredGroups();
+    const targetGroup = currentGroups.find((g) => g.id === groupId);
+    if (targetGroup) {
+      targetGroup.guests = targetGroup.guests.filter((g) => g.id !== guestId);
+      setStoredGroups([...currentGroups]);
+      setGroups([...currentGroups]);
+    }
+    return await removeGuestFromGroupAction({ groupId, guestId });
+  };
+
+  // Toggle Group Event (e.g. Preboda)
+  const toggleGroupEvent = async (groupId: string, eventId: string, allowed: boolean) => {
+    const currentGroups = getStoredGroups();
+    const targetGroup = currentGroups.find((g) => g.id === groupId);
+    if (targetGroup) {
+      const has = targetGroup.allowed_event_ids.includes(eventId);
+      if (allowed && !has) {
+        targetGroup.allowed_event_ids = [...targetGroup.allowed_event_ids, eventId];
+      } else if (!allowed && has) {
+        targetGroup.allowed_event_ids = targetGroup.allowed_event_ids.filter((id) => id !== eventId);
+      }
+      setStoredGroups([...currentGroups]);
+      setGroups([...currentGroups]);
+    }
+    return await toggleGroupEventAction({ groupId, eventId, allowed });
+  };
+
   return {
     isLoaded,
     isLoadingSupabase,
@@ -412,6 +514,8 @@ export function useWeddingData() {
     stats: {
       totalGuests,
       totalGroups,
+      totalAdults,
+      totalChildren,
       openedInvitations,
       confirmedAttending: confirmedAttendingGuests,
       confirmedPlusOnes,
@@ -426,6 +530,11 @@ export function useWeddingData() {
     saveManualRSVP: saveManualGroupRSVP,
     quickConfirmGroup: quickConfirmGroupAttendance,
     updateGuestType,
+    updateGroupName,
+    updateGuestDetails,
+    addGuestToGroup,
+    removeGuestFromGroup,
+    toggleGroupEvent,
     createGroup,
     deleteGroup,
     syncLocalGuestsToSupabase,

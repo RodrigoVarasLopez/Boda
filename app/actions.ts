@@ -1969,9 +1969,263 @@ export async function updateGuestTypeAction(rawInput: unknown) {
     console.warn('DB update guest type fallback:', err);
   }
 
+  for (const grp of INITIAL_GROUPS) {
+    const gst = grp.guests.find((g) => g.id === validated.guest_id);
+    if (gst) {
+      gst.guest_type = validated.guest_type;
+      gst.is_child = validated.guest_type === 'child';
+      break;
+    }
+  }
+
   revalidatePath('/admin/guests');
   revalidatePath('/admin/budget');
   return { success: true };
 }
+
+/**
+ * 13. Update Group / Family Name
+ */
+export async function updateGroupNameAction(payload: { groupId: string; name: string }) {
+  const cleanName = payload.name.trim();
+  if (!cleanName) {
+    return { success: false, error: 'El nombre del grupo no puede estar vacío' };
+  }
+
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      const { error } = await adminClient
+        .from('guest_groups')
+        .update({
+          name: cleanName,
+          display_name: cleanName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', payload.groupId);
+
+      if (error) {
+        console.error('Supabase update group name error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  } catch (err: any) {
+    console.warn('DB update group name fallback:', err);
+  }
+
+  const grp = INITIAL_GROUPS.find((g) => g.id === payload.groupId);
+  if (grp) {
+    grp.name = cleanName;
+  }
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin');
+  return { success: true, name: cleanName };
+}
+
+/**
+ * 14. Update Individual Guest Name / Surname / Type
+ */
+export async function updateGuestDetailsAction(payload: {
+  guestId: string;
+  first_name: string;
+  last_name: string;
+  guest_type?: 'adult' | 'child';
+}) {
+  const cleanFirst = payload.first_name.trim();
+  const cleanLast = payload.last_name.trim();
+  if (!cleanFirst) {
+    return { success: false, error: 'El nombre del invitado no puede estar vacío' };
+  }
+
+  const updateFields: Record<string, any> = {
+    first_name: cleanFirst,
+    last_name: cleanLast,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payload.guest_type) {
+    updateFields.guest_type = payload.guest_type;
+    updateFields.is_child = payload.guest_type === 'child';
+  }
+
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      const { error } = await adminClient
+        .from('guests')
+        .update(updateFields)
+        .eq('id', payload.guestId);
+
+      if (error) {
+        console.error('Supabase update guest details error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  } catch (err: any) {
+    console.warn('DB update guest details fallback:', err);
+  }
+
+  for (const grp of INITIAL_GROUPS) {
+    const gst = grp.guests.find((g) => g.id === payload.guestId);
+    if (gst) {
+      gst.first_name = cleanFirst;
+      gst.last_name = cleanLast;
+      if (payload.guest_type) {
+        gst.guest_type = payload.guest_type;
+        gst.is_child = payload.guest_type === 'child';
+      }
+      break;
+    }
+  }
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin/budget');
+  return { success: true };
+}
+
+/**
+ * 15. Add Guest to Existing Group
+ */
+export async function addGuestToGroupAction(payload: {
+  groupId: string;
+  first_name: string;
+  last_name?: string;
+  guest_type?: 'adult' | 'child';
+}) {
+  const cleanFirst = payload.first_name.trim();
+  const cleanLast = (payload.last_name || '').trim();
+  const guestType = payload.guest_type || 'adult';
+  const isChild = guestType === 'child';
+
+  if (!cleanFirst) {
+    return { success: false, error: 'El nombre no puede estar vacío' };
+  }
+
+  const newGuestId = crypto.randomUUID();
+
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      const { error } = await adminClient.from('guests').insert({
+        id: newGuestId,
+        group_id: payload.groupId,
+        first_name: cleanFirst,
+        last_name: cleanLast,
+        is_child: isChild,
+        guest_type: guestType,
+        is_primary_contact: false,
+        allow_plus_one: false,
+        status: 'pending',
+      });
+
+      if (error) {
+        console.error('Supabase add guest to group error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  } catch (err: any) {
+    console.warn('DB add guest to group fallback:', err);
+  }
+
+  const newGuestObj = {
+    id: newGuestId,
+    wedding_id: INITIAL_WEDDING.id,
+    group_id: payload.groupId,
+    first_name: cleanFirst,
+    last_name: cleanLast,
+    is_child: isChild,
+    guest_type: guestType,
+    is_plus_one_allowed: false,
+  };
+
+  const grp = INITIAL_GROUPS.find((g) => g.id === payload.groupId);
+  if (grp) {
+    grp.guests.push(newGuestObj);
+  }
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin/budget');
+  return { success: true, guest: newGuestObj };
+}
+
+/**
+ * 16. Remove Guest from Group
+ */
+export async function removeGuestFromGroupAction(payload: { groupId: string; guestId: string }) {
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      await adminClient.from('rsvp_responses').delete().eq('guest_id', payload.guestId);
+      await adminClient.from('guests').delete().eq('id', payload.guestId);
+    }
+  } catch (err) {
+    console.warn('DB remove guest from group fallback:', err);
+  }
+
+  const grp = INITIAL_GROUPS.find((g) => g.id === payload.groupId);
+  if (grp) {
+    grp.guests = grp.guests.filter((g) => g.id !== payload.guestId);
+  }
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin/budget');
+  return { success: true };
+}
+
+/**
+ * 17. Toggle Allowed Event (e.g. Preboda) for a Group
+ */
+export async function toggleGroupEventAction(payload: {
+  groupId: string;
+  eventId: string;
+  allowed: boolean;
+}) {
+  const eventUuidMap: Record<string, string> = {
+    'evt-preboda-cata': 'b0000000-0000-0000-0000-000000000001',
+    'evt-ceremonia': 'b0000000-0000-0000-0000-000000000002',
+    'evt-banquete': 'b0000000-0000-0000-0000-000000000003',
+    'evt-fiesta-dj': 'b0000000-0000-0000-0000-000000000004',
+  };
+  const dbEventId = eventUuidMap[payload.eventId] || payload.eventId;
+
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      if (payload.allowed) {
+        await adminClient.from('group_events').upsert(
+          {
+            group_id: payload.groupId,
+            event_id: dbEventId,
+            is_visible: true,
+          },
+          { onConflict: 'group_id,event_id' }
+        );
+      } else {
+        await adminClient
+          .from('group_events')
+          .delete()
+          .eq('group_id', payload.groupId)
+          .eq('event_id', dbEventId);
+      }
+    }
+  } catch (err) {
+    console.warn('DB toggle group event fallback:', err);
+  }
+
+  const grp = INITIAL_GROUPS.find((g) => g.id === payload.groupId);
+  if (grp) {
+    const has = grp.allowed_event_ids.includes(payload.eventId);
+    if (payload.allowed && !has) {
+      grp.allowed_event_ids.push(payload.eventId);
+    } else if (!payload.allowed && has) {
+      grp.allowed_event_ids = grp.allowed_event_ids.filter((id) => id !== payload.eventId);
+    }
+  }
+
+  revalidatePath('/admin/guests');
+  return { success: true };
+}
+
 
 
