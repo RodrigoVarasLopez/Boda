@@ -293,15 +293,20 @@ export function useWeddingData() {
   // Delete Guest Group
   const deleteGroup = async (groupId: string) => {
     setIsSyncing(true);
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.filter((g) => g.id !== groupId);
+      setStoredGroups(updated);
+      return updated;
+    });
+    setRsvps((prev) => {
+      const base = prev.length > 0 ? prev : getStoredRSVPS();
+      const updated = base.filter((r) => r.group_id !== groupId);
+      setStoredRSVPs(updated);
+      return updated;
+    });
     try {
       const res = await deleteGuestGroupAction(groupId);
-      if (res.success) {
-        const current = getStoredGroups();
-        const updated = current.filter((g) => g.id !== groupId);
-        setStoredGroups(updated);
-        setGroups(updated);
-        return res;
-      }
       return res;
     } catch (err: any) {
       console.error('Failed to delete guest group:', err);

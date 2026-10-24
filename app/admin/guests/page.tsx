@@ -132,12 +132,26 @@ export default function AdminGuestsPage() {
     totalInGroup: number
   ) => {
     if (totalInGroup <= 1) {
-      alert('La familia debe tener al menos un invitado.');
+      alert('La familia debe tener al menos un invitado. Si quieres borrar toda la familia, usa el botón de eliminar familia a la derecha de Detalles.');
       return;
     }
     if (!confirm(`¿Quitar a "${guestName}" de esta familia?`)) return;
     await removeGuestFromGroup(groupId, guestId);
     showToast(`✓ ${guestName} eliminado de la familia`);
+  };
+
+  const handleDeleteFamily = async (grp: GuestGroup) => {
+    if (!confirm(`¿Eliminar por completo a la familia "${grp.name}" (${grp.guests.length} ${grp.guests.length === 1 ? 'persona' : 'personas'})?`)) {
+      return;
+    }
+    if (selectedDrawerGroupId === grp.id) {
+      setSelectedDrawerGroupId(null);
+    }
+    if (selectedModalGroupId === grp.id) {
+      setSelectedModalGroupId(null);
+    }
+    await deleteGroup(grp.id);
+    showToast(`✓ Familia "${grp.name}" eliminada correctamente`);
   };
 
   const handleQuickToggleChild = (guestId: string, currentlyChild: boolean) => {
@@ -690,7 +704,19 @@ export default function AdminGuestsPage() {
                     onClick={() => setSelectedDrawerGroupId(grp.id)}
                     className="text-xs font-medium text-text-accent flex items-center gap-1 py-1.5 px-2"
                   >
-                    Editar / Detalles →
+                    Detalles →
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFamily(grp);
+                    }}
+                    title={`Eliminar familia ${grp.name}`}
+                    className="p-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -1038,6 +1064,16 @@ export default function AdminGuestsPage() {
                             className="py-1.5 px-2.5 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary transition-colors cursor-pointer text-[11px] font-medium whitespace-nowrap"
                           >
                             <span>Detalles</span>
+                          </button>
+
+                          {/* Delete entire family button to the right of Detalles */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFamily(grp)}
+                            title={`Eliminar toda la familia ${grp.name}`}
+                            className="p-1.5 rounded-xl border border-rose-200/80 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer inline-flex items-center justify-center shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
