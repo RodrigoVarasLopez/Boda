@@ -39,25 +39,29 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
     : timelineBlock?.content?.public_title || 'Programa del Fin de Semana';
   const sectionDescription =
     timelineBlock?.content?.description ||
-    'La celebración se divide en dos momentos únicos entre viñedos, bodega y música en directo.';
+    'Empezaremos el viernes en la Bodega El Corro de Villamuriel de Cerrato y el sábado nos casaremos en la Iglesia de Villamuriel de Cerrato antes de ir al cóctel y banquete en Bodega Concejo.';
 
   const fridayTag = timelineBlock?.content?.friday_tag || 'PARTE 1 · VIERNES 27 AGOSTO';
-  const fridayBadge = timelineBlock?.content?.friday_badge || 'Amigos · Exclusivo';
-  const fridayTitle = timelineBlock?.content?.friday_title || 'Preboda & Cata en la Bodega';
+  const fridayBadge = timelineBlock?.content?.friday_badge || 'Villamuriel de Cerrato';
+  const fridayTitle =
+    timelineBlock?.content?.friday_title ||
+    'Preboda en Bodega El Corro (Villamuriel de Cerrato)';
   const fridayDescription =
     timelineBlock?.content?.friday_description ||
-    'Una velada íntima reservada para nuestros amigos más cercanos: paseo por los viñedos, visita guiada a la sala de crianza en barricas de roble y cata de nuestros mejores vinos de autor con maridaje antes del gran día.';
+    'Comenzaremos el fin de semana en Villamuriel de Cerrato, en la tradicional Bodega El Corro (situada junto a la esclusa del Canal de Castilla), compartiendo vinos, picoteo y risas con nuestros amigos y familiares.';
 
   const saturdayTag = timelineBlock?.content?.saturday_tag || 'PARTE 2 · SÁBADO 28 AGOSTO';
   const saturdayBadge =
     timelineBlock?.content?.saturday_badge || 'El Gran Día · Todos los Invitados';
-  const saturdayTitle = timelineBlock?.content?.saturday_title || 'Boda en Bodega Concejo';
+  const saturdayTitle =
+    timelineBlock?.content?.saturday_title ||
+    'Iglesia de Villamuriel de Cerrato & Bodega Concejo';
   const saturdayDescription =
     timelineBlock?.content?.saturday_description ||
-    'Ceremonia civil al aire libre, banquete en la terraza de viñedos con música en directo y la mejor fiesta con DJ y barra libre bajo las estrellas.';
+    'Celebraremos la ceremonia religiosa en la Iglesia de Villamuriel de Cerrato y, a continuación, nos trasladaremos a Bodega Concejo para disfrutar del cóctel al aire libre, el banquete y la fiesta (con autobuses de Villamuriel al Concejo y viceversa con parada en Palencia).';
   const saturdayAddress =
     timelineBlock?.content?.saturday_address ||
-    'Ctra. Valoria Km 3,6 · 47200 Valoria La Buena (Valladolid)';
+    'Ceremonia: Iglesia de Villamuriel de Cerrato · Cóctel y Banquete: Bodega Concejo';
 
   const renderEventCard = (evt: Event) => {
     const eventTime = new Date(evt.start_time).toLocaleTimeString('es-ES', {

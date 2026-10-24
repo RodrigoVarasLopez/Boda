@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Wedding, CMSBlock, Event } from './types';
 import { INITIAL_WEDDING, INITIAL_EVENTS } from './mock-data';
 
-const CMS_STORAGE_KEY = 'boda_cms_store_v2';
+const CMS_STORAGE_KEY = 'boda_cms_store_v3';
 
 export interface CMSStoreState {
   wedding: Wedding;
@@ -25,8 +25,8 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
       envelope_tagline: 'Nos Casamos',
       envelope_button: 'Abrir invitación',
       hero_badge: 'Invitación Exclusiva',
-      location_highlight: 'Boda en Bodega Concejo',
-      location_detail: 'Valoria la Buena · Valladolid',
+      location_highlight: 'Iglesia de Villamuriel de Cerrato & Bodega Concejo',
+      location_detail: 'Villamuriel de Cerrato · Valoria la Buena',
       hero_message: 'Nos casamos y no nos imaginaríamos este día sin vosotros',
       cta_primary: 'Confirmar Asistencia',
       cta_secondary: 'Ver Mi Programa',
@@ -44,27 +44,27 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     subtitle: 'Bienvenida & Tarjeta Concierge',
     content: {
       welcome_quote:
-        'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas entre viñedos, música en directo y los mejores vinos de nuestra tierra.',
+        'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas: desde el "sí, quiero" en la Iglesia de Villamuriel de Cerrato hasta el cóctel y banquete en Bodega Concejo.',
       welcome_body:
-        'Queremos que viváis con nosotros cada instante de esta celebración en las tierras vallisoletanas de Valoria la Buena: un fin de semana diseñado para disfrutar sin prisas de la gastronomía, el vino y los mejores recuerdos.',
+        'Un fin de semana muy especial que comenzará el viernes con la preboda en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal de Castilla) y continuará el sábado con nuestra ceremonia en la Iglesia de Villamuriel de Cerrato, seguida del cóctel, banquete y fiesta en Bodega Concejo.',
       concierge_title: 'Concierge del Invitado',
       concierge_badge: 'Guía 2027',
       concierge_items: [
         {
-          title: '27 & 28 de Agosto de 2027',
-          subtitle: 'Viernes Preboda & Sábado Gran Día',
+          title: 'Viernes 27 · Preboda en Villamuriel',
+          subtitle: 'Bodega El Corro (Junto a la Esclusa del Canal)',
         },
         {
-          title: 'Bodega Concejo · Valoria la Buena',
-          subtitle: 'Valladolid (Ctra. Valoria Km 3,6)',
+          title: 'Sábado 28 · Ceremonia Religiosa',
+          subtitle: 'Iglesia de Villamuriel de Cerrato',
         },
         {
-          title: 'Banquete al Aire Libre & Música',
-          subtitle: 'Maridaje con vinos de autor, cóctel y DJ',
+          title: 'Cóctel, Banquete & Fiesta',
+          subtitle: 'Bodega Concejo (Autobuses Villamuriel ↔ Concejo con parada en Palencia)',
         },
       ],
       concierge_footer:
-        'Consulta en esta web el programa interactivo, confirma tu asistencia, gestiona tu menú y descarga los accesos en tu calendario.',
+        'Consulta en esta web el programa completo, los horarios de autobuses desde Villamuriel y Palencia, los hoteles recomendados y confirma tu asistencia.',
     },
     display_order: 2,
     is_active: true,
@@ -78,14 +78,14 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     subtitle: '01 · NOSOTROS',
     content: {
       intro_text:
-        'El camino que nos ha traído hasta aquí y por qué este rincón enológico de Valladolid es tan especial para nosotros.',
+        'El camino que nos ha traído hasta aquí, desde nuestras raíces en Villamuriel de Cerrato hasta celebrar nuestro gran día rodeados de todos vosotros.',
       paragraphs: [
-        'Nuestra historia comenzó entre risas, complicidad y una pasión compartida por nuestra tierra, la gastronomía y el buen vino.',
-        'Nos hace una ilusión inmensa dar el "sí, quiero" rodeados de nuestra gente en un entorno tan mágico y personal como los viñedos de Bodega Concejo.',
+        'Nuestra historia comenzó entre risas, complicidad y el cariño de nuestra gente y nuestra tierra.',
+        'Por eso nos hace una ilusión inmensa comenzar celebrando la preboda en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal), darnos el "sí, quiero" en la Iglesia de Villamuriel de Cerrato y brindar juntos después en el cóctel y banquete en Bodega Concejo.',
       ],
       image: '/images/bodega/vinedos-valoria-barrica.png',
-      image_badge: 'Tradición & Pasión',
-      image_caption: 'Valoria la Buena (Valladolid)',
+      image_badge: 'Villamuriel & Bodega Concejo',
+      image_caption: 'Villamuriel de Cerrato · Valoria la Buena',
       signature_left: 'Rodrigo & Stephanie',
       signature_right: 'Agosto · 2027',
     },
@@ -102,18 +102,19 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     content: {
       public_title: 'Programa del Fin de Semana',
       description:
-        'La celebración se divide en dos momentos únicos entre viñedos, bodega y música en directo.',
+        'Empezaremos el viernes en la Bodega El Corro de Villamuriel de Cerrato y el sábado nos casaremos en la Iglesia de Villamuriel de Cerrato antes de ir al cóctel y banquete en Bodega Concejo.',
       friday_tag: 'PARTE 1 · VIERNES 27 AGOSTO',
-      friday_badge: 'Amigos · Exclusivo',
-      friday_title: 'Preboda & Cata en la Bodega',
+      friday_badge: 'Villamuriel de Cerrato',
+      friday_title: 'Preboda en Bodega El Corro (Villamuriel de Cerrato)',
       friday_description:
-        'Una velada íntima reservada para nuestros amigos más cercanos: paseo por los viñedos, visita guiada a la sala de crianza en barricas de roble y cata de nuestros mejores vinos de autor con maridaje antes del gran día.',
+        'Comenzaremos el fin de semana en Villamuriel de Cerrato, en la tradicional Bodega El Corro (situada junto a la esclusa del Canal de Castilla), compartiendo vinos, picoteo y risas con nuestros amigos y familiares.',
       saturday_tag: 'PARTE 2 · SÁBADO 28 AGOSTO',
       saturday_badge: 'El Gran Día · Todos los Invitados',
-      saturday_title: 'Boda en Bodega Concejo',
+      saturday_title: 'Iglesia de Villamuriel de Cerrato & Bodega Concejo',
       saturday_description:
-        'Ceremonia civil al aire libre, banquete en la terraza de viñedos con música en directo y la mejor fiesta con DJ y barra libre bajo las estrellas.',
-      saturday_address: 'Ctra. Valoria Km 3,6 · 47200 Valoria La Buena (Valladolid)',
+        'Celebraremos la ceremonia religiosa en la Iglesia de Villamuriel de Cerrato y, a continuación, nos trasladaremos a Bodega Concejo para disfrutar del cóctel al aire libre, el banquete y la fiesta (con autobuses de Villamuriel al Concejo y viceversa con parada en Palencia).',
+      saturday_address:
+        'Ceremonia: Iglesia de Villamuriel de Cerrato · Cóctel y Banquete: Bodega Concejo',
     },
     display_order: 4,
     is_active: true,
@@ -123,19 +124,20 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     id: 'block-venue',
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'venue',
-    title: 'El Lugar',
-    subtitle: 'Bodega Concejo',
+    title: 'Los Escenarios',
+    subtitle: 'Villamuriel de Cerrato & Bodega Concejo',
     content: {
       section_badge: 'Información Práctica',
       section_title: 'Guía del Invitado',
       section_subtitle:
-        'Todo lo que necesitas saber sobre traslados, alojamiento, enclave y detalles para disfrutar al máximo.',
-      venue_badge: 'El Enclave',
+        'Todo lo que necesitas saber sobre la preboda en Bodega El Corro, la ceremonia en la Iglesia de Villamuriel, el banquete en Bodega Concejo, hoteles y autobuses.',
+      venue_badge: 'Ceremonia, Cóctel y Banquete',
       description:
-        'Enclavada en Valoria la Buena (Valladolid), Bodega Concejo es una bodega familiar rodeada de viñedos centenarios donde celebraremos la ceremonia civil al aire libre, el banquete con música en directo y la fiesta nocturna.',
-      address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+        'La preboda tendrá lugar el viernes en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal). El sábado celebraremos la ceremonia religiosa en la Iglesia de Villamuriel de Cerrato y, acto seguido, disfrutaremos del cóctel, el banquete y la fiesta en Bodega Concejo.',
+      address:
+        'Iglesia de Villamuriel de Cerrato (Palencia) & Bodega Concejo (Ctra. Valoria Km 3,6)',
       google_maps_url:
-        'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+        'https://maps.google.com/?q=Iglesia+de+Santa+Maria+la+Mayor+Villamuriel+de+Cerrato+Palencia',
       image: '/images/bodega/bodega-concejo-banquete-noche.png',
     },
     display_order: 5,
@@ -147,22 +149,22 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'travel',
     title: 'Alojamiento & Autobuses de Traslado',
-    subtitle: 'Para vuestra mayor comodidad',
+    subtitle: 'Hoteles en Palencia y Villamuriel + Autobuses',
     content: {
       hotels: [
         {
-          name: 'Posada Real Concejo',
-          discount: 'Alojamiento boutique en la propia bodega / Valoria',
-          distance: 'En el propio complejo',
+          name: 'Hotel Rey Sancho (Palencia)',
+          discount: 'Alojamiento recomendado en Palencia capital (con parada de autobús)',
+          distance: 'Av. Ponce de León, Palencia (a 10 min de Villamuriel)',
         },
         {
-          name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)',
-          discount: 'Tarifa especial invitados: RODRIGO&STEPHANIE',
-          distance: 'A 25 min en autobús',
+          name: 'Hotel de Villamuriel de Cerrato',
+          discount: 'Próxima inauguración · En el propio Villamuriel de Cerrato',
+          distance: 'En Villamuriel de Cerrato (Palencia)',
         },
       ],
       bus_info:
-        'Habrá servicio de autobuses de ida y vuelta desde Valladolid centro (Plaza de Zorrilla) hasta Bodega Concejo para la boda y con varios turnos de regreso tras la fiesta.',
+        'Habrá servicio de autobuses desde Villamuriel de Cerrato hasta Bodega Concejo (tras la ceremonia en la Iglesia) y de Bodega Concejo a Villamuriel de Cerrato y viceversa, con parada en Palencia.',
     },
     display_order: 6,
     is_active: true,
@@ -194,19 +196,19 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
     content: {
       faqs: [
         {
-          question: '¿Cuál es el dress code recomendado?',
+          question: '¿Dónde se celebran la Preboda, la Ceremonia y el Banquete?',
           answer:
-            'Viernes (preboda): Casual Chic entre viñedos. Sábado (boda): Formal / traje o vestido midi o largo.',
+            'El viernes la Preboda es en la Bodega El Corro en Villamuriel de Cerrato (junto a la esclusa del Canal de Castilla). El sábado la Ceremonia es en la Iglesia de Villamuriel de Cerrato y, al terminar, el Cóctel, Banquete y Fiesta serán en Bodega Concejo.',
+        },
+        {
+          question: '¿Cómo funcionan los autobuses?',
+          answer:
+            'Habrá autobuses de ida desde Villamuriel de Cerrato hasta Bodega Concejo tras la ceremonia, y de regreso desde Bodega Concejo a Villamuriel de Cerrato y viceversa, haciendo parada en Palencia (junto al Hotel Rey Sancho).',
         },
         {
           question: '¿Habrá opciones para alergias y dietas especiales?',
           answer:
-            'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, etc.) y adaptaremos tu menú.',
-        },
-        {
-          question: '¿Hay aparcamiento en la bodega?',
-          answer:
-            'Sí, Bodega Concejo cuenta con amplio aparcamiento privado gratuito para los invitados que vengan en coche.',
+            'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, menú infantil, etc.) y adaptaremos tu menú.',
         },
       ],
     },
@@ -224,11 +226,13 @@ export const DEFAULT_CMS_BLOCKS: CMSBlock[] = [
       memories_badge: 'Memorias de la Boda',
       memories_title: 'Libro de Firmas & Galería',
       memories_description:
-        'Comparte unas palabras con Rodrigo & Stephanie y revive los momentos más especiales de este fin de semana en Bodega Concejo.',
+        'Comparte unas palabras con Rodrigo & Stephanie y revive los momentos más especiales de nuestra boda en Villamuriel de Cerrato y Bodega Concejo.',
       footer_monogram: 'R&S',
       footer_names: 'Rodrigo & Stephanie',
-      footer_date_location: '28 · 08 · 2027 · Bodega Concejo · Valoria La Buena (Valladolid)',
-      footer_quote: '¡Nos hace una ilusión inmensa contar con vosotros en nuestro gran día!',
+      footer_date_location:
+        '28 · 08 · 2027 · Villamuriel de Cerrato & Bodega Concejo',
+      footer_quote:
+        '¡Nos hace una ilusión inmensa contar con vosotros en nuestro gran día!',
     },
     display_order: 9,
     is_active: true,
@@ -241,15 +245,13 @@ function mergeWithDefaultBlocks(storedBlocks?: CMSBlock[]): CMSBlock[] {
     return DEFAULT_CMS_BLOCKS;
   }
 
-  // Ensure all default block types exist and merge missing default content keys
   const result: CMSBlock[] = [];
-  const usedIds = new Set<string>();
 
   for (const stored of storedBlocks) {
-    const def = DEFAULT_CMS_BLOCKS.find((d) => d.type === stored.type || d.id === stored.id);
-    usedIds.add(stored.id);
+    const def = DEFAULT_CMS_BLOCKS.find(
+      (d) => d.type === stored.type || d.id === stored.id
+    );
     if (def) {
-      usedIds.add(def.id);
       result.push({
         ...def,
         ...stored,
@@ -263,7 +265,6 @@ function mergeWithDefaultBlocks(storedBlocks?: CMSBlock[]): CMSBlock[] {
     }
   }
 
-  // Add any newly introduced default blocks that weren't in storedBlocks yet
   for (const def of DEFAULT_CMS_BLOCKS) {
     if (!result.some((b) => b.type === def.type)) {
       result.push({
@@ -323,7 +324,6 @@ export function loadCMSStore(): CMSStoreState {
 export function saveCMSStore(state: CMSStoreState) {
   if (typeof window === 'undefined') return;
   try {
-    // Sync wedding fields from hero & registry blocks for consistency
     const heroBlock = state.blocks.find((b) => b.type === 'hero');
     const introBlock = state.blocks.find((b) => b.type === 'intro');
     const registryBlock = state.blocks.find((b) => b.type === 'registry');
@@ -333,7 +333,7 @@ export function saveCMSStore(state: CMSStoreState) {
       couple_names: heroBlock?.title || state.wedding.couple_names,
       hero_message: heroBlock?.content?.hero_message || state.wedding.hero_message,
       location_summary: heroBlock?.content?.location_detail
-        ? `${heroBlock.content.location_highlight || 'Bodega Concejo'} · ${heroBlock.content.location_detail}`
+        ? `${heroBlock.content.location_highlight || 'Villamuriel de Cerrato & Bodega Concejo'} · ${heroBlock.content.location_detail}`
         : state.wedding.location_summary,
       welcome_quote: introBlock?.content?.welcome_quote || state.wedding.welcome_quote,
       iban_details: {
@@ -406,19 +406,24 @@ export function useCMSData() {
     });
   }, []);
 
-  const updateBlock = useCallback((blockId: string, patch: Partial<CMSBlock>) => {
-    updateBlocks((prev) =>
-      prev.map((b) =>
-        b.id === blockId
-          ? {
-              ...b,
-              ...patch,
-              content: patch.content ? { ...b.content, ...patch.content } : b.content,
-            }
-          : b
-      )
-    );
-  }, [updateBlocks]);
+  const updateBlock = useCallback(
+    (blockId: string, patch: Partial<CMSBlock>) => {
+      updateBlocks((prev) =>
+        prev.map((b) =>
+          b.id === blockId
+            ? {
+                ...b,
+                ...patch,
+                content: patch.content
+                  ? { ...b.content, ...patch.content }
+                  : b.content,
+              }
+            : b
+        )
+      );
+    },
+    [updateBlocks]
+  );
 
   const updateEvents = useCallback((updater: (prev: Event[]) => Event[]) => {
     setState((prev) => {
@@ -429,11 +434,14 @@ export function useCMSData() {
     });
   }, []);
 
-  const updateEvent = useCallback((eventId: string, patch: Partial<Event>) => {
-    updateEvents((prev) =>
-      prev.map((evt) => (evt.id === eventId ? { ...evt, ...patch } : evt))
-    );
-  }, [updateEvents]);
+  const updateEvent = useCallback(
+    (eventId: string, patch: Partial<Event>) => {
+      updateEvents((prev) =>
+        prev.map((evt) => (evt.id === eventId ? { ...evt, ...patch } : evt))
+      );
+    },
+    [updateEvents]
+  );
 
   const updateWedding = useCallback((patch: Partial<Wedding>) => {
     setState((prev) => {

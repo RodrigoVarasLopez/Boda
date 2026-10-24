@@ -7,12 +7,12 @@ export const INITIAL_WEDDING: Wedding = {
   bride_name: 'Stephanie',
   groom_name: 'Rodrigo',
   wedding_date: '2027-08-28T18:00:00.000Z',
-  location_summary: 'Bodega Concejo · Valoria la Buena (Valladolid)',
+  location_summary: 'Villamuriel de Cerrato & Bodega Concejo',
   theme: 'mediterranean',
   privacy_mode: false,
   rsvp_deadline: '2027-07-20T23:59:59.000Z',
   hero_message: 'Nos casamos y no nos imaginaríamos este día sin vosotros',
-  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas entre viñedos, música en directo y los mejores vinos de nuestra tierra.',
+  welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas: desde el "sí, quiero" en la Iglesia de Villamuriel de Cerrato hasta el cóctel y banquete en Bodega Concejo.',
   iban_details: {
     account_holder: 'Rodrigo & Stephanie',
     iban: 'ES91 2100 0418 4502 0005 1234',
@@ -25,69 +25,69 @@ export const INITIAL_EVENTS: Event[] = [
   {
     id: 'evt-preboda-cata',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Preboda & Cata Privada de Vinos',
-    description: 'Una velada íntima de bienvenida en la bodega de Rodrigo. Paseo entre viñedos, visita guiada a la sala de barricas y cata de vinos con maridaje para nuestros amigos más cercanos.',
+    title: 'Preboda en Bodega El Corro',
+    description: 'Velada de bienvenida en la tradicional Bodega El Corro de Villamuriel de Cerrato, situada junto al entorno de la esclusa del Canal de Castilla, para empezar a celebrar juntos con nuestros amigos y seres queridos.',
     start_time: '2027-08-27T19:30:00.000Z',
     end_time: '2027-08-27T23:30:00.000Z',
-    location_name: 'Bodega de Rodrigo',
-    address: 'Ctra. Valoria, 47200 Valoria La Buena (Valladolid)',
-    google_maps_url: 'https://maps.google.com/?q=Valoria+La+Buena+Valladolid',
-    dress_code: 'Casual Chic / Elegante desenfadado entre viñedos',
+    location_name: 'Bodega El Corro (Junto a la Esclusa del Canal)',
+    address: 'Villamuriel de Cerrato (Palencia)',
+    google_maps_url: 'https://maps.google.com/?q=Bodega+El+Corro+Esclusa+del+Canal+Villamuriel+de+Cerrato+Palencia',
+    dress_code: 'Casual Chic / Elegante desenfadado',
     visibility: 'selected_groups',
     display_order: 1,
     day: 'friday',
-    day_label: 'Viernes · Preboda & Cata Privada',
+    day_label: 'Viernes · Preboda en Villamuriel',
     image_url: '/images/bodega/cata-vino-burro-loco.png'
   },
   {
     id: 'evt-ceremonia',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Ceremonia',
-    description: 'El "sí, quiero" civil al aire libre rodeados de viñedos y arquitectura vinícola tradicional de Bodega Concejo.',
+    title: 'Ceremonia en la Iglesia de Villamuriel de Cerrato',
+    description: 'Nos daremos el "sí, quiero" en la Iglesia de Villamuriel de Cerrato rodeados de toda nuestra familia y amigos antes de poner rumbo al cóctel y banquete.',
     start_time: '2027-08-28T18:00:00.000Z',
     end_time: '2027-08-28T19:00:00.000Z',
-    location_name: 'Bodega Concejo · Jardín de Viñedos',
-    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
-    google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+    location_name: 'Iglesia de Villamuriel de Cerrato',
+    address: 'Villamuriel de Cerrato (Palencia)',
+    google_maps_url: 'https://maps.google.com/?q=Iglesia+de+Santa+Maria+la+Mayor+Villamuriel+de+Cerrato+Palencia',
     dress_code: 'Formal / Traje o chaqueta y vestido midi o largo',
     visibility: 'everyone',
     display_order: 2,
     day: 'saturday',
-    day_label: 'Sábado · El Gran Día',
+    day_label: 'Sábado · Ceremonia en Villamuriel',
     image_url: '/images/bodega/vinedos-valoria-barrica.png'
   },
   {
     id: 'evt-banquete',
     wedding_id: 'w-stephanie-rodrigo-2027',
-    title: 'Banquete al Aire Libre con Música',
-    description: 'Cóctel y cena al aire libre en la terraza de la bodega con vistas a los viñedos, música en directo y maridaje con los vinos de autor de la bodega.',
+    title: 'Cóctel & Banquete en Bodega Concejo',
+    description: 'Tras la ceremonia en la Iglesia de Villamuriel de Cerrato, nos trasladaremos a Bodega Concejo (Valoria la Buena) para disfrutar del cóctel de bienvenida entre viñedos y el banquete con música en directo.',
     start_time: '2027-08-28T19:30:00.000Z',
     end_time: '2027-08-28T23:30:00.000Z',
-    location_name: 'Bodega Concejo · Terraza Exterior & Viñedos',
-    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+    location_name: 'Bodega Concejo · Terraza & Viñedos',
+    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena',
     google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
     dress_code: 'Formal',
     visibility: 'everyone',
     display_order: 3,
     day: 'saturday',
-    day_label: 'Sábado · El Gran Día',
+    day_label: 'Sábado · Cóctel & Banquete',
     image_url: '/images/bodega/bodega-concejo-banquete-noche.png'
   },
   {
     id: 'evt-fiesta-dj',
     wedding_id: 'w-stephanie-rodrigo-2027',
     title: 'Fiesta, DJ & Barra Libre',
-    description: 'Sesión con DJ en directo, barra libre de cócteles y vinos de Bodega Concejo, recena y fiesta bajo las estrellas.',
+    description: 'Sesión con DJ en directo, barra libre, recena y fiesta bajo las estrellas en Bodega Concejo (con servicio de autobuses de regreso a Villamuriel de Cerrato con parada en Palencia).',
     start_time: '2027-08-28T23:30:00.000Z',
     end_time: '2027-08-29T05:00:00.000Z',
     location_name: 'Bodega Concejo · Pabellón Acristalado & Terraza',
-    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
+    address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena',
     google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
     dress_code: '¡Prepárate para bailar hasta el amanecer!',
     visibility: 'everyone',
     display_order: 4,
     day: 'saturday',
-    day_label: 'Sábado · El Gran Día',
+    day_label: 'Sábado · Fiesta',
     image_url: '/images/bodega/bodega-concejo-fachada-logo.png'
   }
 ];
@@ -3560,9 +3560,9 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'hero',
     title: 'Rodrigo & Stephanie',
-    subtitle: '28 · 08 · 2027 · Bodega Concejo, Valladolid',
+    subtitle: '28 · 08 · 2027 · Villamuriel de Cerrato & Bodega Concejo',
     content: {
-      location: 'Bodega Concejo',
+      location: 'Iglesia de Villamuriel de Cerrato & Bodega Concejo',
       date: '28 · 08 · 2027',
       image: '/images/bodega/bodega-concejo-banquete-noche.png'
     },
@@ -3578,8 +3578,8 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: '01 · NOSOTROS',
     content: {
       paragraphs: [
-        'Nuestra historia comenzó entre risas, complicidad y una pasión compartida por nuestra tierra, la gastronomía y el buen vino.',
-        'Nos hace una ilusión inmensa dar el "sí, quiero" rodeados de nuestra gente en un entorno tan mágico y personal como los viñedos de Bodega Concejo.'
+        'Nuestra historia comenzó entre risas, complicidad y el cariño de nuestra gente y nuestra tierra.',
+        'Por eso nos hace una ilusión inmensa empezar el fin de semana con la preboda en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal de Castilla), darnos el "sí, quiero" en la Iglesia de Villamuriel de Cerrato y celebrar después el cóctel y banquete juntos en Bodega Concejo.'
       ],
       image: '/images/bodega/vinedos-valoria-barrica.png'
     },
@@ -3591,12 +3591,12 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     id: 'block-venue',
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'venue',
-    title: 'El Lugar',
-    subtitle: 'Bodega Concejo',
+    title: 'Los Escenarios',
+    subtitle: 'Villamuriel de Cerrato & Bodega Concejo',
     content: {
-      description: 'Enclavada en Valoria la Buena (Valladolid), Bodega Concejo es una bodega familiar rodeada de viñedos centenarios donde celebraremos la ceremonia civil al aire libre, el banquete con música en directo y la fiesta nocturna.',
-      address: 'Ctra. Valoria Km 3,6, 47200 Valoria La Buena (Valladolid)',
-      google_maps_url: 'https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid',
+      description: 'La preboda tendrá lugar el viernes en la Bodega El Corro en Villamuriel de Cerrato (junto a la esclusa del Canal). El sábado celebraremos la ceremonia religiosa en la Iglesia de Villamuriel de Cerrato y, a continuación, nos desplazaremos a Bodega Concejo para disfrutar del cóctel, el banquete y la fiesta.',
+      address: 'Ceremonia: Iglesia de Villamuriel de Cerrato · Cóctel y Banquete: Bodega Concejo (Ctra. Valoria Km 3,6)',
+      google_maps_url: 'https://maps.google.com/?q=Iglesia+de+Santa+Maria+la+Mayor+Villamuriel+de+Cerrato+Palencia',
       image: '/images/bodega/bodega-concejo-banquete-noche.png'
     },
     display_order: 3,
@@ -3607,14 +3607,14 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     id: 'block-travel',
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'travel',
-    title: 'Alojamiento & Transporte',
+    title: 'Alojamiento & Autobuses de Traslado',
     subtitle: 'Para vuestra mayor comodidad',
     content: {
       hotels: [
-        { name: 'Posada Real Concejo', discount: 'Alojamiento boutique en la propia bodega / Valoria', distance: 'En el propio complejo' },
-        { name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)', discount: 'Tarifa especial invitados: RODRIGO&STEPHANIE', distance: 'A 25 min en autobús' }
+        { name: 'Hotel Rey Sancho (Palencia)', discount: 'Alojamiento recomendado en Palencia (con parada de autobús)', distance: 'Av. Ponce de León, Palencia (a 10 min de Villamuriel)' },
+        { name: 'Hotel de Villamuriel de Cerrato', discount: 'Próxima inauguración · En el propio Villamuriel de Cerrato', distance: 'En Villamuriel de Cerrato (Palencia)' }
       ],
-      bus_info: 'Habrá servicio de autobuses de ida y vuelta desde Valladolid centro (Plaza de Zorrilla) hasta Bodega Concejo para la boda y con varios turnos de regreso tras la fiesta.'
+      bus_info: 'Habrá servicio de autobuses desde Villamuriel de Cerrato hasta Bodega Concejo (tras la ceremonia en la Iglesia) y regreso desde Bodega Concejo a Villamuriel de Cerrato y viceversa, con parada en Palencia.'
     },
     display_order: 4,
     is_active: true,
@@ -3643,9 +3643,9 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     subtitle: 'Detalles prácticos para el fin de semana',
     content: {
       faqs: [
-        { question: '¿Cuál es el dress code recomendado?', answer: 'Viernes (preboda): Casual Chic entre viñedos. Sábado (boda): Formal / traje o vestido midi o largo.' },
-        { question: '¿Habrá opciones para alergias y dietas especiales?', answer: 'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, etc.) y adaptaremos tu menú.' },
-        { question: '¿Hay aparcamiento en la bodega?', answer: 'Sí, Bodega Concejo cuenta con amplio aparcamiento privado gratuito para los invitados que vengan en coche.' }
+        { question: '¿Dónde son la Preboda, la Ceremonia y el Banquete?', answer: 'La Preboda del viernes es en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal). El sábado la ceremonia religiosa es en la Iglesia de Villamuriel de Cerrato y después iremos al cóctel y banquete en Bodega Concejo.' },
+        { question: '¿Cómo funcionan los autobuses?', answer: 'Habrá autobuses desde Villamuriel de Cerrato hasta Bodega Concejo tras la ceremonia y autobuses de vuelta desde Bodega Concejo a Villamuriel de Cerrato y viceversa, realizando parada en Palencia.' },
+        { question: '¿Habrá opciones para alergias y dietas especiales?', answer: 'Por supuesto. En el formulario RSVP de tu invitación puedes indicar cualquier alergia o dieta (vegetariana, celíaca, menú infantil, etc.) y adaptaremos tu menú.' }
       ]
     },
     display_order: 6,

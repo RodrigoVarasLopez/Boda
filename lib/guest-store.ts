@@ -439,13 +439,13 @@ export function useWeddingData() {
   const eventAttendance = [
     {
       eventId: 'evt-preboda-cata',
-      eventTitle: 'Preboda & Cata Privada de Vinos',
+      eventTitle: 'Preboda · Bodega El Corro (Villamuriel)',
       invited: totalPrebodaGuests,
       attendees: prebodaConfirmedHeadcount,
     },
     {
       eventId: 'evt-boda',
-      eventTitle: 'Boda en Bodega Concejo',
+      eventTitle: 'Boda · Iglesia de Villamuriel & Bodega Concejo',
       invited: totalBodaGuests,
       attendees: totalConfirmedHeadcount,
     },

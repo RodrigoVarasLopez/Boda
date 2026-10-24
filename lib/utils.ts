@@ -17,9 +17,9 @@ export function getDefaultWhatsAppNote(
   hasPreboda: boolean = false
 ): string {
   if (hasPreboda) {
-    return `¡Nos casamos! 💍🍷 Nos hace muchísima ilusión compartir con vosotros nuestro gran día el sábado 28 de agosto de 2027 en Bodega Concejo (Valoria la Buena, Valladolid), y contar también con vosotros el viernes 27 en nuestra Preboda y Cata Privada. Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
+    return `¡Nos casamos! 💍🍷 Nos hace muchísima ilusión compartir con vosotros nuestra boda el sábado 28 de agosto de 2027 en la Iglesia de Villamuriel de Cerrato y el posterior cóctel y banquete en Bodega Concejo, además de contar con vosotros el viernes 27 en la Preboda en la Bodega El Corro (Villamuriel de Cerrato). Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
   }
-  return `¡Nos casamos! 💍✨ Nos hace muchísima ilusión compartir con vosotros nuestro gran día el sábado 28 de agosto de 2027 en Bodega Concejo (Valoria la Buena, Valladolid). Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
+  return `¡Nos casamos! 💍✨ Nos hace muchísima ilusión compartir con vosotros nuestra boda el sábado 28 de agosto de 2027 en la Iglesia de Villamuriel de Cerrato y el posterior cóctel y banquete en Bodega Concejo. Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
 }
 
 export function buildWhatsAppLink(

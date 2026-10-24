@@ -25,26 +25,26 @@ export const PersonalizedWelcome: React.FC<PersonalizedWelcomeProps> = ({
     wedding.welcome_quote;
   const welcomeBody =
     introBlock?.content?.welcome_body ||
-    'Queremos que viváis con nosotros cada instante de esta celebración en las tierras vallisoletanas de Valoria la Buena: un fin de semana diseñado para disfrutar sin prisas de la gastronomía, el vino y los mejores recuerdos.';
+    'Un fin de semana muy especial que comenzará el viernes con la preboda en la Bodega El Corro de Villamuriel de Cerrato (junto a la esclusa del Canal de Castilla) y continuará el sábado con nuestra ceremonia en la Iglesia de Villamuriel de Cerrato, seguida del cóctel, banquete y fiesta en Bodega Concejo.';
 
   const conciergeTitle = introBlock?.content?.concierge_title || 'Concierge del Invitado';
   const conciergeBadge = introBlock?.content?.concierge_badge || 'Guía 2027';
   const conciergeFooter =
     introBlock?.content?.concierge_footer ||
-    'Consulta en esta web el programa interactivo, confirma tu asistencia, gestiona tu menú y descarga los accesos en tu calendario.';
+    'Consulta en esta web el programa completo, los horarios de autobuses desde Villamuriel y Palencia, los hoteles recomendados y confirma tu asistencia.';
 
   const defaultConciergeItems = [
     {
-      title: '27 & 28 de Agosto de 2027',
-      subtitle: 'Viernes Preboda & Sábado Gran Día',
+      title: 'Viernes 27 · Preboda en Villamuriel',
+      subtitle: 'Bodega El Corro (Junto a la Esclusa del Canal)',
     },
     {
-      title: 'Bodega Concejo · Valoria la Buena',
-      subtitle: 'Valladolid (Ctra. Valoria Km 3,6)',
+      title: 'Sábado 28 · Ceremonia Religiosa',
+      subtitle: 'Iglesia de Villamuriel de Cerrato',
     },
     {
-      title: 'Banquete al Aire Libre & Música',
-      subtitle: 'Maridaje con vinos de autor, cóctel y DJ',
+      title: 'Cóctel, Banquete & Fiesta',
+      subtitle: 'Bodega Concejo (Autobuses Villamuriel ↔ Concejo con parada en Palencia)',
     },
   ];
 
