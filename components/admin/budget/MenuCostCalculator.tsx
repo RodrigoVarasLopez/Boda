@@ -115,7 +115,7 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
               )}
             </div>
             <p className="text-xs text-text-muted mt-0.5">
-              Cálculo en vivo vinculado a confirmaciones RSVP reales de adultos y niños
+              Cálculo automático vinculado a tu lista de invitados al banquete (adultos y niños activos, descontando bajas)
             </p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
                 {calculation.adultCount}
               </span>
               <span className="text-xs text-text-muted ml-1.5">
-                adultos {useManual ? '(manual)' : 'asistentes'}
+                adultos {useManual ? '(manual)' : '(en lista)'}
               </span>
             </div>
             <div className="text-base font-serif font-bold text-text-primary">
@@ -202,7 +202,7 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
                 {calculation.childCount}
               </span>
               <span className="text-xs text-text-muted ml-1.5">
-                niños {useManual ? '(manual)' : 'asistentes'}
+                niños {useManual ? '(manual)' : '(en lista)'}
               </span>
             </div>
             <div className="text-base font-serif font-bold text-text-primary">
@@ -295,7 +295,7 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
                       : 'bg-bg-secondary/40 border-border-subtle text-text-muted'
                   }`}
                 >
-                  <div className="font-semibold">✓ Confirmados CRM</div>
+                  <div className="font-semibold">✓ Lista de Invitados</div>
                   <div className="text-[10px] text-text-muted mt-0.5">{attendingAdults} ad. / {attendingChildren} niñ.</div>
                 </button>
 

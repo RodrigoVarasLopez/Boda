@@ -414,6 +414,7 @@ export function calculateBudgetMetrics(
   let totalContracted = 0;
   let totalEstimated = 0;
   let totalPaid = 0;
+  let menuIncludedInCategory = false;
 
   const alerts: BudgetMetrics['alerts'] = [];
   const upcomingFinalPayments: UpcomingFinalPaymentItem[] = [];
@@ -425,8 +426,14 @@ export function calculateBudgetMetrics(
       (catSuppliers.length === 1 ? catSuppliers[0] : null);
 
     let effectivePrice = 0;
+    const isMenuCat =
+      cat.name.toLowerCase().includes('menú') ||
+      cat.name.toLowerCase().includes('menu') ||
+      cat.name.toLowerCase().includes('banquete') ||
+      cat.budget_type === 'per_guest';
 
-    if (cat.name.toLowerCase() === 'menú' || cat.budget_type === 'per_guest') {
+    if (isMenuCat) {
+      menuIncludedInCategory = true;
       // Menu category price comes from calculated menu total (unless a supplier has a higher explicit final price)
       effectivePrice =
         menuSummary.total > 0
@@ -442,7 +449,7 @@ export function calculateBudgetMetrics(
       effectivePrice = quotedOrEst.length > 0 ? Math.min(...quotedOrEst) : 0;
     }
 
-    if (selectedSupplier || cat.budget_type === 'per_guest') {
+    if (selectedSupplier || isMenuCat) {
       totalContracted += effectivePrice;
     }
     totalEstimated += effectivePrice;
@@ -586,6 +593,11 @@ export function calculateBudgetMetrics(
     if (!a.dueDate && b.dueDate) return 1;
     return b.pendingAmount - a.pendingAmount;
   });
+
+  if (!menuIncludedInCategory && menuSummary.total > 0) {
+    totalContracted += menuSummary.total;
+    totalEstimated += menuSummary.total;
+  }
 
   const totalPending = Math.max(0, totalContracted - totalPaid);
   const percentContracted = totalEstimated > 0 ? Math.min(100, Math.round((totalContracted / totalEstimated) * 100)) : 0;

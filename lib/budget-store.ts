@@ -111,9 +111,9 @@ export function useBudgetStore() {
     };
   }, [reloadData]);
 
-  // Adults and Children attendees from live RSVP store
-  const attendingAdults = stats.attendingAdults || 0;
-  const attendingChildren = stats.attendingChildren || 0;
+  // Adults and Children for the banquet from the live guest list (all guests minus confirmed 'declined')
+  const attendingAdults = stats.banquetAdults ?? stats.totalAdults ?? 0;
+  const attendingChildren = stats.banquetChildren ?? stats.totalChildren ?? 0;
 
   // Real-time calculated financial metrics
   const metrics: BudgetMetrics = useMemo(() => {

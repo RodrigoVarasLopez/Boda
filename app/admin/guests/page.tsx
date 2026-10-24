@@ -36,6 +36,7 @@ import { buildWhatsAppLink } from '@/lib/utils';
 export default function AdminGuestsPage() {
   const {
     groups,
+    allResponses,
     stats,
     refresh,
     refreshSupabase,
@@ -43,6 +44,7 @@ export default function AdminGuestsPage() {
     updateGroupName,
     updateGuestDetails,
     toggleGroupEvent,
+    setSingleGuestAttendance,
     createGroup,
     deleteGroup,
     syncLocalGuestsToSupabase,
@@ -101,6 +103,20 @@ export default function AdminGuestsPage() {
     const next = !currentlyHasPreboda;
     await toggleGroupEvent(groupId, 'evt-preboda-cata', next);
     showToast(next ? 'Invitado a Preboda activado' : 'Quitado de Preboda');
+  };
+
+  const handleQuickToggleAttendance = async (
+    groupId: string,
+    guestId: string,
+    currentStatus?: 'attending' | 'declined' | 'pending'
+  ) => {
+    const nextStatus = currentStatus === 'attending' ? 'declined' : 'attending';
+    await setSingleGuestAttendance(groupId, guestId, nextStatus);
+    showToast(
+      nextStatus === 'attending'
+        ? 'Marcado como Asiste (sumado al banquete)'
+        : 'Marcado como No asiste (descontado del banquete)'
+    );
   };
 
   const handleSyncToSupabase = async () => {
@@ -525,7 +541,7 @@ export default function AdminGuestsPage() {
                   className="py-1.5 px-3 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
-                  <span>Confirmar RSVP</span>
+                  <span>Asistencia / Menús</span>
                 </button>
 
                 <div className="flex items-center gap-2">
@@ -638,6 +654,8 @@ export default function AdminGuestsPage() {
                           {grp.guests.map((g) => {
                             const isChild = Boolean(g.is_child || g.guest_type === 'child');
                             const isEditingThisGuest = editingGuestId === g.id;
+                            const guestResp = allResponses.find((r) => r.guest_id === g.id);
+                            const rsvpStatus = guestResp?.status;
                             return (
                               <div
                                 key={g.id}
@@ -710,6 +728,32 @@ export default function AdminGuestsPage() {
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
+                                        onClick={() => handleQuickToggleAttendance(grp.id, g.id, rsvpStatus)}
+                                        title={
+                                          rsvpStatus === 'declined'
+                                            ? 'Marcado como No asiste (no cuenta en banquete). Clic para marcar que Asiste'
+                                            : rsvpStatus === 'attending'
+                                            ? 'Confirmado que Asiste. Clic para marcar como No asiste (baja)'
+                                            : 'Clic para confirmar asistencia o marcar baja'
+                                        }
+                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer border ${
+                                          rsvpStatus === 'declined'
+                                            ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200'
+                                            : rsvpStatus === 'attending'
+                                            ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                                            : 'bg-bg-card text-text-muted border-border-subtle hover:border-brand-olive hover:text-brand-olive'
+                                        }`}
+                                      >
+                                        <span>
+                                          {rsvpStatus === 'declined'
+                                            ? '✕ Baja'
+                                            : rsvpStatus === 'attending'
+                                            ? '✓ Asiste'
+                                            : 'Asiste'}
+                                        </span>
+                                      </button>
+                                      <button
+                                        type="button"
                                         onClick={() => handleQuickToggleChild(g.id, isChild)}
                                         title={
                                           isChild
@@ -776,11 +820,11 @@ export default function AdminGuestsPage() {
                         {/* Quick Manual RSVP button */}
                         <button
                           onClick={() => setSelectedModalGroup(grp)}
-                          title="Confirmar asistencia telefónica o manual"
+                          title="Registrar asistencia, tipo de menú o alergias del grupo"
                           className="py-1.5 px-2.5 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-medium text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          <span className="hidden lg:inline">Confirmar RSVP</span>
+                          <span className="hidden lg:inline">Asistencia / Menús</span>
                         </button>
 
                         {/* Copy Link Button */}

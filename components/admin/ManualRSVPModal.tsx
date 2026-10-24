@@ -64,12 +64,16 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
 
     const initialMembers: MemberFormState[] = group.guests.map((g) => {
       const existing = existingGroupRsvp?.responses.find((res) => res.guest_id === g.id);
+      const isChild = Boolean(g.is_child || g.guest_type === 'child');
 
       return {
         guestId: g.id,
         guestName: `${g.first_name} ${g.last_name}`.trim(),
         status: existing?.status || (group.invitation_status === 'responded' ? 'attending' : 'attending'),
-        dietaryChoice: existing?.dietary_choice || (g.dietary_restrictions as DietaryOption) || 'standard',
+        dietaryChoice:
+          existing?.dietary_choice ||
+          (g.dietary_restrictions as DietaryOption) ||
+          (isChild ? 'child' : 'standard'),
         allergies: existing?.allergies || g.allergies || '',
         plusOneAllowed: g.is_plus_one_allowed,
         plusOneAttending: existing?.plus_one_attending ?? false,

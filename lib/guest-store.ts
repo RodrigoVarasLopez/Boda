@@ -364,8 +364,25 @@ export function useWeddingData() {
   const totalChildren = allGuests.filter((g) => g.guest_type === 'child' || g.is_child === true).length;
   const totalAdults = Math.max(0, totalGuests - totalChildren);
   const guestMap = new Map(allGuests.map((g) => [g.id, g]));
+  const responseByGuestId = new Map(allResponses.map((r) => [r.guest_id, r]));
+
   let attendingAdults = 0;
   let attendingChildren = 0;
+  let banquetAdults = 0;
+  let banquetChildren = 0;
+
+  // Compute banquet headcount from the full guest list (everyone except confirmed 'declined' guests)
+  for (const guest of allGuests) {
+    const isChild = guest.guest_type === 'child' || guest.is_child === true;
+    const resp = responseByGuestId.get(guest.id);
+    if (resp?.status !== 'declined') {
+      if (isChild) {
+        banquetChildren++;
+      } else {
+        banquetAdults++;
+      }
+    }
+  }
 
   for (const resp of allResponses) {
     if (resp.status === 'attending') {
@@ -378,9 +395,41 @@ export function useWeddingData() {
       }
       if (resp.plus_one_attending) {
         attendingAdults++;
+        banquetAdults++;
       }
     }
   }
+
+  // Quick 1-click attendance status change for a single guest in a group
+  const setSingleGuestAttendance = async (
+    groupId: string,
+    guestId: string,
+    newStatus: 'attending' | 'declined'
+  ) => {
+    const currentGroups = getStoredGroups();
+    const currentRSVPs = getStoredRSVPS();
+    const grp = currentGroups.find((g) => g.id === groupId);
+    if (!grp) return;
+
+    const existingSub = currentRSVPs.find((r) => r.group_id === groupId);
+    const updatedResponses = grp.guests.map((g) => {
+      const prev = existingSub?.responses.find((r) => r.guest_id === g.id);
+      const isChild = g.guest_type === 'child' || g.is_child === true;
+      const statusToUse: RSVPStatus =
+        g.id === guestId ? newStatus : prev?.status || 'attending';
+      return {
+        guestId: g.id,
+        status: statusToUse,
+        dietaryChoice: (prev?.dietary_choice || (isChild ? 'child' : 'standard')) as DietaryOption,
+        allergies: prev?.allergies || g.allergies || '',
+        plusOneAttending: prev?.plus_one_attending || false,
+        plusOneName: prev?.plus_one_name,
+        message: prev?.message || 'Actualizado desde la lista de invitados',
+      };
+    });
+
+    await saveManualGroupRSVP(groupId, updatedResponses);
+  };
 
   // Update Guest Type function
   const updateGuestType = (guestId: string, guestType: 'adult' | 'child') => {
@@ -526,9 +575,12 @@ export function useWeddingData() {
       eventAttendance,
       attendingAdults,
       attendingChildren,
+      banquetAdults,
+      banquetChildren,
     },
     saveManualRSVP: saveManualGroupRSVP,
     quickConfirmGroup: quickConfirmGroupAttendance,
+    setSingleGuestAttendance,
     updateGuestType,
     updateGroupName,
     updateGuestDetails,
