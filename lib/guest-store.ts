@@ -16,23 +16,23 @@ import {
   setGroupStageEventsAction,
 } from '@/app/actions';
 
-const STORAGE_KEY_GROUPS = 'boda_groups_store_v2';
-const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v2';
+const STORAGE_KEY_GROUPS = 'boda_groups_store_v3';
+const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v3';
 const UPDATE_EVENT_NAME = 'boda_store_updated';
 
-// Helper to get initial groups
+// Helper to get initial groups (always returns fresh copy, never mutates INITIAL_GROUPS in place)
 export function getStoredGroups(): GuestGroup[] {
   if (typeof window === 'undefined') return INITIAL_GROUPS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GROUPS);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {
     console.warn('Error reading stored groups:', e);
   }
-  return INITIAL_GROUPS;
+  return JSON.parse(JSON.stringify(INITIAL_GROUPS));
 }
 
 // Helper to get initial RSVPs
@@ -47,7 +47,7 @@ export function getStoredRSVPS(): GroupRSVPSubmission[] {
   } catch (e) {
     console.warn('Error reading stored RSVPs:', e);
   }
-  return INITIAL_RSVPS;
+  return JSON.parse(JSON.stringify(INITIAL_RSVPS));
 }
 
 // Save groups to localStorage and memory
@@ -441,23 +441,19 @@ export function useWeddingData() {
 
   // Update Guest Type function
   const updateGuestType = (guestId: string, guestType: 'adult' | 'child') => {
-    const currentGroups = getStoredGroups();
-    let updated = false;
-
-    for (const group of currentGroups) {
-      const targetGuest = group.guests.find((g) => g.id === guestId);
-      if (targetGuest) {
-        targetGuest.guest_type = guestType;
-        targetGuest.is_child = guestType === 'child';
-        updated = true;
-        break;
-      }
-    }
-
-    if (updated) {
-      setStoredGroups([...currentGroups]);
-      setGroups([...currentGroups]);
-    }
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) => ({
+        ...grp,
+        guests: grp.guests.map((g) =>
+          g.id === guestId
+            ? { ...g, guest_type: guestType, is_child: guestType === 'child' }
+            : g
+        ),
+      }));
+      setStoredGroups(updated);
+      return updated;
+    });
 
     // Call server action to persist in Supabase as well
     updateGuestTypeAction({ guest_id: guestId, guest_type: guestType }).catch((e) =>
@@ -470,13 +466,14 @@ export function useWeddingData() {
     const cleanName = newName.trim();
     if (!cleanName) return { success: false, error: 'El nombre no puede estar vacío' };
 
-    const currentGroups = getStoredGroups();
-    const targetGroup = currentGroups.find((g) => g.id === groupId);
-    if (targetGroup) {
-      targetGroup.name = cleanName;
-      setStoredGroups([...currentGroups]);
-      setGroups([...currentGroups]);
-    }
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) =>
+        grp.id === groupId ? { ...grp, name: cleanName } : grp
+      );
+      setStoredGroups(updated);
+      return updated;
+    });
 
     return await updateGroupNameAction({ groupId, name: cleanName });
   };
@@ -492,23 +489,33 @@ export function useWeddingData() {
     const cleanLast = last_name.trim();
     if (!cleanFirst) return { success: false, error: 'El nombre no puede estar vacío' };
 
-    const currentGroups = getStoredGroups();
-    for (const group of currentGroups) {
-      const gst = group.guests.find((g) => g.id === guestId);
-      if (gst) {
-        gst.first_name = cleanFirst;
-        gst.last_name = cleanLast;
-        if (guest_type) {
-          gst.guest_type = guest_type;
-          gst.is_child = guest_type === 'child';
-        }
-        break;
-      }
-    }
-    setStoredGroups([...currentGroups]);
-    setGroups([...currentGroups]);
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) => ({
+        ...grp,
+        guests: grp.guests.map((g) =>
+          g.id === guestId
+            ? {
+                ...g,
+                first_name: cleanFirst,
+                last_name: cleanLast,
+                ...(guest_type
+                  ? { guest_type, is_child: guest_type === 'child' }
+                  : {}),
+              }
+            : g
+        ),
+      }));
+      setStoredGroups(updated);
+      return updated;
+    });
 
-    return await updateGuestDetailsAction({ guestId, first_name: cleanFirst, last_name: cleanLast, guest_type });
+    return await updateGuestDetailsAction({
+      guestId,
+      first_name: cleanFirst,
+      last_name: cleanLast,
+      guest_type,
+    });
   };
 
   // Add Guest to Existing Group
@@ -520,43 +527,54 @@ export function useWeddingData() {
   ) => {
     const res = await addGuestToGroupAction({ groupId, first_name, last_name, guest_type });
     if (res.success && res.guest) {
-      const currentGroups = getStoredGroups();
-      const targetGroup = currentGroups.find((g) => g.id === groupId);
-      if (targetGroup) {
-        targetGroup.guests.push(res.guest as any);
-        setStoredGroups([...currentGroups]);
-        setGroups([...currentGroups]);
-      }
+      setGroups((prev) => {
+        const base = prev.length > 0 ? prev : getStoredGroups();
+        const updated = base.map((grp) =>
+          grp.id === groupId
+            ? { ...grp, guests: [...grp.guests, res.guest as any] }
+            : grp
+        );
+        setStoredGroups(updated);
+        return updated;
+      });
     }
     return res;
   };
 
   // Remove Guest from Group
   const removeGuestFromGroup = async (groupId: string, guestId: string) => {
-    const currentGroups = getStoredGroups();
-    const targetGroup = currentGroups.find((g) => g.id === groupId);
-    if (targetGroup) {
-      targetGroup.guests = targetGroup.guests.filter((g) => g.id !== guestId);
-      setStoredGroups([...currentGroups]);
-      setGroups([...currentGroups]);
-    }
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) =>
+        grp.id === groupId
+          ? { ...grp, guests: grp.guests.filter((g) => g.id !== guestId) }
+          : grp
+      );
+      setStoredGroups(updated);
+      return updated;
+    });
     return await removeGuestFromGroupAction({ groupId, guestId });
   };
 
   // Toggle Group Event (e.g. Preboda)
   const toggleGroupEvent = async (groupId: string, eventId: string, allowed: boolean) => {
-    const currentGroups = getStoredGroups();
-    const targetGroup = currentGroups.find((g) => g.id === groupId);
-    if (targetGroup) {
-      const has = targetGroup.allowed_event_ids.includes(eventId);
-      if (allowed && !has) {
-        targetGroup.allowed_event_ids = [...targetGroup.allowed_event_ids, eventId];
-      } else if (!allowed && has) {
-        targetGroup.allowed_event_ids = targetGroup.allowed_event_ids.filter((id) => id !== eventId);
-      }
-      setStoredGroups([...currentGroups]);
-      setGroups([...currentGroups]);
-    }
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) => {
+        if (grp.id !== groupId) return grp;
+        const currentIds = Array.isArray(grp.allowed_event_ids) ? grp.allowed_event_ids : [];
+        const has = currentIds.includes(eventId);
+        const nextIds =
+          allowed && !has
+            ? [...currentIds, eventId]
+            : !allowed && has
+            ? currentIds.filter((id) => id !== eventId)
+            : currentIds;
+        return { ...grp, allowed_event_ids: nextIds };
+      });
+      setStoredGroups(updated);
+      return updated;
+    });
     return await toggleGroupEventAction({ groupId, eventId, allowed });
   };
 
@@ -566,13 +584,14 @@ export function useWeddingData() {
     if (preboda) nextAllowed.push('evt-preboda-cata');
     if (boda) nextAllowed.push('evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj');
 
-    const currentGroups = getStoredGroups();
-    const targetGroup = currentGroups.find((g) => g.id === groupId);
-    if (targetGroup) {
-      targetGroup.allowed_event_ids = nextAllowed;
-      setStoredGroups([...currentGroups]);
-      setGroups([...currentGroups]);
-    }
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const updated = base.map((grp) =>
+        grp.id === groupId ? { ...grp, allowed_event_ids: nextAllowed } : grp
+      );
+      setStoredGroups(updated);
+      return updated;
+    });
     return await setGroupStageEventsAction({ groupId, preboda, boda });
   };
 

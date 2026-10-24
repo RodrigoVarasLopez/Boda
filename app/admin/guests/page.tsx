@@ -770,8 +770,8 @@ export default function AdminGuestsPage() {
                 <tr>
                   <th className="p-4">Nombre de la Familia (Editable)</th>
                   <th className="p-4">Invitados de la Familia (Editar / + Añadir / Niño)</th>
-                  <th className="p-4">Eventos Asignados (Preboda / Boda)</th>
-                  <th className="p-4">Estado Invitación</th>
+                  <th className="p-4 text-center">Preboda &amp; Eventos</th>
+                  <th className="p-4 text-center">Estado Invitación</th>
                   <th className="p-4 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -1071,14 +1071,14 @@ export default function AdminGuestsPage() {
                         </div>
                       </td>
 
-                      {/* Eventos Asignados: ONLY 2 Editable Options (Preboda & Boda) */}
-                      <td className="p-4 align-top" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                      {/* Preboda & Eventos: ONLY 2 Editable Options (Preboda & Boda) Centered */}
+                      <td className="p-4 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-center gap-2 mx-auto">
                           <button
                             type="button"
                             onClick={() => handleQuickToggleStageEvent(grp, 'preboda')}
                             title="Haz clic para poner o quitar la invitación a la Preboda"
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border ${
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
                               hasPreboda
                                 ? 'bg-brand-olive text-white border-brand-olive shadow-xs hover:bg-brand-olive/90'
                                 : 'bg-bg-secondary/50 text-text-muted border-border-subtle hover:border-brand-olive hover:text-text-primary'
@@ -1092,7 +1092,7 @@ export default function AdminGuestsPage() {
                             type="button"
                             onClick={() => handleQuickToggleStageEvent(grp, 'boda')}
                             title="Haz clic para poner o quitar la invitación a la Boda"
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border ${
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
                               hasBoda
                                 ? 'bg-primary text-primary-text border-primary shadow-xs hover:bg-primary-hover'
                                 : 'bg-bg-secondary/50 text-text-muted border-border-subtle hover:border-primary hover:text-text-primary'
@@ -1105,9 +1105,9 @@ export default function AdminGuestsPage() {
                       </td>
 
                       {/* Status Badge */}
-                      <td className="p-4">
+                      <td className="p-4 align-middle text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center gap-1.5 ${
+                          className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center justify-center gap-1.5 ${
                             grp.invitation_status === 'responded'
                               ? 'bg-brand-olive/15 text-brand-olive'
                               : grp.invitation_status === 'opened'
@@ -1124,7 +1124,7 @@ export default function AdminGuestsPage() {
                       </td>
 
                       {/* Actions Toolbar */}
-                      <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="p-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Quick Manual RSVP button */}
                           <button

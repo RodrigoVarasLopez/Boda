@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { GuestGroup, DietaryOption, RSVPStatus, GroupRSVPSubmission } from '@/lib/types';
 import { saveManualGroupRSVP, getStoredRSVPS } from '@/lib/guest-store';
 import {
@@ -13,7 +14,8 @@ import {
   AlertCircle,
   UserPlus,
   Sparkles,
-  PhoneCall
+  PhoneCall,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface ManualRSVPModalProps {
@@ -87,7 +89,24 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
     setFeedback(null);
   }, [group]);
 
-  if (!isOpen || !group) return null;
+  // Lock body scroll and close on Escape key
+  useEffect(() => {
+    if (!isOpen || !group || typeof window === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, group, onClose]);
+
+  if (!isOpen || !group || typeof document === 'undefined') return null;
 
   // Bulk actions
   const handleSetAllStatus = (newStatus: RSVPStatus) => {
@@ -143,28 +162,36 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
   const totalPlusOnes = members.filter((m) => m.status === 'attending' && m.plusOneAttending).length;
   const totalHeadcount = totalAttending + totalPlusOnes;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-bg-card border border-border-subtle rounded-3xl shadow-editorial max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] w-screen h-[100dvh] max-h-[100dvh] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-bg-card border border-border-subtle rounded-3xl shadow-editorial max-w-lg w-full max-h-[88dvh] flex flex-col overflow-hidden"
+      >
         {/* Header */}
-        <div className="p-6 border-b border-border-subtle flex justify-between items-start bg-bg-secondary/20">
+        <div className="p-5 sm:p-6 border-b border-border-subtle flex justify-between items-start gap-3 bg-bg-secondary/20 shrink-0">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider bg-brand-olive/15 text-brand-olive font-semibold">
               <PhoneCall className="w-3 h-3" />
-              <span>Confirmación Asistida / Telefónica</span>
+              <span>Asistencia &amp; Menús</span>
             </div>
-            <h2 className="font-serif text-2xl font-normal text-text-primary">
-              Registrar Asistencia: {group.name}
+            <h2 className="font-serif text-xl sm:text-2xl font-normal text-text-primary">
+              {group.name}
             </h2>
             <p className="text-xs text-text-muted">
-              Actualiza el recuento para invitados que han confirmado por llamada, WhatsApp o en persona.
+              Confirma quién asiste, selecciona su menú o anota alergias.
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary transition-colors cursor-pointer"
+            className="py-1.5 px-3 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-border-subtle"
           >
-            <X className="w-5 h-5" />
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Volver</span>
           </button>
         </div>
 
@@ -399,6 +426,7 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

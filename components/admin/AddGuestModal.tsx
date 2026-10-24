@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   UserPlus,
@@ -68,7 +69,21 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
   const [createdResult, setCreatedResult] = useState<{ group: GuestGroup; token: string } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleAddGuestRow = () => {
     setGuests((prev) => [
@@ -204,9 +219,15 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
     window.open(wa, '_blank');
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-2xl bg-bg-card rounded-2xl border border-border-subtle shadow-card flex flex-col max-h-[90vh] overflow-hidden">
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] w-screen h-[100dvh] max-h-[100dvh] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-bg-card rounded-2xl border border-border-subtle shadow-card flex flex-col max-h-[88dvh] overflow-hidden"
+      >
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-border-subtle flex justify-between items-center bg-bg-card/95 backdrop-blur-xs">
           <div className="flex items-center gap-3">
@@ -606,6 +627,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

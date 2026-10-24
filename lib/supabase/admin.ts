@@ -4,22 +4,42 @@ if (typeof window !== 'undefined') {
   throw new Error('CRITICAL SECURITY ERROR: lib/supabase/admin.ts must never be imported or executed in client components or browser context!');
 }
 
+const FALLBACK_SUPABASE_URL = 'https://oskbafwqreeqxfwnwbzv.supabase.co';
+
+function resolveServiceKey(): string | undefined {
+  const envKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (envKey && !envKey.includes('PEGA_AQUI') && !envKey.includes('your-service-role')) {
+    return envKey;
+  }
+  return undefined;
+}
+
+function resolveSupabaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (envUrl && envUrl.includes('.supabase.co')) {
+    return envUrl;
+  }
+  return FALLBACK_SUPABASE_URL;
+}
+
 export function isSupabaseConfigured(): boolean {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = resolveServiceKey();
+  const supabaseUrl = resolveSupabaseUrl();
 
   if (!serviceRoleKey || !supabaseUrl) return false;
   if (!supabaseUrl.includes('.supabase.co')) return false;
-  if (serviceRoleKey.includes('PEGA_AQUI') || serviceRoleKey.includes('your-service-role')) return false;
   return true;
 }
 
 export function createAdminClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = resolveServiceKey();
+  const supabaseUrl = resolveSupabaseUrl();
 
-  if (!serviceRoleKey || !supabaseUrl) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL environment variable');
+  if (!serviceRoleKey) {
+    throw new Error('Missing Supabase key in environment variables.');
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {

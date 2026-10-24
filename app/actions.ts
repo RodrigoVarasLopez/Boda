@@ -127,7 +127,7 @@ export async function submitRSVPAction(rawPayload: unknown) {
   const tokenHash = await hashToken(token);
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       // Find invitation by token hash
       const { data: inv } = await adminClient
@@ -213,7 +213,7 @@ export async function regenerateInvitationTokenAction(groupId: string) {
   const tokenHash = await hashToken(newRawToken);
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient.from('invitations').update({
         token_hash: tokenHash,
@@ -238,7 +238,7 @@ export async function regenerateInvitationTokenAction(groupId: string) {
  */
 export async function revokeInvitationAction(groupId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient.from('invitations').update({
         status: 'revoked',
@@ -747,7 +747,7 @@ export async function recordManualRSVPAction(payload: {
   const now = new Date().toISOString();
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       const { data: inv } = await adminClient
         .from('invitations')
@@ -1001,7 +1001,7 @@ export async function uploadMediaAction(formData: FormData): Promise<{
  */
 export async function approveMediaAction(photoId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient
         .from('media_photos')
@@ -1035,7 +1035,7 @@ export async function approveMediaAction(photoId: string) {
  */
 export async function hideMediaAction(photoId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient
         .from('media_photos')
@@ -1072,7 +1072,7 @@ export async function deleteMediaAction(photoId: string) {
   const target = stored.find((p) => p.id === photoId);
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient.from('media_photos').delete().eq('id', photoId);
       if (target?.storage_path) {
@@ -1097,7 +1097,7 @@ export async function deleteMediaAction(photoId: string) {
 export async function updateMediaCaptionAction(photoId: string, caption: string) {
   const safeCaption = caption.trim().slice(0, 180);
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient
         .from('media_photos')
@@ -1132,7 +1132,7 @@ export async function bulkModerateMediaAction(
   }
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       if (action === 'delete') {
         await adminClient.from('media_photos').delete().in('id', photoIds);
@@ -1258,7 +1258,7 @@ export async function submitGuestbookAction(rawPayload: unknown): Promise<{
  */
 export async function approveGuestbookAction(entryId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient
         .from('guestbook_entries')
@@ -1285,7 +1285,7 @@ export async function approveGuestbookAction(entryId: string) {
  */
 export async function hideGuestbookAction(entryId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient.from('guestbook_entries').update({ status: 'hidden' }).eq('id', entryId);
     }
@@ -1309,7 +1309,7 @@ export async function hideGuestbookAction(entryId: string) {
  */
 export async function deleteGuestbookAction(entryId: string) {
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient.from('guestbook_entries').delete().eq('id', entryId);
     }
@@ -1958,7 +1958,7 @@ export async function updateGuestTypeAction(rawInput: unknown) {
   const validated = GuestTypeUpdateSchema.parse(rawInput);
 
   try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.includes('.supabase.co')) {
+    if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
       await adminClient
         .from('guests')

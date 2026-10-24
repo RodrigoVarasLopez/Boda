@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { GuestGroup, Event, Wedding, GuestRSVPResponse } from '@/lib/types';
 import { INVITATION_STATUS_LABELS } from '@/lib/types';
 import {
@@ -25,6 +26,7 @@ import {
   Baby,
   Wine,
   Heart,
+  ArrowLeft,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
@@ -97,7 +99,23 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
     }
   }, [group?.id, group?.name, group?.guests]);
 
-  if (!group) return null;
+  useEffect(() => {
+    if (!group || typeof window === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isManualRSVPOpen) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [group, isManualRSVPOpen, onClose]);
+
+  if (!group || typeof document === 'undefined') return null;
 
   const showSavedFeedback = (msg: string) => {
     setFeedbackBanner(msg);
@@ -322,21 +340,29 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-md h-full bg-bg-card border-l border-border-subtle shadow-card flex flex-col justify-between overflow-y-auto">
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[90] w-screen h-[100dvh] max-h-[100dvh] flex justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md h-[100dvh] max-h-[100dvh] bg-bg-card border-l border-border-subtle shadow-card flex flex-col justify-between overflow-y-auto"
+      >
         {/* Header with Direct Editable Family Name */}
-        <div className="p-5 sm:p-6 border-b border-border-subtle sticky top-0 bg-bg-card/95 backdrop-blur-md z-10 space-y-2">
+        <div className="p-5 sm:p-6 border-b border-border-subtle sticky top-0 bg-bg-card/95 backdrop-blur-md z-10 space-y-2 shrink-0">
           <div className="flex justify-between items-center gap-2">
             <span className="text-[10px] uppercase font-mono tracking-widest text-text-accent block">
               Nombre de la Familia / Invitación (Editable)
             </span>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary transition-colors cursor-pointer"
+              className="py-1 px-2.5 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer border border-border-subtle"
               title="Cerrar panel"
             >
-              <X className="w-5 h-5" />
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Volver</span>
             </button>
           </div>
 
@@ -840,9 +866,9 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
         onClose={() => setIsManualRSVPOpen(false)}
         onSaved={() => {
           setIsManualRSVPOpen(false);
-          // Optional callback
         }}
       />
-    </div>
+    </div>,
+    document.body
   );
 };
