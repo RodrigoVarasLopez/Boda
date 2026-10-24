@@ -20,14 +20,16 @@ import { WeekendSchedule } from '@/components/guest/WeekendSchedule';
 import { UsefulInfo } from '@/components/guest/UsefulInfo';
 import { MemoriesSection } from '@/components/guest/MemoriesSection';
 import { GuestStickyNav } from '@/components/guest/GuestStickyNav';
+import { useWeddingData } from '@/lib/guest-store';
 import { AlertTriangle, HeartHandshake, Calendar, UserCheck, Heart } from 'lucide-react';
 
 export default function PersonalizedInvitationPage() {
   const params = useParams();
   const token = params.token as string;
+  const { groups, rsvps, isLoadingSupabase } = useWeddingData();
 
-  const group = INITIAL_GROUPS.find((g) => g.token === token);
-  const groupRSVP = INITIAL_RSVPS.find((r) => r.token === token);
+  const group = groups.find((g) => g.token === token) || INITIAL_GROUPS.find((g) => g.token === token);
+  const groupRSVP = rsvps.find((r) => r.token === token) || INITIAL_RSVPS.find((r) => r.token === token);
   // If the group has already opened/responded or if preview param is passed, reveal directly
   const [isRevealed, setIsRevealed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
