@@ -1,16 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Lock, Mail, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+
+const GENERIC_PLANNER_ALIASES = ['weddingplanner', 'planner', 'wedding-planner', 'wedding_planner'];
+const GENERIC_PLANNER_EMAIL = 'weddingplanner@stephanieyrodrigo.com';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const normalizeIdentifier = (raw: string): string => {
+    const clean = raw.trim().toLowerCase();
+    if (GENERIC_PLANNER_ALIASES.includes(clean)) {
+      return GENERIC_PLANNER_EMAIL;
+    }
+    return clean;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,35 +29,35 @@ export default function AdminLoginPage() {
     try {
       const isProduction = process.env.NODE_ENV === 'production';
       const supabase = createClient();
+      const resolvedEmail = normalizeIdentifier(email);
+
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: resolvedEmail,
         password,
       });
 
       if (authError) {
-        if (isProduction) {
-          setError('Credenciales incorrectas o usuario no registrado.');
-          return;
-        }
-        // Fallback for demo mode only in local development
-        document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
-        router.push('/admin');
+        setError('Credenciales incorrectas o usuario no registrado.');
+        setLoading(false);
         return;
       }
 
       if (data.session) {
-        router.push('/admin');
+        // Hard redirect ensures fresh request with Supabase cookies and avoids stale Next.js router cache
+        window.location.href = '/admin';
+        return;
       }
+
+      setLoading(false);
     } catch {
       if (process.env.NODE_ENV === 'production') {
         setError('Error al conectar con el servicio de autenticación.');
+        setLoading(false);
         return;
       }
       // Demo fallback in development
       document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
-      router.push('/admin');
-    } finally {
-      setLoading(false);
+      window.location.href = '/admin';
     }
   };
 
@@ -57,7 +66,7 @@ export default function AdminLoginPage() {
   const handleDemoAccess = () => {
     if (isProduction) return;
     document.cookie = 'boda_admin_demo=true; path=/; max-age=86400';
-    router.push('/admin');
+    window.location.href = '/admin';
   };
 
   return (
@@ -84,14 +93,15 @@ export default function AdminLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-text-secondary block">
-              Correo Electrónico
+              Usuario o Correo Electrónico
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="admin@bodaweb.app"
+                autoComplete="username"
+                placeholder="weddingplanner@stephanieyrodrigo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-bg-secondary/40 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent"

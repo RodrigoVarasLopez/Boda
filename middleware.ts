@@ -4,9 +4,10 @@ import { createServerClient } from '@supabase/ssr';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect /admin routes except /admin/login
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  // Handle all /admin routes
+  if (pathname.startsWith('/admin')) {
     const isProduction = process.env.NODE_ENV === 'production';
+    const isLoginPage = pathname === '/admin/login';
 
     // If Supabase environment variables exist, check session
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -35,12 +36,25 @@ export async function middleware(request: NextRequest) {
 
       // In production, demo cookie bypass is disabled and real Supabase Auth session is strictly required
       const demoCookie = !isProduction ? request.cookies.get('boda_admin_demo') : null;
-      if (!session && !demoCookie) {
+      const isAuthenticated = Boolean(session || demoCookie);
+
+      if (isLoginPage) {
+        if (isAuthenticated) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin';
+          return NextResponse.redirect(url);
+        }
+        return response;
+      }
+
+      if (!isAuthenticated) {
         const url = request.nextUrl.clone();
         url.pathname = '/admin/login';
         return NextResponse.redirect(url);
       }
-    } else if (isProduction) {
+
+      return response;
+    } else if (isProduction && !isLoginPage) {
       const url = request.nextUrl.clone();
       url.pathname = '/admin/login';
       return NextResponse.redirect(url);

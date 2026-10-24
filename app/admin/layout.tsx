@@ -16,11 +16,13 @@ import {
   Menu,
   X,
   UserCheck,
-  Receipt
+  Receipt,
+  LogOut
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
 import { useWeddingData } from '@/lib/guest-store';
+import { createClient } from '@/lib/supabase/client';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
@@ -37,7 +39,49 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { groups } = useWeddingData();
+
+  React.useEffect(() => {
+    if (pathname === '/admin/login') return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.email) {
+        setUserEmail(data.user.email);
+      }
+    }).catch(() => {});
+  }, [pathname]);
+
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore signOut errors if in local demo mode
+    }
+    // Clear demo cookie and any client-accessible auth cookies
+    document.cookie = 'boda_admin_demo=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie.split(';').forEach((c) => {
+      const name = c.split('=')[0]?.trim();
+      if (name && name.startsWith('sb-')) {
+        document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    });
+    window.location.replace('/admin/login');
+  };
+
+  const isPlanner = userEmail?.toLowerCase().includes('weddingplanner');
+  const userLabel = isPlanner
+    ? 'Wedding Planner'
+    : userEmail
+      ? userEmail.split('@')[0]
+      : 'Admin';
 
   const firstToken = groups.length > 0 ? groups[0].token : null;
   const guestUrl = firstToken ? `/i/${firstToken}` : '/admin/guests';
@@ -136,10 +180,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="hidden sm:inline">Ver web</span>
           </Link>
 
-          {/* Avatar Monogram */}
-          <div className="w-8 h-8 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-xs font-medium text-text-primary shadow-xs">
-            S&amp;R
+          {/* Active User Badge */}
+          <div
+            className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-bg-secondary/60 border border-border-subtle text-[11px] text-text-secondary"
+            title={userEmail || 'Sesión activa'}
+          >
+            <div className="w-6 h-6 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-[10px] font-medium text-text-primary shadow-xs">
+              {isPlanner ? 'WP' : 'S&R'}
+            </div>
+            <span className="max-w-[130px] truncate font-medium text-text-primary">
+              {userLabel}
+            </span>
           </div>
+
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50/60 text-xs font-medium text-rose-700 hover:bg-rose-100/80 transition-colors cursor-pointer"
+            title="Cerrar sesión y cambiar de usuario"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>{loggingOut ? 'Saliendo...' : 'Cerrar sesión'}</span>
+          </button>
         </div>
       </header>
 
@@ -168,9 +230,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border-subtle text-[11px] text-text-muted text-center space-y-1">
-            <p className="font-serif italic text-text-primary font-medium">Stephanie & Rodrigo</p>
-            <p className="font-mono text-[10px]">25 · 08 · 2027</p>
+          <div className="space-y-2">
+            {userEmail && (
+              <div className="px-3 py-2 rounded-xl bg-bg-secondary/60 border border-border-subtle text-[11px] text-center truncate" title={userEmail}>
+                <span className="text-text-muted block text-[10px] uppercase tracking-wider">Conectado como</span>
+                <span className="font-medium text-text-primary truncate block">{userEmail}</span>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100/70 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+            </button>
+            <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border-subtle text-[11px] text-text-muted text-center space-y-1">
+              <p className="font-serif italic text-text-primary font-medium">Stephanie & Rodrigo</p>
+              <p className="font-mono text-[10px]">25 · 08 · 2027</p>
+            </div>
           </div>
         </aside>
 
@@ -196,6 +274,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </Link>
               );
             })}
+            <div className="pt-2 mt-2 border-t border-border-subtle">
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-medium text-rose-700 hover:bg-rose-50 transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{loggingOut ? 'Cerrando sesión...' : `Cerrar sesión (${userLabel})`}</span>
+              </button>
+            </div>
           </div>
         )}
 
