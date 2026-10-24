@@ -207,6 +207,16 @@ export default function AdminCMSPage() {
           </button>
 
           <Link
+            href="/save-the-date"
+            target="_blank"
+            className="py-2.5 px-4 rounded-xl border border-amber-300/80 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Ver Save the Date</span>
+            <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+          </Link>
+
+          <Link
             href={`/i/${sampleToken}?preview=true`}
             target="_blank"
             className="py-2.5 px-4 rounded-xl border border-border-strong bg-bg-card hover:bg-bg-secondary text-text-primary text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
@@ -238,6 +248,33 @@ export default function AdminCMSPage() {
           <span className="text-[11px] font-mono uppercase text-emerald-600">Sincronizado</span>
         </div>
       )}
+
+      {/* Save the Date Direct Access Banner */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-bg-card to-amber-100/30 dark:from-amber-950/20 dark:via-bg-card dark:to-amber-900/10 border border-amber-200/70 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-soft">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+              <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              Landing Especial
+            </span>
+            <span className="text-xs font-mono text-text-muted">Ruta: /save-the-date</span>
+          </div>
+          <h2 className="font-serif font-bold text-text-primary text-base sm:text-lg">
+            Save the Date Interactivo de Rodrigo &amp; Stephanie
+          </h2>
+          <p className="text-xs text-text-secondary">
+            Página de anuncio y reserva de fecha con cuenta atrás a tiempo real, sincronización con calendario de los invitados, audio ambiental y localización.
+          </p>
+        </div>
+        <Link
+          href="/save-the-date"
+          target="_blank"
+          className="shrink-0 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-soft transition-colors"
+        >
+          <span>Abrir Save the Date</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </Link>
+      </div>
 
       {/* Sections Accordion List */}
       <div className="space-y-4">

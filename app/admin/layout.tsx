@@ -17,7 +17,8 @@ import {
   X,
   UserCheck,
   Receipt,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
@@ -180,6 +181,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="hidden sm:inline">Ver web</span>
           </Link>
 
+          {/* Save the Date link */}
+          <Link
+            href="/save-the-date"
+            target="_blank"
+            className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-300/80 bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-medium hover:bg-amber-100/80 transition-colors shadow-xs"
+            title="Abrir Save the Date oficial"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden lg:inline">Save the Date</span>
+            <span className="lg:hidden">STD</span>
+          </Link>
+
           {/* Active User Badge */}
           <div
             className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-bg-secondary/60 border border-border-subtle text-[11px] text-text-secondary"
@@ -245,10 +258,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <LogOut className="w-3.5 h-3.5" />
               <span>{loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
             </button>
-            <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border-subtle text-[11px] text-text-muted text-center space-y-1">
+            <Link
+              href="/save-the-date"
+              target="_blank"
+              className="block p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-center space-y-0.5 hover:border-amber-400 transition-colors group"
+              title="Abrir Save the Date interactivo"
+            >
+              <div className="flex items-center justify-center gap-1 text-amber-700 dark:text-amber-300 font-semibold text-[10px] uppercase tracking-wider">
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                <span>Save the Date</span>
+              </div>
               <p className="font-serif italic text-text-primary font-medium">Rodrigo &amp; Stephanie</p>
-              <p className="font-mono text-[10px]">28 · 08 · 2027</p>
-            </div>
+              <p className="font-mono text-[10px] text-text-muted group-hover:text-text-primary">28 · 08 · 2027 ↗</p>
+            </Link>
           </div>
         </aside>
 
