@@ -28,7 +28,7 @@ const PHOTO_CAPTIONS = [
   'Sala de crianza y barricas de roble en la bodega',
   'Viñedos de Valoria la Buena bajo el sol castellano',
   'Detalle floral artesanal de las mesas imperiales',
-  'Stephanie & Rodrigo en los exteriores de la bodega',
+  'Rodrigo & Stephanie en los exteriores de la bodega',
   'Atardecer dorado sobre las lomas de Valoria',
   'Montaje de mesa con vajilla artesanal y olivo',
   'Panorámica editorial del claustro y patio de la bodega',
@@ -46,7 +46,7 @@ const PHOTO_CAPTIONS = [
   'Barricas centenarias con dedicatorias de los novios',
   'El sol despidiéndose tras las viñas de Valoria',
   'Ambiente festivo en la pista de baile exterior',
-  'Primer baile de Stephanie & Rodrigo bajo las guirnaldas',
+  'Primer baile de Rodrigo & Stephanie bajo las guirnaldas',
   'Detalle de los regalos para los invitados',
   'Banderines y farolillos en la zona chill-out',
   'Amigos brindando en la cata previa del viernes',
@@ -75,7 +75,7 @@ const PHOTO_CAPTIONS = [
 ];
 
 const UPLOADERS = [
-  'Stephanie & Rodrigo',
+  'Rodrigo & Stephanie',
   'Sofía Martín',
   'Carlos y María',
   'Familia Pérez',

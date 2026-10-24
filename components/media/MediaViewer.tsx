@@ -163,7 +163,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         <div className="relative w-full h-full flex items-center justify-center">
           <Image
             src={activePhoto.photo_url}
-            alt={activePhoto.caption || 'Fotografía de boda Stephanie & Rodrigo'}
+            alt={activePhoto.caption || 'Fotografía de boda Rodrigo & Stephanie'}
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 1200px"

@@ -178,7 +178,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
           <p className="text-xs text-text-secondary leading-relaxed">
             {hasAnyAttending
               ? 'Muchas gracias por confirmar. Tu respuesta ha quedado registrada persistentemente en el concierge de boda.'
-              : 'Lamentamos mucho que no podáis acompañarnos, pero os agradecemos enormemente haber avisado a Stephanie & Rodrigo.'}
+              : 'Lamentamos mucho que no podáis acompañarnos, pero os agradecemos enormemente haber avisado a Rodrigo & Stephanie.'}
           </p>
         </div>
 
@@ -384,7 +384,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
             <div className="space-y-5 animate-fade-in">
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary block">
-                  Mensaje opcional para Stephanie & Rodrigo
+                  Mensaje opcional para Rodrigo &amp; Stephanie
                 </label>
                 <textarea
                   rows={3}

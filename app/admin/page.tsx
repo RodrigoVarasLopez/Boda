@@ -41,7 +41,7 @@ export default function AdminOverviewPage() {
             Panel de Operaciones
           </p>
           <h1 className="font-serif text-3xl sm:text-4xl font-normal text-text-primary tracking-tight">
-            Buenos días, Stephanie & Rodrigo
+            Buenos días, Rodrigo &amp; Stephanie
           </h1>
           <p className="text-xs text-text-muted">
             Así va la organización y confirmaciones de vuestra boda.

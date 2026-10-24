@@ -31,7 +31,7 @@ export const PublicRSVPPortal: React.FC<PublicRSVPPortalProps> = ({ wedding }) =
       wedding.couple_names,
       wedding.wedding_date,
       typeof window !== 'undefined' ? window.location.href : '',
-      'Hola Stephanie y Rodrigo, os escribo desde la web para confirmar nuestra asistencia a vuestra boda.'
+      'Hola Rodrigo y Stephanie, os escribo desde la web para confirmar nuestra asistencia a vuestra boda.'
     );
     window.open(waUrl, '_blank');
   };
@@ -152,7 +152,7 @@ export const PublicRSVPPortal: React.FC<PublicRSVPPortalProps> = ({ wedding }) =
             <div className="p-4 rounded-2xl bg-white/70 border border-border-subtle/60 space-y-2 text-xs">
               <p className="font-medium text-text-primary flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-brand-olive" />
-                <span>Atención directa con Stephanie & Rodrigo</span>
+                <span>Atención directa con Rodrigo &amp; Stephanie</span>
               </p>
               <p className="text-[11px] text-text-muted leading-relaxed">
                 Podrás indicarnos tu menú (estándar, vegetariano, celíaco, etc.), alergias y si asistes acompañado/a.

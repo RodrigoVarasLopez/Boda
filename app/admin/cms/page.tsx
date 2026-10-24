@@ -37,7 +37,7 @@ export default function AdminCMSPage() {
             CMS & Narrativa de la Boda
           </h1>
           <p className="text-xs text-text-muted">
-            Reordena, activa o personaliza cada sección visual de la web de Stephanie & Rodrigo.
+            Reordena, activa o personaliza cada sección visual de la web de Rodrigo &amp; Stephanie.
           </p>
         </div>
       </div>

@@ -43,7 +43,7 @@ export default function PublicWeddingPage() {
           <div className="relative h-[480px] sm:h-[580px] w-full rounded-3xl sm:rounded-[36px] overflow-hidden shadow-card border border-border-subtle group">
             <Image
               src="/images/bodega/bodega-concejo-banquete-noche.png"
-              alt="Stephanie & Rodrigo — Boda en Bodega Concejo"
+              alt="Rodrigo & Stephanie — Boda en Bodega Concejo"
               fill
               priority
               className="object-cover group-hover:scale-102 transition-transform duration-700"
@@ -60,7 +60,7 @@ export default function PublicWeddingPage() {
               </div>
 
               <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-normal leading-[1.05] tracking-tight drop-shadow-md">
-                Stephanie &amp; Rodrigo
+                Rodrigo &amp; Stephanie
               </h1>
 
               <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-2 sm:gap-4 text-xs sm:text-sm uppercase tracking-widest text-white/90">
@@ -139,7 +139,7 @@ export default function PublicWeddingPage() {
                   </p>
                 ))}
                 <div className="pt-4 border-t border-border-subtle/60 flex items-center justify-between text-xs text-text-muted font-sans">
-                  <span>Stephanie &amp; Rodrigo</span>
+                  <span>Rodrigo &amp; Stephanie</span>
                   <span className="font-mono text-[11px]">Agosto · 2027</span>
                 </div>
               </div>
@@ -184,10 +184,10 @@ export default function PublicWeddingPage() {
            ======================================================== */}
         <footer className="text-center py-20 px-6 border-t border-border-subtle/60 space-y-4 max-w-4xl mx-auto">
           <div className="w-12 h-12 rounded-full bg-brand-cream/80 border border-brand-sand mx-auto flex items-center justify-center font-serif text-sm font-medium text-text-primary shadow-xs">
-            S&amp;R
+            R&amp;S
           </div>
           <h3 className="font-serif text-3xl sm:text-4xl font-normal text-text-primary tracking-tight">
-            Stephanie &amp; Rodrigo
+            Rodrigo &amp; Stephanie
           </h3>
           <p className="text-[11px] font-mono tracking-[0.25em] text-text-muted uppercase">
             28 · 08 · 2027 · Bodega Concejo · Valoria La Buena (Valladolid)

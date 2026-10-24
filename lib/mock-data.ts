@@ -3,7 +3,7 @@ import { Wedding, GuestGroup, Event, CMSBlock, GuestBookEntry, MediaPhoto, Group
 export const INITIAL_WEDDING: Wedding = {
   id: 'w-stephanie-rodrigo-2027',
   slug: 'stephanie-y-rodrigo',
-  couple_names: 'Stephanie & Rodrigo',
+  couple_names: 'Rodrigo & Stephanie',
   bride_name: 'Stephanie',
   groom_name: 'Rodrigo',
   wedding_date: '2027-08-28T18:00:00.000Z',
@@ -14,7 +14,7 @@ export const INITIAL_WEDDING: Wedding = {
   hero_message: 'Nos casamos y no nos imaginaríamos este día sin vosotros',
   welcome_quote: 'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas entre viñedos, música en directo y los mejores vinos de nuestra tierra.',
   iban_details: {
-    account_holder: 'Stephanie & Rodrigo',
+    account_holder: 'Rodrigo & Stephanie',
     iban: 'ES91 2100 0418 4502 0005 1234',
     bank_name: 'CaixaBank',
     bic_swift: 'CAIXESBBXXX'
@@ -3559,7 +3559,7 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     id: 'block-hero',
     wedding_id: 'w-stephanie-rodrigo-2027',
     type: 'hero',
-    title: 'Stephanie & Rodrigo',
+    title: 'Rodrigo & Stephanie',
     subtitle: '28 · 08 · 2027 · Bodega Concejo, Valladolid',
     content: {
       location: 'Bodega Concejo',
@@ -3612,7 +3612,7 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     content: {
       hotels: [
         { name: 'Posada Real Concejo', discount: 'Alojamiento boutique en la propia bodega / Valoria', distance: 'En el propio complejo' },
-        { name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)', discount: 'Tarifa especial invitados: STEPHANIE&RODRIGO', distance: 'A 25 min en autobús' }
+        { name: 'Hoteles en Valladolid Capital (AC Palacio de Santa Ana / Olid)', discount: 'Tarifa especial invitados: RODRIGO&STEPHANIE', distance: 'A 25 min en autobús' }
       ],
       bus_info: 'Habrá servicio de autobuses de ida y vuelta desde Valladolid centro (Plaza de Zorrilla) hasta Bodega Concejo para la boda y con varios turnos de regreso tras la fiesta.'
     },
@@ -3629,7 +3629,7 @@ export const INITIAL_CMS_BLOCKS: CMSBlock[] = [
     content: {
       message: 'Vuestra compañía es lo más importante para nosotros. Si deseáis hacernos un detalle para nuestra luna de miel:',
       iban: 'ES91 2100 0418 4502 0005 1234',
-      account_holder: 'Stephanie & Rodrigo'
+      account_holder: 'Rodrigo & Stephanie'
     },
     display_order: 5,
     is_active: true,

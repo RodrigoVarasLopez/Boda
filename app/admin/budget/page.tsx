@@ -234,7 +234,7 @@ export default function AdminBudgetPage() {
       link.setAttribute('href', url);
       link.setAttribute(
         'download',
-        `presupuesto_boda_stephanie_rodrigo_${new Date().toISOString().split('T')[0]}.csv`
+        `presupuesto_boda_rodrigo_stephanie_${new Date().toISOString().split('T')[0]}.csv`
       );
       document.body.appendChild(link);
       link.click();

@@ -134,7 +134,7 @@ export const UsefulInfo: React.FC<UsefulInfoProps> = ({ wedding, blocks }) => {
 
             <div className="p-4 sm:p-5 rounded-2xl bg-bg-secondary/60 border border-border-subtle space-y-3 text-left">
               <div className="flex justify-between items-center text-[11px] text-text-muted uppercase tracking-wider font-semibold">
-                <span>Titular: {wedding.iban_details?.account_holder || 'Stephanie & Rodrigo'}</span>
+                <span>Titular: {wedding.iban_details?.account_holder || 'Rodrigo & Stephanie'}</span>
                 <span>{wedding.iban_details?.bank_name || 'CaixaBank'}</span>
               </div>
 

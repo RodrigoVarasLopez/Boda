@@ -112,7 +112,7 @@ export const MediaUploaderModal: React.FC<MediaUploaderModalProps> = ({
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('caption', caption.trim());
-      formData.append('uploader_name', uploaderName.trim() || (isAdmin ? 'Stephanie & Rodrigo' : 'Invitado'));
+      formData.append('uploader_name', uploaderName.trim() || (isAdmin ? 'Rodrigo & Stephanie' : 'Invitado'));
       formData.append('is_admin', isAdmin ? 'true' : 'false');
       formData.append('wedding_id', 'w-stephanie-rodrigo-2027');
       if (guestId) {

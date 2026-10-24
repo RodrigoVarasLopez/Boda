@@ -126,7 +126,7 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
           Libro de Firmas &amp; Galería
         </h2>
         <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
-          Comparte unas palabras con Stephanie &amp; Rodrigo y revive los momentos más especiales de este fin de semana en Bodega Concejo.
+          Comparte unas palabras con Rodrigo &amp; Stephanie y revive los momentos más especiales de este fin de semana en Bodega Concejo.
         </p>
       </div>
 
@@ -170,7 +170,7 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
                   Vuestra dedicatoria
                 </span>
                 <h3 className="font-serif text-xl sm:text-2xl font-normal text-text-primary">
-                  Para Stephanie &amp; Rodrigo
+                  Para Rodrigo &amp; Stephanie
                 </h3>
                 <p className="text-xs text-text-muted leading-relaxed">
                   Déjanos un mensaje, un consejo o tus mejores deseos para nuestra nueva etapa juntos.
@@ -295,7 +295,7 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
               Galería de la Celebración
             </h3>
             <p className="text-xs sm:text-sm text-text-muted max-w-lg mx-auto leading-relaxed">
-              ¿Tienes fotografías del fin de semana en Bodega Concejo? Comparte tus fotos favoritas para añadirlas al álbum colectivo de Stephanie &amp; Rodrigo.
+              ¿Tienes fotografías del fin de semana en Bodega Concejo? Comparte tus fotos favoritas para añadirlas al álbum colectivo de Rodrigo &amp; Stephanie.
             </p>
             <button
               onClick={() => setIsUploadModalOpen(true)}

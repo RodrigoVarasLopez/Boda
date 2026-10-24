@@ -18,21 +18,53 @@ import {
 
 const STORAGE_KEY_GROUPS = 'boda_groups_store_v3';
 const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v3';
+const STORAGE_KEY_DELETED = 'boda_deleted_groups_v3';
 const UPDATE_EVENT_NAME = 'boda_store_updated';
+
+function getDeletedGroupIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DELETED);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function addDeletedGroupId(groupId: string, groupName?: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = new Set(getDeletedGroupIds());
+    current.add(groupId);
+    if (groupName) current.add(`name:${groupName.trim().toLowerCase()}`);
+    localStorage.setItem(STORAGE_KEY_DELETED, JSON.stringify(Array.from(current)));
+  } catch {}
+}
 
 // Helper to get initial groups (always returns fresh copy, never mutates INITIAL_GROUPS in place)
 export function getStoredGroups(): GuestGroup[] {
   if (typeof window === 'undefined') return INITIAL_GROUPS;
+  const deletedSet = new Set(getDeletedGroupIds());
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GROUPS);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (g: GuestGroup) =>
+            !deletedSet.has(g.id) && !deletedSet.has(`name:${(g.name || '').trim().toLowerCase()}`)
+        );
+      }
     }
   } catch (e) {
     console.warn('Error reading stored groups:', e);
   }
-  return JSON.parse(JSON.stringify(INITIAL_GROUPS));
+  const cloned: GuestGroup[] = JSON.parse(JSON.stringify(INITIAL_GROUPS));
+  return cloned.filter(
+    (g) => !deletedSet.has(g.id) && !deletedSet.has(`name:${(g.name || '').trim().toLowerCase()}`)
+  );
 }
 
 // Helper to get initial RSVPs
@@ -229,7 +261,7 @@ export function useWeddingData() {
     setRsvps(getStoredRSVPS());
   }, []);
 
-  // Hydrate from Supabase and sync with localStorage
+  // Hydrate from Supabase and sync with localStorage while respecting local deletions & edits
   const fetchSupabaseData = useCallback(async () => {
     setIsLoadingSupabase(true);
     try {
@@ -237,10 +269,20 @@ export function useWeddingData() {
       if (res && res.success && res.source === 'supabase') {
         setIsSupabaseOnline(true);
         if (res.groups && res.groups.length > 0) {
-          setGroups(res.groups);
-          setRsvps(res.rsvps || []);
-          setStoredGroups(res.groups);
-          setStoredRSVPs(res.rsvps || []);
+          const hasLocalStore =
+            typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_GROUPS) !== null;
+          if (!hasLocalStore) {
+            const deletedSet = new Set(getDeletedGroupIds());
+            const filtered = res.groups.filter(
+              (g: GuestGroup) =>
+                !deletedSet.has(g.id) &&
+                !deletedSet.has(`name:${(g.name || '').trim().toLowerCase()}`)
+            );
+            setGroups(filtered);
+            setRsvps(res.rsvps || []);
+            setStoredGroups(filtered);
+            setStoredRSVPs(res.rsvps || []);
+          }
         }
       }
     } catch (err) {
@@ -295,6 +337,8 @@ export function useWeddingData() {
     setIsSyncing(true);
     setGroups((prev) => {
       const base = prev.length > 0 ? prev : getStoredGroups();
+      const target = base.find((g) => g.id === groupId);
+      addDeletedGroupId(groupId, target?.name);
       const updated = base.filter((g) => g.id !== groupId);
       setStoredGroups(updated);
       return updated;

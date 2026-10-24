@@ -81,7 +81,7 @@ export default function AdminGuestbookPage() {
             Libro de Firmas
           </h1>
           <p className="text-xs text-text-muted">
-            Supervisa, aprueba y modera los mensajes y dedicatorias de los invitados para Stephanie &amp; Rodrigo.
+            Supervisa, aprueba y modera los mensajes y dedicatorias de los invitados para Rodrigo &amp; Stephanie.
           </p>
         </div>
       </div>

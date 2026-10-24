@@ -138,7 +138,7 @@ export default function AdminMediaPage() {
             Fotografías &amp; Recuerdos
           </h1>
           <p className="text-xs text-text-muted">
-            Gestiona la galería oficial de Stephanie &amp; Rodrigo y modera las fotos compartidas por los invitados.
+            Gestiona la galería oficial de Rodrigo &amp; Stephanie y modera las fotos compartidas por los invitados.
           </p>
         </div>
 
@@ -416,7 +416,7 @@ export default function AdminMediaPage() {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         isAdmin={true}
-        defaultUploaderName="Stephanie & Rodrigo"
+        defaultUploaderName="Rodrigo & Stephanie"
         onSuccess={(photo) => {
           addPhoto(photo);
         }}

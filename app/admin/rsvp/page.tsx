@@ -28,7 +28,7 @@ export default function AdminRSVPPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'Stephanie_Rodrigo_RSVP.csv');
+    link.setAttribute('download', 'Rodrigo_Stephanie_RSVP.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

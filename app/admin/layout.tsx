@@ -186,7 +186,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             title={userEmail || 'Sesión activa'}
           >
             <div className="w-6 h-6 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-[10px] font-medium text-text-primary shadow-xs">
-              {isPlanner ? 'WP' : 'S&R'}
+              {isPlanner ? 'WP' : 'R&S'}
             </div>
             <span className="max-w-[130px] truncate font-medium text-text-primary">
               {userLabel}
@@ -246,8 +246,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span>{loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
             </button>
             <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border-subtle text-[11px] text-text-muted text-center space-y-1">
-              <p className="font-serif italic text-text-primary font-medium">Stephanie & Rodrigo</p>
-              <p className="font-mono text-[10px]">25 · 08 · 2027</p>
+              <p className="font-serif italic text-text-primary font-medium">Rodrigo &amp; Stephanie</p>
+              <p className="font-mono text-[10px]">28 · 08 · 2027</p>
             </div>
           </div>
         </aside>
