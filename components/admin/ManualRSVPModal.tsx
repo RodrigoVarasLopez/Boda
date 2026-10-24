@@ -165,11 +165,23 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[100] w-screen h-[100dvh] max-h-[100dvh] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        maxHeight: '100dvh',
+        zIndex: 9999,
+      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-bg-card border border-border-subtle rounded-3xl shadow-editorial max-w-lg w-full max-h-[88dvh] flex flex-col overflow-hidden"
+        style={{ maxHeight: '86dvh' }}
+        className="bg-bg-card border border-border-subtle rounded-3xl shadow-editorial max-w-lg w-full flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-border-subtle flex justify-between items-start gap-3 bg-bg-secondary/20 shrink-0">

@@ -222,28 +222,45 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[100] w-screen h-[100dvh] max-h-[100dvh] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        maxHeight: '100dvh',
+        zIndex: 9999,
+      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-bg-card rounded-2xl border border-border-subtle shadow-card flex flex-col max-h-[88dvh] overflow-hidden"
+        style={{ maxHeight: '86dvh' }}
+        className="w-full max-w-2xl bg-bg-card rounded-2xl border border-border-subtle shadow-card flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-border-subtle flex justify-between items-center bg-bg-card/95 backdrop-blur-xs">
+        <div className="p-4 sm:p-5 border-b border-border-subtle flex justify-between items-center bg-bg-card/95 backdrop-blur-xs shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-olive/15 text-brand-olive flex items-center justify-center">
-              <UserPlus className="w-5 h-5" />
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="py-1.5 px-3 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>← Volver</span>
+            </button>
             <div>
               <span className="text-[10px] font-mono uppercase tracking-widest text-text-accent block">
                 Nuevo Registro
               </span>
-              <h2 className="font-serif text-xl sm:text-2xl text-text-primary">
+              <h2 className="font-serif text-lg sm:text-xl text-text-primary">
                 {createdResult ? '¡Invitación Creada!' : 'Añadir Invitados / Familia'}
               </h2>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 rounded-xl text-text-muted hover:bg-bg-secondary hover:text-text-primary transition-colors cursor-pointer"
           >
@@ -372,80 +389,39 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
                 </div>
               </div>
 
-              {/* 2. Allowed Events: ONLY 2 Editable Options (Preboda & Boda) */}
-              <div className="p-4 rounded-xl bg-bg-secondary/40 border border-border-subtle space-y-2.5">
-                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-brand-olive" />
-                  Eventos Asignados (Selecciona Preboda y/o Boda)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  {(() => {
-                    const isPrebodaChecked = allowedEvents.includes('evt-preboda-cata');
-                    const isBodaChecked =
-                      allowedEvents.includes('evt-ceremonia') ||
-                      allowedEvents.includes('evt-banquete') ||
-                      allowedEvents.includes('evt-fiesta-dj');
-
-                    const togglePreboda = () => {
-                      setAllowedEvents((prev) =>
-                        isPrebodaChecked
-                          ? prev.filter((id) => id !== 'evt-preboda-cata')
-                          : [...prev, 'evt-preboda-cata']
-                      );
-                    };
-
-                    const toggleBoda = () => {
-                      const bodaIds = ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'];
-                      setAllowedEvents((prev) =>
-                        isBodaChecked
-                          ? prev.filter((id) => !bodaIds.includes(id))
-                          : [...prev.filter((id) => !bodaIds.includes(id)), ...bodaIds]
-                      );
-                    };
-
-                    return (
-                      <>
-                        <label
-                          className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-colors ${
-                            isPrebodaChecked
-                              ? 'bg-bg-card border-brand-olive text-text-primary shadow-xs'
-                              : 'bg-transparent border-border-subtle text-text-muted hover:border-text-muted/40'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isPrebodaChecked}
-                            onChange={togglePreboda}
-                            className="mt-0.5 rounded text-brand-olive focus:ring-brand-olive"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold">🍷 Preboda</p>
-                            <p className="text-[10px] text-text-muted">Viernes · Preboda y Cata en Bodega</p>
-                          </div>
-                        </label>
-
-                        <label
-                          className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-colors ${
-                            isBodaChecked
-                              ? 'bg-bg-card border-primary text-text-primary shadow-xs'
-                              : 'bg-transparent border-border-subtle text-text-muted hover:border-text-muted/40'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isBodaChecked}
-                            onChange={toggleBoda}
-                            className="mt-0.5 rounded text-primary focus:ring-primary"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold">💍 Boda</p>
-                            <p className="text-[10px] text-text-muted">Sábado · Ceremonia, Banquete y Fiesta</p>
-                          </div>
-                        </label>
-                      </>
-                    );
-                  })()}
+              {/* 2. Allowed Events: Todos van a la Boda, seleccionable Preboda */}
+              <div className="p-4 rounded-xl bg-bg-secondary/40 border border-border-subtle flex items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-brand-olive" />
+                    ¿Incluir invitación a la Preboda?
+                  </span>
+                  <p className="text-[11px] text-text-muted mt-0.5">
+                    Todos los invitados están incluidos en la Boda (Sábado). Activa esta opción si también asisten a la Preboda (Viernes).
+                  </p>
                 </div>
+                {(() => {
+                  const isPrebodaChecked = allowedEvents.includes('evt-preboda-cata');
+                  const togglePreboda = () => {
+                    const bodaIds = ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'];
+                    setAllowedEvents(
+                      isPrebodaChecked ? bodaIds : ['evt-preboda-cata', ...bodaIds]
+                    );
+                  };
+                  return (
+                    <button
+                      type="button"
+                      onClick={togglePreboda}
+                      className={`px-4 py-2 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 border transition-all cursor-pointer shrink-0 ${
+                        isPrebodaChecked
+                          ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                          : 'bg-bg-card text-text-muted border-border-subtle hover:border-brand-olive hover:text-text-primary'
+                      }`}
+                    >
+                      <span>{isPrebodaChecked ? '✓ Preboda incluida' : '+ Añadir Preboda'}</span>
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* 3. Guests List */}

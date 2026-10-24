@@ -216,36 +216,26 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
     await removeGuestFromGroupAction({ groupId: group.id, guestId });
   };
 
-  // Two-option stage events: Preboda & Boda
+  // Preboda editable (Todos los invitados van a la Boda siempre)
   const hasPreboda = group.allowed_event_ids.includes('evt-preboda-cata');
-  const hasBoda =
-    group.allowed_event_ids.includes('evt-ceremonia') ||
-    group.allowed_event_ids.includes('evt-banquete') ||
-    group.allowed_event_ids.includes('evt-fiesta-dj');
 
-  const handleToggleStage = async (stage: 'preboda' | 'boda') => {
+  const handleToggleStage = async (stage: 'preboda' | 'boda' = 'preboda') => {
     const nextPreboda = stage === 'preboda' ? !hasPreboda : hasPreboda;
-    const nextBoda = stage === 'boda' ? !hasBoda : hasBoda;
 
-    const nextAllowed: string[] = [];
-    if (nextPreboda) nextAllowed.push('evt-preboda-cata');
-    if (nextBoda) nextAllowed.push('evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj');
+    const nextAllowed: string[] = ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'];
+    if (nextPreboda) nextAllowed.unshift('evt-preboda-cata');
 
     const updatedGroup: GuestGroup = { ...group, allowed_event_ids: nextAllowed };
     syncUpdatedGroupToLocalStore(updatedGroup);
     showSavedFeedback(
-      stage === 'preboda'
-        ? nextPreboda
-          ? '✓ Preboda activada para esta invitación'
-          : '✓ Preboda desactivada para esta invitación'
-        : nextBoda
-        ? '✓ Boda activada para esta invitación'
-        : '✓ Boda desactivada para esta invitación'
+      nextPreboda
+        ? '✓ Preboda activada para esta invitación'
+        : '✓ Preboda desactivada para esta invitación'
     );
     await setGroupStageEventsAction({
       groupId: group.id,
       preboda: nextPreboda,
-      boda: nextBoda,
+      boda: true,
     });
   };
 
@@ -343,11 +333,23 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[90] w-screen h-[100dvh] max-h-[100dvh] flex justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        maxHeight: '100dvh',
+        zIndex: 9990,
+      }}
+      className="fixed inset-0 z-[90] flex justify-end bg-black/50 backdrop-blur-xs"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md h-[100dvh] max-h-[100dvh] bg-bg-card border-l border-border-subtle shadow-card flex flex-col justify-between overflow-y-auto"
+        style={{ height: '100dvh', maxHeight: '100dvh' }}
+        className="w-full max-w-md bg-bg-card border-l border-border-subtle shadow-card flex flex-col justify-between overflow-y-auto"
       >
         {/* Header with Direct Editable Family Name */}
         <div className="p-5 sm:p-6 border-b border-border-subtle sticky top-0 bg-bg-card/95 backdrop-blur-md z-10 space-y-2 shrink-0">
@@ -436,90 +438,29 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
             </div>
           </div>
 
-          {/* EVENTOS ASIGNADOS: SOLO 2 OPCIONES EDITABLES (PREBODA Y BODA) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
+          {/* PREBODA ASIGNADA (TODOS ASISTEN A LA BODA) */}
+          <div className="p-3.5 rounded-2xl bg-bg-secondary/25 border border-border-subtle flex items-center justify-between gap-3">
+            <div>
               <span className="text-[10px] font-mono tracking-widest uppercase text-text-muted flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-text-accent" />
-                EVENTOS ASIGNADOS (HAZ CLIC PARA PONER O QUITAR)
+                INVITACIÓN A PREBODA
               </span>
+              <p className="text-[11px] text-text-muted mt-0.5">
+                Todos los invitados tienen incluida la Boda.
+              </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* Opción 1: Preboda */}
-              <button
-                type="button"
-                onClick={() => handleToggleStage('preboda')}
-                className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                  hasPreboda
-                    ? 'bg-brand-olive/15 border-brand-olive text-text-primary shadow-xs'
-                    : 'bg-bg-secondary/20 border-border-subtle text-text-muted hover:border-border-strong'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="inline-flex items-center gap-1.5 font-serif text-base font-medium text-text-primary">
-                    <Wine className={`w-4 h-4 ${hasPreboda ? 'text-brand-olive' : 'text-text-muted'}`} />
-                    <span>Preboda</span>
-                  </span>
-                  <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      hasPreboda
-                        ? 'bg-brand-olive text-white'
-                        : 'bg-bg-secondary text-text-muted border border-border-subtle'
-                    }`}
-                  >
-                    {hasPreboda ? '✓' : ''}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between w-full text-[10px]">
-                  <span className="text-text-muted">Viernes · Bodega</span>
-                  <span
-                    className={`font-semibold px-2 py-0.5 rounded-md ${
-                      hasPreboda ? 'bg-brand-olive text-white' : 'bg-bg-secondary text-text-muted'
-                    }`}
-                  >
-                    {hasPreboda ? 'Incluida' : 'No incluida'}
-                  </span>
-                </div>
-              </button>
-
-              {/* Opción 2: Boda */}
-              <button
-                type="button"
-                onClick={() => handleToggleStage('boda')}
-                className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                  hasBoda
-                    ? 'bg-primary/10 border-primary text-text-primary shadow-xs'
-                    : 'bg-bg-secondary/20 border-border-subtle text-text-muted hover:border-border-strong'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="inline-flex items-center gap-1.5 font-serif text-base font-medium text-text-primary">
-                    <Heart className={`w-4 h-4 ${hasBoda ? 'text-primary' : 'text-text-muted'}`} />
-                    <span>Boda</span>
-                  </span>
-                  <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      hasBoda
-                        ? 'bg-primary text-primary-text'
-                        : 'bg-bg-secondary text-text-muted border border-border-subtle'
-                    }`}
-                  >
-                    {hasBoda ? '✓' : ''}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between w-full text-[10px]">
-                  <span className="text-text-muted">Sábado · Gran Día</span>
-                  <span
-                    className={`font-semibold px-2 py-0.5 rounded-md ${
-                      hasBoda ? 'bg-primary text-primary-text' : 'bg-bg-secondary text-text-muted'
-                    }`}
-                  >
-                    {hasBoda ? 'Incluida' : 'No incluida'}
-                  </span>
-                </div>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleToggleStage('preboda')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer border shrink-0 ${
+                hasPreboda
+                  ? 'bg-brand-olive text-white border-brand-olive shadow-xs hover:bg-brand-olive/90'
+                  : 'bg-bg-card text-text-muted border-border-subtle hover:border-brand-olive hover:text-text-primary'
+              }`}
+            >
+              <Wine className="w-3.5 h-3.5" />
+              <span>{hasPreboda ? '✓ Preboda' : '+ Preboda'}</span>
+            </button>
           </div>
 
           {/* INVITADOS SECTION — DIRECT EDITABLE INPUTS + ALWAYS VISIBLE ADD PERSON FORM */}

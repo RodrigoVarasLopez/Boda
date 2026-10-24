@@ -74,10 +74,9 @@ export default function AdminGuestsPage() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [groupNameDraft, setGroupNameDraft] = useState('');
 
-  // Inline editing state for Guest Name & Last Name
+  // Inline editing state for Guest Full Name (double-click to edit)
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
-  const [guestFirstDraft, setGuestFirstDraft] = useState('');
-  const [guestLastDraft, setGuestLastDraft] = useState('');
+  const [guestFullNameDraft, setGuestFullNameDraft] = useState('');
 
   // Inline adding state for adding a new member to an existing family
   const [addingToGroupId, setAddingToGroupId] = useState<string | null>(null);
@@ -90,25 +89,25 @@ export default function AdminGuestsPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSaveInlineGroupName = async (groupId: string) => {
+  const handleSaveInlineGroupName = async (groupId: string, originalName?: string) => {
     const clean = groupNameDraft.trim();
-    if (!clean) {
-      setEditingGroupId(null);
+    setEditingGroupId(null);
+    if (!clean || (originalName && clean === originalName.trim())) {
       return;
     }
-    setEditingGroupId(null);
     await updateGroupName(groupId, clean);
     showToast('✓ Nombre de familia actualizado');
   };
 
-  const handleSaveInlineGuestName = async (guestId: string) => {
-    const cleanFirst = guestFirstDraft.trim();
-    const cleanLast = guestLastDraft.trim();
-    if (!cleanFirst) {
-      setEditingGuestId(null);
+  const handleSaveInlineGuestName = async (guestId: string, originalFull?: string) => {
+    const cleanFull = guestFullNameDraft.trim().replace(/\s+/g, ' ');
+    setEditingGuestId(null);
+    if (!cleanFull || (originalFull && cleanFull === originalFull.trim().replace(/\s+/g, ' '))) {
       return;
     }
-    setEditingGuestId(null);
+    const parts = cleanFull.split(' ');
+    const cleanFirst = parts[0] || cleanFull;
+    const cleanLast = parts.slice(1).join(' ');
     await updateGuestDetails(guestId, cleanFirst, cleanLast);
     showToast('✓ Nombre de invitado actualizado');
   };
@@ -149,23 +148,13 @@ export default function AdminGuestsPage() {
 
   const handleQuickToggleStageEvent = async (
     grp: GuestGroup,
-    stage: 'preboda' | 'boda'
+    stage: 'preboda' | 'boda' = 'preboda'
   ) => {
     const currentlyPreboda = grp.allowed_event_ids.includes('evt-preboda-cata');
-    const currentlyBoda =
-      grp.allowed_event_ids.includes('evt-ceremonia') ||
-      grp.allowed_event_ids.includes('evt-banquete') ||
-      grp.allowed_event_ids.includes('evt-fiesta-dj');
-
     const nextPreboda = stage === 'preboda' ? !currentlyPreboda : currentlyPreboda;
-    const nextBoda = stage === 'boda' ? !currentlyBoda : currentlyBoda;
-
-    await setGroupStageEvents(grp.id, nextPreboda, nextBoda);
-    if (stage === 'preboda') {
-      showToast(nextPreboda ? '✓ Preboda activada para esta familia' : '✓ Preboda quitada para esta familia');
-    } else {
-      showToast(nextBoda ? '✓ Boda activada para esta familia' : '✓ Boda quitada para esta familia');
-    }
+    // Todos los invitados van a la boda siempre (nextBoda = true)
+    await setGroupStageEvents(grp.id, nextPreboda, true);
+    showToast(nextPreboda ? '✓ Preboda activada para esta familia' : '✓ Preboda quitada para esta familia');
   };
 
   const handleQuickToggleAttendance = async (
@@ -441,10 +430,6 @@ export default function AdminGuestsPage() {
           const isEditingThisGroup = editingGroupId === grp.id;
           const isAddingToThisGroup = addingToGroupId === grp.id;
           const hasPreboda = grp.allowed_event_ids.includes('evt-preboda-cata');
-          const hasBoda =
-            grp.allowed_event_ids.includes('evt-ceremonia') ||
-            grp.allowed_event_ids.includes('evt-banquete') ||
-            grp.allowed_event_ids.includes('evt-fiesta-dj');
 
           return (
             <div
@@ -455,46 +440,33 @@ export default function AdminGuestsPage() {
               <div className="flex justify-between items-start gap-2" onClick={(e) => e.stopPropagation()}>
                 <div className="flex-1 min-w-0">
                   {isEditingThisGroup ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={groupNameDraft}
-                        onChange={(e) => setGroupNameDraft(e.target.value)}
-                        onBlur={() => handleSaveInlineGroupName(grp.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveInlineGroupName(grp.id);
-                          if (e.key === 'Escape') setEditingGroupId(null);
-                        }}
-                        autoFocus
-                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-bg-secondary border border-primary text-sm font-serif text-text-primary focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSaveInlineGroupName(grp.id)}
-                        className="py-1.5 px-2.5 rounded-lg bg-brand-olive text-white text-xs font-medium flex items-center gap-1"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Guardar</span>
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={groupNameDraft}
+                      onChange={(e) => setGroupNameDraft(e.target.value)}
+                      onBlur={() => handleSaveInlineGroupName(grp.id, grp.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveInlineGroupName(grp.id, grp.name);
+                        if (e.key === 'Escape') setEditingGroupId(null);
+                      }}
+                      autoFocus
+                      className="w-full py-0.5 bg-transparent border-b border-primary text-lg font-serif text-text-primary focus:outline-none"
+                    />
                   ) : (
-                    <div
-                      onClick={() => {
+                    <h4
+                      onDoubleClick={() => {
                         setEditingGroupId(grp.id);
                         setGroupNameDraft(grp.name);
                       }}
-                      className="flex items-center gap-2 group/gname"
+                      title="Doble clic para editar el nombre de la familia"
+                      className="font-serif text-lg font-normal text-text-primary hover:text-text-accent cursor-text select-none"
                     >
-                      <h4 className="font-serif text-lg font-normal text-text-primary hover:text-text-accent">
-                        {grp.name}
-                      </h4>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-bg-secondary text-[10px] text-text-secondary">
-                        <Pencil className="w-3 h-3" />
-                        <span>Editar</span>
-                      </span>
-                    </div>
+                      {grp.name}
+                    </h4>
                   )}
-                  <p className="text-xs text-text-muted mt-0.5">{grp.guests.length} personas en la familia</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {grp.guests.length} personas · Doble clic en un nombre para editarlo
+                  </p>
                 </div>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold capitalize shrink-0 ${
@@ -513,12 +485,12 @@ export default function AdminGuestsPage() {
                 </span>
               </div>
 
-              {/* Mobile Stage Events Toggle: ONLY Preboda & Boda */}
-              <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+              {/* Mobile Preboda Toggle Centered */}
+              <div className="flex items-center justify-center pt-1" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={() => handleQuickToggleStageEvent(grp, 'preboda')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border transition-colors ${
+                  className={`py-1.5 px-4 rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1.5 border transition-colors ${
                     hasPreboda
                       ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
                       : 'bg-bg-secondary/50 text-text-muted border-border-subtle'
@@ -527,25 +499,14 @@ export default function AdminGuestsPage() {
                   <Wine className="w-3.5 h-3.5" />
                   <span>{hasPreboda ? '✓ Preboda' : '+ Preboda'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickToggleStageEvent(grp, 'boda')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border transition-colors ${
-                    hasBoda
-                      ? 'bg-primary text-primary-text border-primary shadow-xs'
-                      : 'bg-bg-secondary/50 text-text-muted border-border-subtle'
-                  }`}
-                >
-                  <Heart className="w-3.5 h-3.5" />
-                  <span>{hasBoda ? '✓ Boda' : '+ Boda'}</span>
-                </button>
               </div>
 
-              {/* Mobile Guests Inline List with Adult/Child Toggle & Name Edit */}
+              {/* Mobile Guests Inline List with Double-Click Name Edit & Adult/Child Toggle */}
               <div className="space-y-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
                 {grp.guests.map((g) => {
                   const isChild = Boolean(g.is_child || g.guest_type === 'child');
                   const isEditingThisGuest = editingGuestId === g.id;
+                  const fullName = `${g.first_name} ${g.last_name || ''}`.trim();
                   return (
                     <div
                       key={g.id}
@@ -553,93 +514,70 @@ export default function AdminGuestsPage() {
                         isChild ? 'bg-amber-50/50 border-amber-200' : 'bg-bg-secondary/30 border-border-subtle/60'
                       }`}
                     >
-                      {isEditingThisGuest ? (
-                        <div className="flex-1 flex items-center gap-1">
+                      <div className="flex-1 min-w-0">
+                        {isEditingThisGuest ? (
                           <input
                             type="text"
-                            value={guestFirstDraft}
-                            onChange={(e) => setGuestFirstDraft(e.target.value)}
-                            placeholder="Nombre"
-                            autoFocus
-                            className="w-1/2 py-1 px-2 rounded-lg bg-bg-card border border-primary text-xs"
-                          />
-                          <input
-                            type="text"
-                            value={guestLastDraft}
-                            onChange={(e) => setGuestLastDraft(e.target.value)}
-                            placeholder="Apellidos"
-                            className="w-1/2 py-1 px-2 rounded-lg bg-bg-card border border-border-strong text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveInlineGuestName(g.id)}
-                            className="p-1.5 rounded-lg bg-brand-olive text-white"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingGuestId(null)}
-                            className="p-1.5 rounded-lg bg-bg-secondary text-text-muted"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingGuestId(g.id);
-                              setGuestFirstDraft(g.first_name);
-                              setGuestLastDraft(g.last_name || '');
+                            value={guestFullNameDraft}
+                            onChange={(e) => setGuestFullNameDraft(e.target.value)}
+                            onBlur={() => handleSaveInlineGuestName(g.id, fullName)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveInlineGuestName(g.id, fullName);
+                              if (e.key === 'Escape') setEditingGuestId(null);
                             }}
-                            className="flex items-center gap-1.5 text-left text-text-primary font-medium hover:text-text-accent"
+                            autoFocus
+                            className="w-full py-0.5 bg-transparent border-b border-primary text-xs font-medium text-text-primary focus:outline-none"
+                          />
+                        ) : (
+                          <span
+                            onDoubleClick={() => {
+                              setEditingGuestId(g.id);
+                              setGuestFullNameDraft(fullName);
+                            }}
+                            title="Doble clic para editar nombre"
+                            className="block truncate text-left text-text-primary font-medium hover:text-text-accent cursor-text select-none"
                           >
-                            <span>
-                              {g.first_name} {g.last_name}
-                            </span>
-                            <Pencil className="w-3 h-3 text-text-muted" />
-                          </button>
+                            {fullName}
+                          </span>
+                        )}
+                      </div>
 
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickToggleChild(g.id, isChild)}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all ${
-                                isChild
-                                  ? 'bg-amber-500 text-white shadow-xs'
-                                  : 'bg-bg-card text-text-secondary border border-border-subtle'
-                              }`}
-                            >
-                              {isChild ? (
-                                <>
-                                  <Baby className="w-3 h-3" />
-                                  <span>Niño</span>
-                                </>
-                              ) : (
-                                <span>Adulto</span>
-                              )}
-                            </button>
-                            {grp.guests.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveInlineGuestFromFamily(
-                                    grp.id,
-                                    g.id,
-                                    `${g.first_name} ${g.last_name}`.trim(),
-                                    grp.guests.length
-                                  )
-                                }
-                                className="p-1 rounded-lg text-text-muted hover:text-rose-600"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickToggleChild(g.id, isChild)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all ${
+                            isChild
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-bg-card text-text-secondary border border-border-subtle'
+                          }`}
+                        >
+                          {isChild ? (
+                            <>
+                              <Baby className="w-3 h-3" />
+                              <span>Niño</span>
+                            </>
+                          ) : (
+                            <span>Adulto</span>
+                          )}
+                        </button>
+                        {grp.guests.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRemoveInlineGuestFromFamily(
+                                grp.id,
+                                g.id,
+                                fullName,
+                                grp.guests.length
+                              )
+                            }
+                            className="p-1 rounded-lg text-text-muted hover:text-rose-600"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -761,18 +699,18 @@ export default function AdminGuestsPage() {
         })}
       </div>
 
-      {/* DESKTOP VIEW: ELEGANT CRM TABLE WITH INLINE EDITING & 1-CLICK CHILD TOGGLE */}
+      {/* DESKTOP VIEW: ELEGANT CRM TABLE WITH DOUBLE-CLICK INLINE EDITING */}
       {filteredGroups.length > 0 && (
         <div className="hidden md:block rounded-3xl bg-bg-card border border-border-subtle shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full table-fixed text-left text-xs">
               <thead className="bg-bg-secondary/40 text-text-muted uppercase text-[10px] tracking-wider font-semibold border-b border-border-subtle">
                 <tr>
-                  <th className="p-4">Nombre de la Familia (Editable)</th>
-                  <th className="p-4">Invitados de la Familia (Editar / + Añadir / Niño)</th>
-                  <th className="p-4 text-center">Preboda &amp; Eventos</th>
-                  <th className="p-4 text-center">Estado Invitación</th>
-                  <th className="p-4 text-right">Acciones</th>
+                  <th className="py-3.5 px-4 w-[22%]">Nombre de la Familia</th>
+                  <th className="py-3.5 px-3 w-[35%]">Invitados (Doble clic para editar nombre)</th>
+                  <th className="py-3.5 px-2 w-[12%] text-center">Preboda</th>
+                  <th className="py-3.5 px-2 w-[11%] text-center">Estado Invitación</th>
+                  <th className="py-3.5 px-4 w-[20%] text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50">
@@ -780,215 +718,152 @@ export default function AdminGuestsPage() {
                   const isEditingThisGroup = editingGroupId === grp.id;
                   const isAddingToThisGroup = addingToGroupId === grp.id;
                   const hasPreboda = grp.allowed_event_ids.includes('evt-preboda-cata');
-                  const hasBoda =
-                    grp.allowed_event_ids.includes('evt-ceremonia') ||
-                    grp.allowed_event_ids.includes('evt-banquete') ||
-                    grp.allowed_event_ids.includes('evt-fiesta-dj');
 
                   return (
                     <tr
                       key={grp.id}
-                      className="hover:bg-bg-secondary/20 transition-colors cursor-pointer"
-                      onClick={() => setSelectedDrawerGroupId(grp.id)}
+                      className="hover:bg-bg-secondary/20 transition-colors"
                     >
-                      {/* Group Name (Inline Editable) */}
-                      <td className="p-4 align-top" onClick={(e) => e.stopPropagation()}>
+                      {/* Group Name (Double-Click Inline Editable - No Button / No Box) */}
+                      <td className="py-3.5 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
                         {isEditingThisGroup ? (
-                          <div className="flex items-center gap-1.5 max-w-xs">
-                            <input
-                              type="text"
-                              value={groupNameDraft}
-                              onChange={(e) => setGroupNameDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveInlineGroupName(grp.id);
-                                if (e.key === 'Escape') setEditingGroupId(null);
-                              }}
-                              autoFocus
-                              className="w-full py-1.5 px-2.5 rounded-xl bg-bg-secondary border border-primary text-sm font-serif text-text-primary focus:outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSaveInlineGroupName(grp.id)}
-                              className="py-1.5 px-2.5 rounded-lg bg-brand-olive text-white hover:bg-brand-olive/90 cursor-pointer shrink-0 text-xs font-medium flex items-center gap-1"
-                              title="Guardar nombre de familia"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Guardar</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingGroupId(null)}
-                              className="p-1.5 rounded-lg bg-bg-secondary text-text-muted hover:text-text-primary cursor-pointer shrink-0"
-                              title="Cancelar"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <input
+                            type="text"
+                            value={groupNameDraft}
+                            onChange={(e) => setGroupNameDraft(e.target.value)}
+                            onBlur={() => handleSaveInlineGroupName(grp.id, grp.name)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveInlineGroupName(grp.id, grp.name);
+                              if (e.key === 'Escape') setEditingGroupId(null);
+                            }}
+                            autoFocus
+                            className="w-full py-0.5 bg-transparent border-b border-primary text-base font-serif text-text-primary focus:outline-none"
+                          />
                         ) : (
-                          <div
-                            onClick={() => {
+                          <span
+                            onDoubleClick={() => {
                               setEditingGroupId(grp.id);
                               setGroupNameDraft(grp.name);
                             }}
-                            className="group/gname inline-flex items-center gap-2 cursor-pointer"
-                            title="Haz clic para cambiar el nombre de la familia"
+                            title="Doble clic para editar el nombre de la familia"
+                            className="font-serif text-base font-normal text-text-primary hover:text-text-accent transition-colors block cursor-text select-none leading-snug"
                           >
-                            <span className="font-serif text-base font-normal text-text-primary group-hover/gname:text-text-accent transition-colors">
-                              {grp.name}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-bg-secondary/70 text-[10px] text-text-secondary group-hover/gname:text-text-primary group-hover/gname:bg-bg-secondary transition-colors">
-                              <Pencil className="w-3 h-3" />
-                              <span>Editar</span>
-                            </span>
-                          </div>
+                            {grp.name}
+                          </span>
                         )}
                         <span className="text-[11px] text-text-muted block mt-1">
                           {grp.guests.length} {grp.guests.length === 1 ? 'persona' : 'personas'}
                         </span>
                       </td>
 
-                      {/* Guests List (Inline Editable + Add Person + 1-Click Adulto / Niño Toggle) */}
-                      <td className="p-4 align-top" onClick={(e) => e.stopPropagation()}>
+                      {/* Guests List (Double-Click Name Edit + Add Person + 1-Click Adulto / Niño Toggle) */}
+                      <td className="py-3.5 px-3 align-middle" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-1.5">
                           {grp.guests.map((g) => {
                             const isChild = Boolean(g.is_child || g.guest_type === 'child');
                             const isEditingThisGuest = editingGuestId === g.id;
                             const guestResp = allResponses.find((r) => r.guest_id === g.id);
                             const rsvpStatus = guestResp?.status;
+                            const fullName = `${g.first_name} ${g.last_name || ''}`.trim();
                             return (
                               <div
                                 key={g.id}
-                                className={`flex items-center justify-between gap-3 py-1.5 px-2.5 rounded-xl border transition-colors ${
+                                className={`flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-xl border transition-colors ${
                                   isChild
                                     ? 'bg-amber-50/60 border-amber-200/80'
                                     : 'bg-bg-secondary/25 border-border-subtle/50 hover:border-border-strong/60'
                                 }`}
                               >
-                                {isEditingThisGuest ? (
-                                  <div className="flex items-center gap-1.5 flex-1">
+                                <div className="flex-1 min-w-0">
+                                  {isEditingThisGuest ? (
                                     <input
                                       type="text"
-                                      value={guestFirstDraft}
-                                      onChange={(e) => setGuestFirstDraft(e.target.value)}
+                                      value={guestFullNameDraft}
+                                      onChange={(e) => setGuestFullNameDraft(e.target.value)}
+                                      onBlur={() => handleSaveInlineGuestName(g.id, fullName)}
                                       onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveInlineGuestName(g.id);
+                                        if (e.key === 'Enter') handleSaveInlineGuestName(g.id, fullName);
                                         if (e.key === 'Escape') setEditingGuestId(null);
                                       }}
-                                      placeholder="Nombre"
                                       autoFocus
-                                      className="w-28 sm:w-32 py-1 px-2 rounded-lg bg-bg-card border border-primary text-xs text-text-primary focus:outline-none"
+                                      className="w-full py-0.5 bg-transparent border-b border-primary text-xs font-medium text-text-primary focus:outline-none"
                                     />
-                                    <input
-                                      type="text"
-                                      value={guestLastDraft}
-                                      onChange={(e) => setGuestLastDraft(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveInlineGuestName(g.id);
-                                        if (e.key === 'Escape') setEditingGuestId(null);
-                                      }}
-                                      placeholder="Apellidos"
-                                      className="w-32 sm:w-36 py-1 px-2 rounded-lg bg-bg-card border border-border-strong text-xs text-text-primary focus:outline-none"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveInlineGuestName(g.id)}
-                                      className="py-1 px-2 rounded-lg bg-brand-olive text-white hover:bg-brand-olive/90 cursor-pointer text-[11px] font-medium flex items-center gap-1"
-                                      title="Guardar nombre"
-                                    >
-                                      <Check className="w-3 h-3" />
-                                      <span>Guardar</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingGuestId(null)}
-                                      className="p-1 rounded-lg bg-bg-secondary text-text-muted hover:text-text-primary cursor-pointer"
-                                      title="Cancelar"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
+                                  ) : (
+                                    <span
+                                      onDoubleClick={() => {
                                         setEditingGuestId(g.id);
-                                        setGuestFirstDraft(g.first_name);
-                                        setGuestLastDraft(g.last_name || '');
+                                        setGuestFullNameDraft(fullName);
                                       }}
-                                      className="group/guest flex items-center gap-1.5 text-left text-text-primary hover:text-text-accent font-medium cursor-pointer"
-                                      title="Haz clic para cambiar nombre o apellidos"
+                                      title="Doble clic para editar nombre y apellidos"
+                                      className="block truncate text-left text-text-primary hover:text-text-accent font-medium cursor-text select-none"
                                     >
-                                      <span>
-                                        {g.first_name} {g.last_name}
-                                      </span>
-                                      <Pencil className="w-3 h-3 text-text-muted/70 group-hover/guest:text-text-primary transition-colors" />
-                                    </button>
+                                      {fullName}
+                                    </span>
+                                  )}
+                                </div>
 
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleQuickToggleAttendance(grp.id, g.id, rsvpStatus)}
-                                        title={
-                                          rsvpStatus === 'declined'
-                                            ? 'Marcado como No asiste (no cuenta en banquete). Clic para marcar que Asiste'
-                                            : rsvpStatus === 'attending'
-                                            ? 'Confirmado que Asiste. Clic para marcar como No asiste (baja)'
-                                            : 'Clic para confirmar asistencia o marcar baja'
-                                        }
-                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer border ${
-                                          rsvpStatus === 'declined'
-                                            ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200'
-                                            : rsvpStatus === 'attending'
-                                            ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
-                                            : 'bg-bg-card text-text-muted border-border-subtle hover:border-brand-olive hover:text-brand-olive'
-                                        }`}
-                                      >
-                                        <span>
-                                          {rsvpStatus === 'declined'
-                                            ? '✕ Baja'
-                                            : rsvpStatus === 'attending'
-                                            ? '✓ Asiste'
-                                            : 'Asiste'}
-                                        </span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleQuickToggleChild(g.id, isChild)}
-                                        title={
-                                          isChild
-                                            ? 'Es Niño (menú infantil). Haz clic para cambiar a Adulto'
-                                            : 'Es Adulto. Haz clic para marcar como Niño'
-                                        }
-                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                                          isChild
-                                            ? 'bg-amber-500 text-white shadow-xs hover:bg-amber-600'
-                                            : 'bg-bg-card text-text-muted hover:text-text-primary border border-border-subtle hover:border-amber-400'
-                                        }`}
-                                      >
-                                        <Baby className="w-3 h-3" />
-                                        <span>{isChild ? 'Niño' : 'Adulto'}</span>
-                                      </button>
-                                      {grp.guests.length > 1 && (
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handleRemoveInlineGuestFromFamily(
-                                              grp.id,
-                                              g.id,
-                                              `${g.first_name} ${g.last_name}`.trim(),
-                                              grp.guests.length
-                                            )
-                                          }
-                                          title="Quitar a esta persona de la familia"
-                                          className="p-1 rounded-lg text-text-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickToggleAttendance(grp.id, g.id, rsvpStatus)}
+                                    title={
+                                      rsvpStatus === 'declined'
+                                        ? 'Marcado como No asiste (no cuenta en banquete). Clic para marcar que Asiste'
+                                        : rsvpStatus === 'attending'
+                                        ? 'Confirmado que Asiste. Clic para marcar como No asiste (baja)'
+                                        : 'Clic para confirmar asistencia o marcar baja'
+                                    }
+                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer border whitespace-nowrap ${
+                                      rsvpStatus === 'declined'
+                                        ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200'
+                                        : rsvpStatus === 'attending'
+                                        ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                                        : 'bg-bg-card text-text-muted border-border-subtle hover:border-brand-olive hover:text-brand-olive'
+                                    }`}
+                                  >
+                                    <span>
+                                      {rsvpStatus === 'declined'
+                                        ? '✕ Baja'
+                                        : rsvpStatus === 'attending'
+                                        ? '✓ Asiste'
+                                        : 'Asiste'}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickToggleChild(g.id, isChild)}
+                                    title={
+                                      isChild
+                                        ? 'Es Niño (menú infantil). Haz clic para cambiar a Adulto'
+                                        : 'Es Adulto. Haz clic para marcar como Niño'
+                                    }
+                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap ${
+                                      isChild
+                                        ? 'bg-amber-500 text-white shadow-xs hover:bg-amber-600'
+                                        : 'bg-bg-card text-text-muted hover:text-text-primary border border-border-subtle hover:border-amber-400'
+                                    }`}
+                                  >
+                                    <Baby className="w-3 h-3" />
+                                    <span>{isChild ? 'Niño' : 'Adulto'}</span>
+                                  </button>
+                                  {grp.guests.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleRemoveInlineGuestFromFamily(
+                                          grp.id,
+                                          g.id,
+                                          fullName,
+                                          grp.guests.length
+                                        )
+                                      }
+                                      title="Quitar a esta persona de la familia"
+                                      className="p-1 rounded-lg text-text-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
@@ -997,7 +872,7 @@ export default function AdminGuestsPage() {
                           {isAddingToThisGroup ? (
                             <form
                               onSubmit={(e) => handleAddInlineGuestToFamily(e, grp.id)}
-                              className="p-2.5 rounded-xl bg-brand-olive/10 border border-brand-olive/30 flex flex-wrap items-center gap-1.5 text-xs animate-fade-in"
+                              className="p-2 rounded-xl bg-brand-olive/10 border border-brand-olive/30 flex flex-wrap items-center gap-1.5 text-xs animate-fade-in"
                             >
                               <input
                                 type="text"
@@ -1006,14 +881,14 @@ export default function AdminGuestsPage() {
                                 value={newGuestFirst}
                                 onChange={(e) => setNewGuestFirst(e.target.value)}
                                 autoFocus
-                                className="w-28 py-1 px-2 rounded-lg bg-bg-card border border-primary text-xs text-text-primary focus:outline-none"
+                                className="w-24 py-1 px-2 rounded-lg bg-bg-card border border-primary text-xs text-text-primary focus:outline-none"
                               />
                               <input
                                 type="text"
                                 placeholder="Apellidos"
                                 value={newGuestLast}
                                 onChange={(e) => setNewGuestLast(e.target.value)}
-                                className="w-32 py-1 px-2 rounded-lg bg-bg-card border border-border-subtle text-xs text-text-primary focus:outline-none"
+                                className="w-28 py-1 px-2 rounded-lg bg-bg-card border border-border-subtle text-xs text-text-primary focus:outline-none"
                               />
                               <div className="inline-flex rounded-lg bg-bg-card p-0.5 border border-border-subtle">
                                 <button
@@ -1071,43 +946,27 @@ export default function AdminGuestsPage() {
                         </div>
                       </td>
 
-                      {/* Preboda & Eventos: ONLY 2 Editable Options (Preboda & Boda) Centered */}
-                      <td className="p-4 align-middle text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center justify-center gap-2 mx-auto">
-                          <button
-                            type="button"
-                            onClick={() => handleQuickToggleStageEvent(grp, 'preboda')}
-                            title="Haz clic para poner o quitar la invitación a la Preboda"
-                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
-                              hasPreboda
-                                ? 'bg-brand-olive text-white border-brand-olive shadow-xs hover:bg-brand-olive/90'
-                                : 'bg-bg-secondary/50 text-text-muted border-border-subtle hover:border-brand-olive hover:text-text-primary'
-                            }`}
-                          >
-                            <Wine className="w-3.5 h-3.5" />
-                            <span>{hasPreboda ? '✓ Preboda' : '+ Preboda'}</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleQuickToggleStageEvent(grp, 'boda')}
-                            title="Haz clic para poner o quitar la invitación a la Boda"
-                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
-                              hasBoda
-                                ? 'bg-primary text-primary-text border-primary shadow-xs hover:bg-primary-hover'
-                                : 'bg-bg-secondary/50 text-text-muted border-border-subtle hover:border-primary hover:text-text-primary'
-                            }`}
-                          >
-                            <Heart className="w-3.5 h-3.5" />
-                            <span>{hasBoda ? '✓ Boda' : '+ Boda'}</span>
-                          </button>
-                        </div>
+                      {/* Preboda ONLY (Centered like Estado Invitación) */}
+                      <td className="py-3.5 px-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickToggleStageEvent(grp, 'preboda')}
+                          title="Haz clic para poner o quitar la invitación a la Preboda"
+                          className={`px-3 py-1 rounded-full text-[11px] font-semibold inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer border whitespace-nowrap ${
+                            hasPreboda
+                              ? 'bg-brand-olive text-white border-brand-olive shadow-xs hover:bg-brand-olive/90'
+                              : 'bg-bg-secondary/50 text-text-muted border-border-subtle hover:border-brand-olive hover:text-text-primary'
+                          }`}
+                        >
+                          <Wine className="w-3 h-3" />
+                          <span>{hasPreboda ? '✓ Preboda' : '+ Preboda'}</span>
+                        </button>
                       </td>
 
-                      {/* Status Badge */}
-                      <td className="p-4 align-middle text-center">
+                      {/* Status Badge (Centered) */}
+                      <td className="py-3.5 px-2 align-middle text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center justify-center gap-1.5 ${
+                          className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center justify-center gap-1.5 whitespace-nowrap ${
                             grp.invitation_status === 'responded'
                               ? 'bg-brand-olive/15 text-brand-olive'
                               : grp.invitation_status === 'opened'
@@ -1123,39 +982,42 @@ export default function AdminGuestsPage() {
                         </span>
                       </td>
 
-                      {/* Actions Toolbar */}
-                      <td className="p-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
+                      {/* Actions Toolbar (Compact, Single-Line, Fits 100% Inside Card) */}
+                      <td className="py-3.5 px-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
                           {/* Quick Manual RSVP button */}
                           <button
+                            type="button"
                             onClick={() => setSelectedModalGroupId(grp.id)}
                             title="Registrar asistencia, tipo de menú o alergias del grupo"
-                            className="py-1.5 px-2.5 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-medium text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                            className="py-1.5 px-2.5 rounded-xl bg-brand-olive/10 hover:bg-brand-olive/20 text-brand-olive font-semibold text-[11px] inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                           >
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span className="hidden lg:inline">Asistencia / Menús</span>
+                            <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                            <span>Menús</span>
                           </button>
 
                           {/* Copy Link Button */}
                           <button
+                            type="button"
                             onClick={() => handleCopyLink(grp.token)}
                             title="Copiar enlace directo de invitación"
-                            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
                           >
                             {copiedToken === grp.token ? (
-                              <Check className="w-4 h-4 text-brand-olive" />
+                              <Check className="w-3.5 h-3.5 text-brand-olive" />
                             ) : (
-                              <Copy className="w-4 h-4" />
+                              <Copy className="w-3.5 h-3.5" />
                             )}
                           </button>
 
                           {/* WhatsApp Direct */}
                           <button
+                            type="button"
                             onClick={() => handleOpenWhatsApp(grp)}
                             title="Compartir por WhatsApp"
-                            className="p-2 rounded-xl text-brand-olive hover:bg-bg-secondary transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-brand-olive hover:bg-bg-secondary transition-colors cursor-pointer"
                           >
-                            <MessageCircle className="w-4 h-4" />
+                            <MessageCircle className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Direct Ver como invitado link */}
@@ -1163,19 +1025,19 @@ export default function AdminGuestsPage() {
                             href={`/i/${grp.token}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title={`Abrir experiencia de ${grp.name} como invitado en nueva pestaña`}
-                            className="py-1.5 px-2.5 rounded-xl border border-border-subtle hover:border-border-strong text-text-primary hover:bg-bg-secondary transition-colors flex items-center gap-1 font-medium text-[11px]"
+                            title={`Abrir invitación de ${grp.name} en nueva pestaña`}
+                            className="p-1.5 rounded-lg border border-border-subtle hover:border-border-strong text-text-primary hover:bg-bg-secondary transition-colors inline-flex items-center justify-center"
                           >
                             <Eye className="w-3.5 h-3.5 text-text-accent" />
-                            <span className="hidden xl:inline">Ver como invitado</span>
                           </a>
 
                           <button
+                            type="button"
                             onClick={() => setSelectedDrawerGroupId(grp.id)}
-                            title="Editar familia, añadir invitados y configurar invitación"
-                            className="py-1.5 px-2.5 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary transition-colors cursor-pointer text-xs font-medium"
+                            title="Ver detalles de la familia y configurar invitación"
+                            className="py-1.5 px-2.5 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary transition-colors cursor-pointer text-[11px] font-medium whitespace-nowrap"
                           >
-                            <span>Editar →</span>
+                            <span>Detalles</span>
                           </button>
                         </div>
                       </td>
