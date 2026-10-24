@@ -703,14 +703,14 @@ export default function AdminGuestsPage() {
       {filteredGroups.length > 0 && (
         <div className="hidden md:block rounded-3xl bg-bg-card border border-border-subtle shadow-card overflow-hidden">
           <div className="w-full overflow-x-auto">
-            <table className="w-full table-fixed text-left text-xs">
+            <table className="w-full text-left text-xs">
               <thead className="bg-bg-secondary/40 text-text-muted uppercase text-[10px] tracking-wider font-semibold border-b border-border-subtle">
                 <tr>
-                  <th className="py-3.5 px-4 w-[22%]">Nombre de la Familia</th>
-                  <th className="py-3.5 px-3 w-[35%]">Invitados (Doble clic para editar nombre)</th>
-                  <th className="py-3.5 px-2 w-[12%] text-center">Preboda</th>
-                  <th className="py-3.5 px-2 w-[11%] text-center">Estado Invitación</th>
-                  <th className="py-3.5 px-4 w-[20%] text-right">Acciones</th>
+                  <th className="py-3.5 pl-5 pr-3">Nombre de la Familia</th>
+                  <th className="py-3.5 px-3">Invitados (Doble clic para editar nombre)</th>
+                  <th className="py-3.5 px-3 text-center whitespace-nowrap">Preboda</th>
+                  <th className="py-3.5 px-3 text-center whitespace-nowrap">Estado Invitación</th>
+                  <th className="py-3.5 pl-3 pr-5 text-right whitespace-nowrap">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50">
@@ -725,7 +725,7 @@ export default function AdminGuestsPage() {
                       className="hover:bg-bg-secondary/20 transition-colors"
                     >
                       {/* Group Name (Double-Click Inline Editable - No Button / No Box) */}
-                      <td className="py-3.5 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 pl-5 pr-3 align-middle max-w-[220px]" onClick={(e) => e.stopPropagation()}>
                         {isEditingThisGroup ? (
                           <input
                             type="text"
@@ -947,7 +947,7 @@ export default function AdminGuestsPage() {
                       </td>
 
                       {/* Preboda ONLY (Centered like Estado Invitación) */}
-                      <td className="py-3.5 px-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-3 align-middle text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => handleQuickToggleStageEvent(grp, 'preboda')}
@@ -964,7 +964,7 @@ export default function AdminGuestsPage() {
                       </td>
 
                       {/* Status Badge (Centered) */}
-                      <td className="py-3.5 px-2 align-middle text-center">
+                      <td className="py-3.5 px-3 align-middle text-center whitespace-nowrap">
                         <span
                           className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center justify-center gap-1.5 whitespace-nowrap ${
                             grp.invitation_status === 'responded'
@@ -983,8 +983,8 @@ export default function AdminGuestsPage() {
                       </td>
 
                       {/* Actions Toolbar (Compact, Single-Line, Fits 100% Inside Card) */}
-                      <td className="py-3.5 px-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                      <td className="py-3.5 pl-3 pr-5 align-middle text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                           {/* Quick Manual RSVP button */}
                           <button
                             type="button"
