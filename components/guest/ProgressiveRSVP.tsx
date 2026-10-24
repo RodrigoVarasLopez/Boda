@@ -32,9 +32,12 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     },
   ];
 
-  const allowedEvents = events.filter((e) =>
-    e.visibility === 'everyone' || (group?.allowed_event_ids && group.allowed_event_ids.includes(e.id))
-  );
+  const allowedEvents = events.filter((e) => {
+    if (group && Array.isArray(group.allowed_event_ids)) {
+      return group.allowed_event_ids.includes(e.id);
+    }
+    return e.visibility === 'everyone';
+  });
 
   const [responses, setResponses] = useState<Record<string, GuestRSVPResponse>>(() => {
     const map: Record<string, GuestRSVPResponse> = {};

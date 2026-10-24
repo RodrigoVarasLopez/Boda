@@ -15,14 +15,16 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
   events,
   group,
 }) => {
-  // Filter events according to group access rules
-  const visibleEvents = events.filter((e) => {
-    if (e.visibility === 'everyone') return true;
-    if (group?.allowed_event_ids?.includes(e.id)) return true;
-    // On public page without group, show all with privacy note
-    if (!group) return true;
-    return false;
-  }).sort((a, b) => a.display_order - b.display_order);
+  // Filter events according to group access rules (Preboda / Boda)
+  const visibleEvents = events
+    .filter((e) => {
+      if (group) {
+        return Array.isArray(group.allowed_event_ids) && group.allowed_event_ids.includes(e.id);
+      }
+      // On public page without group, show all
+      return true;
+    })
+    .sort((a, b) => a.display_order - b.display_order);
 
   const fridayEvents = visibleEvents.filter((e) => e.day === 'friday');
   const saturdayEvents = visibleEvents.filter((e) => e.day === 'saturday');

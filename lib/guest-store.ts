@@ -13,6 +13,7 @@ import {
   addGuestToGroupAction,
   removeGuestFromGroupAction,
   toggleGroupEventAction,
+  setGroupStageEventsAction,
 } from '@/app/actions';
 
 const STORAGE_KEY_GROUPS = 'boda_groups_store_v2';
@@ -371,15 +372,22 @@ export function useWeddingData() {
   let banquetAdults = 0;
   let banquetChildren = 0;
 
-  // Compute banquet headcount from the full guest list (everyone except confirmed 'declined' guests)
-  for (const guest of allGuests) {
-    const isChild = guest.guest_type === 'child' || guest.is_child === true;
-    const resp = responseByGuestId.get(guest.id);
-    if (resp?.status !== 'declined') {
-      if (isChild) {
-        banquetChildren++;
-      } else {
-        banquetAdults++;
+  // Compute banquet headcount from groups invited to Boda (everyone except confirmed 'declined' guests)
+  for (const grp of groups) {
+    const isInvitedToBoda =
+      grp.allowed_event_ids.includes('evt-banquete') ||
+      grp.allowed_event_ids.includes('evt-ceremonia');
+    if (!isInvitedToBoda) continue;
+
+    for (const guest of grp.guests) {
+      const isChild = guest.guest_type === 'child' || guest.is_child === true;
+      const resp = responseByGuestId.get(guest.id);
+      if (resp?.status !== 'declined') {
+        if (isChild) {
+          banquetChildren++;
+        } else {
+          banquetAdults++;
+        }
       }
     }
   }
@@ -552,6 +560,22 @@ export function useWeddingData() {
     return await toggleGroupEventAction({ groupId, eventId, allowed });
   };
 
+  // Set Preboda & Boda (2-Option Stage Toggle) for a Group
+  const setGroupStageEvents = async (groupId: string, preboda: boolean, boda: boolean) => {
+    const nextAllowed: string[] = [];
+    if (preboda) nextAllowed.push('evt-preboda-cata');
+    if (boda) nextAllowed.push('evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj');
+
+    const currentGroups = getStoredGroups();
+    const targetGroup = currentGroups.find((g) => g.id === groupId);
+    if (targetGroup) {
+      targetGroup.allowed_event_ids = nextAllowed;
+      setStoredGroups([...currentGroups]);
+      setGroups([...currentGroups]);
+    }
+    return await setGroupStageEventsAction({ groupId, preboda, boda });
+  };
+
   return {
     isLoaded,
     isLoadingSupabase,
@@ -587,6 +611,7 @@ export function useWeddingData() {
     addGuestToGroup,
     removeGuestFromGroup,
     toggleGroupEvent,
+    setGroupStageEvents,
     createGroup,
     deleteGroup,
     syncLocalGuestsToSupabase,

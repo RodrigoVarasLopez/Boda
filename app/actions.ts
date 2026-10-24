@@ -312,8 +312,7 @@ export async function getGuestsDataAction() {
         const { data: groupEventsData, error: geErr } = await adminClient
           .from('group_events')
           .select('group_id, event_id, is_visible')
-          .in('group_id', groupIds)
-          .eq('is_visible', true);
+          .in('group_id', groupIds);
 
         if (geErr) console.error('Error fetching group events from Supabase:', geErr);
 
@@ -333,8 +332,9 @@ export async function getGuestsDataAction() {
         const mappedGroups: GuestGroup[] = groupsData.map((g) => {
           const inv = invitationsData?.find((i) => i.group_id === g.id);
           const grpGuests = (guestsData || []).filter((gst) => gst.group_id === g.id);
-          const allowedEvents = (groupEventsData || [])
-            .filter((ge) => ge.group_id === g.id)
+          const groupEventRows = (groupEventsData || []).filter((ge) => ge.group_id === g.id);
+          const allowedEvents = groupEventRows
+            .filter((ge) => ge.is_visible !== false)
             .map((ge) => ge.event_id);
 
           const mappedEventIds = allowedEvents.map((eid) => {
@@ -362,7 +362,10 @@ export async function getGuestsDataAction() {
             opened_at: inv?.opened_at || undefined,
             responded_at: inv?.responded_at || undefined,
             custom_message: g.notes || undefined,
-            allowed_event_ids: mappedEventIds.length > 0 ? mappedEventIds : ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
+            allowed_event_ids:
+              groupEventRows.length > 0
+                ? mappedEventIds
+                : ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'],
             guests: grpGuests.map((gst) => ({
               id: gst.id,
               wedding_id: g.wedding_id,
@@ -2192,22 +2195,18 @@ export async function toggleGroupEventAction(payload: {
   try {
     if (isSupabaseConfigured()) {
       const adminClient = createAdminClient();
-      if (payload.allowed) {
-        await adminClient.from('group_events').upsert(
-          {
-            group_id: payload.groupId,
-            event_id: dbEventId,
-            is_visible: true,
-          },
-          { onConflict: 'group_id,event_id' }
-        );
-      } else {
-        await adminClient
-          .from('group_events')
-          .delete()
-          .eq('group_id', payload.groupId)
-          .eq('event_id', dbEventId);
-      }
+      await adminClient
+        .from('group_events')
+        .delete()
+        .eq('group_id', payload.groupId)
+        .eq('event_id', dbEventId);
+
+      await adminClient.from('group_events').insert({
+        id: crypto.randomUUID(),
+        group_id: payload.groupId,
+        event_id: dbEventId,
+        is_visible: payload.allowed,
+      });
     }
   } catch (err) {
     console.warn('DB toggle group event fallback:', err);
@@ -2224,8 +2223,77 @@ export async function toggleGroupEventAction(payload: {
   }
 
   revalidatePath('/admin/guests');
+  revalidatePath('/admin/budget');
   return { success: true };
 }
+
+/**
+ * 18. Set Preboda & Boda Assigned Events for a Group (2-Option Stage Toggle)
+ */
+export async function setGroupStageEventsAction(payload: {
+  groupId: string;
+  preboda: boolean;
+  boda: boolean;
+}) {
+  const nextAllowed: string[] = [];
+  if (payload.preboda) {
+    nextAllowed.push('evt-preboda-cata');
+  }
+  if (payload.boda) {
+    nextAllowed.push('evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj');
+  }
+
+  try {
+    if (isSupabaseConfigured()) {
+      const adminClient = createAdminClient();
+      await adminClient.from('group_events').delete().eq('group_id', payload.groupId);
+
+      const rowsToInsert = [
+        {
+          id: crypto.randomUUID(),
+          group_id: payload.groupId,
+          event_id: 'b0000000-0000-0000-0000-000000000001',
+          is_visible: Boolean(payload.preboda),
+        },
+        {
+          id: crypto.randomUUID(),
+          group_id: payload.groupId,
+          event_id: 'b0000000-0000-0000-0000-000000000002',
+          is_visible: Boolean(payload.boda),
+        },
+        {
+          id: crypto.randomUUID(),
+          group_id: payload.groupId,
+          event_id: 'b0000000-0000-0000-0000-000000000003',
+          is_visible: Boolean(payload.boda),
+        },
+        {
+          id: crypto.randomUUID(),
+          group_id: payload.groupId,
+          event_id: 'b0000000-0000-0000-0000-000000000004',
+          is_visible: Boolean(payload.boda),
+        },
+      ];
+
+      const { error } = await adminClient.from('group_events').insert(rowsToInsert);
+      if (error) {
+        console.warn('Error inserting group_events rows:', error);
+      }
+    }
+  } catch (err) {
+    console.warn('DB setGroupStageEventsAction fallback:', err);
+  }
+
+  const grp = INITIAL_GROUPS.find((g) => g.id === payload.groupId);
+  if (grp) {
+    grp.allowed_event_ids = nextAllowed;
+  }
+
+  revalidatePath('/admin/guests');
+  revalidatePath('/admin/budget');
+  return { success: true, allowed_event_ids: nextAllowed };
+}
+
 
 
 

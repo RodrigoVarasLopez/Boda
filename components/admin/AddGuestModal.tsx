@@ -351,37 +351,79 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
                 </div>
               </div>
 
-              {/* 2. Allowed Events */}
+              {/* 2. Allowed Events: ONLY 2 Editable Options (Preboda & Boda) */}
               <div className="p-4 rounded-xl bg-bg-secondary/40 border border-border-subtle space-y-2.5">
-                <span className="text-xs font-semibold text-text-primary block flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-brand-olive" />
-                  Eventos a los que están invitados
+                  Eventos Asignados (Selecciona Preboda y/o Boda)
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {INITIAL_EVENTS.map((evt) => {
-                    const isChecked = allowedEvents.includes(evt.id);
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {(() => {
+                    const isPrebodaChecked = allowedEvents.includes('evt-preboda-cata');
+                    const isBodaChecked =
+                      allowedEvents.includes('evt-ceremonia') ||
+                      allowedEvents.includes('evt-banquete') ||
+                      allowedEvents.includes('evt-fiesta-dj');
+
+                    const togglePreboda = () => {
+                      setAllowedEvents((prev) =>
+                        isPrebodaChecked
+                          ? prev.filter((id) => id !== 'evt-preboda-cata')
+                          : [...prev, 'evt-preboda-cata']
+                      );
+                    };
+
+                    const toggleBoda = () => {
+                      const bodaIds = ['evt-ceremonia', 'evt-banquete', 'evt-fiesta-dj'];
+                      setAllowedEvents((prev) =>
+                        isBodaChecked
+                          ? prev.filter((id) => !bodaIds.includes(id))
+                          : [...prev.filter((id) => !bodaIds.includes(id)), ...bodaIds]
+                      );
+                    };
+
                     return (
-                      <label
-                        key={evt.id}
-                        className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-colors ${
-                          isChecked
-                            ? 'bg-bg-card border-brand-olive/40 text-text-primary'
-                            : 'bg-transparent border-border-subtle text-text-muted hover:border-text-muted/40'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleEvent(evt.id)}
-                          className="mt-0.5 rounded text-brand-olive focus:ring-brand-olive"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{evt.title}</p>
-                          <p className="text-[10px] text-text-muted">{evt.day_label}</p>
-                        </div>
-                      </label>
+                      <>
+                        <label
+                          className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-colors ${
+                            isPrebodaChecked
+                              ? 'bg-bg-card border-brand-olive text-text-primary shadow-xs'
+                              : 'bg-transparent border-border-subtle text-text-muted hover:border-text-muted/40'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isPrebodaChecked}
+                            onChange={togglePreboda}
+                            className="mt-0.5 rounded text-brand-olive focus:ring-brand-olive"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold">🍷 Preboda</p>
+                            <p className="text-[10px] text-text-muted">Viernes · Preboda y Cata en Bodega</p>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-colors ${
+                            isBodaChecked
+                              ? 'bg-bg-card border-primary text-text-primary shadow-xs'
+                              : 'bg-transparent border-border-subtle text-text-muted hover:border-text-muted/40'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isBodaChecked}
+                            onChange={toggleBoda}
+                            className="mt-0.5 rounded text-primary focus:ring-primary"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold">💍 Boda</p>
+                            <p className="text-[10px] text-text-muted">Sábado · Ceremonia, Banquete y Fiesta</p>
+                          </div>
+                        </label>
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
               </div>
 
