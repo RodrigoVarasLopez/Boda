@@ -29,7 +29,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { buildWhatsAppLink, formatDateEs } from '@/lib/utils';
+import { buildWhatsAppLink, formatDateEs, getDefaultWhatsAppNote } from '@/lib/utils';
 import {
   regenerateInvitationTokenAction,
   revokeInvitationAction,
@@ -87,7 +87,16 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
   useEffect(() => {
     if (group) {
       setGroupNameDraft(group.name);
-      setCustomNote(group.custom_message || '');
+      const groupHasPreboda =
+        Array.isArray(group.allowed_event_ids) &&
+        group.allowed_event_ids.includes('evt-preboda-cata');
+      const savedMsg = (group.custom_message || '').trim();
+      const isInternalNote = savedMsg === 'Incluye invitación a Preboda & Cata Privada';
+      setCustomNote(
+        savedMsg && !isInternalNote
+          ? savedMsg
+          : getDefaultWhatsAppNote(group.name, groupHasPreboda)
+      );
       const initialDrafts: Record<string, { first_name: string; last_name: string }> = {};
       group.guests.forEach((g) => {
         initialDrafts[g.id] = {
@@ -97,7 +106,7 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
       });
       setGuestDrafts(initialDrafts);
     }
-  }, [group?.id, group?.name, group?.guests]);
+  }, [group?.id, group?.name, group?.guests, group?.allowed_event_ids]);
 
   useEffect(() => {
     if (!group || typeof window === 'undefined') return;
@@ -266,7 +275,8 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
       wedding.couple_names,
       wedding.wedding_date,
       whatsAppInvitationUrl,
-      customNote
+      customNote,
+      hasPreboda
     );
     window.open(waUrl, '_blank');
   };
@@ -709,14 +719,33 @@ export const GuestDrawer: React.FC<GuestDrawerProps> = ({
               GESTIÓN DE ENLACE & WHATSAPP
             </span>
 
-            {/* Custom WhatsApp Note Helper */}
+            {/* Custom WhatsApp Note Helper (Pre-filled by default for every guest) */}
             <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-medium text-text-secondary">
+                  Mensaje listo para enviar por WhatsApp (editable):
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCustomNote(getDefaultWhatsAppNote(group.name, hasPreboda))
+                  }
+                  className="text-[10px] text-text-accent hover:underline cursor-pointer"
+                >
+                  Restaurar mensaje por defecto
+                </button>
+              </div>
               <textarea
-                rows={2}
+                rows={4}
                 value={customNote}
-                onChange={(e) => setCustomNote(e.target.value)}
-                placeholder="Frase personalizada para el WhatsApp..."
-                className="w-full p-3 rounded-xl bg-bg-secondary/30 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent resize-none"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomNote(val);
+                  const updatedGroup: GuestGroup = { ...group, custom_message: val };
+                  syncUpdatedGroupToLocalStore(updatedGroup);
+                }}
+                placeholder="Mensaje personalizado para WhatsApp..."
+                className="w-full p-3 rounded-xl bg-bg-secondary/30 border border-border-subtle text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-text-accent resize-none leading-relaxed"
               />
               
               <div className="grid grid-cols-2 gap-2">

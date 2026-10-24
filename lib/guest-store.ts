@@ -135,8 +135,16 @@ export async function saveManualGroupRSVP(
 
   // Determine group status based on responses
   const hasAttending = responses.some((r) => r.status === 'attending');
-  const allDeclined = responses.every((r) => r.status === 'declined');
-  const groupStatus = hasAttending ? 'responded' : allDeclined ? 'responded' : 'opened';
+  const hasDeclined = responses.some((r) => r.status === 'declined');
+  const allPending = responses.every((r) => r.status === 'pending');
+  const groupStatus =
+    hasAttending || hasDeclined
+      ? 'responded'
+      : allPending
+      ? group.invitation_status === 'responded'
+        ? 'sent'
+        : group.invitation_status
+      : 'responded';
 
   // Update group in list
   const updatedGroup: GuestGroup = {
@@ -381,6 +389,18 @@ export function useWeddingData() {
   // Compute Headcount & Analytics
   const totalGuests = groups.reduce((acc, g) => acc + g.guests.length, 0);
   const totalGroups = groups.length;
+  const totalBodaGuests = totalGuests;
+  const totalBodaGroups = totalGroups;
+
+  const prebodaGroups = groups.filter((g) =>
+    Array.isArray(g.allowed_event_ids) && g.allowed_event_ids.includes('evt-preboda-cata')
+  );
+  const totalPrebodaGroups = prebodaGroups.length;
+  const totalPrebodaGuests = prebodaGroups.reduce((acc, g) => acc + g.guests.length, 0);
+  const prebodaGuestIds = new Set(
+    prebodaGroups.flatMap((g) => g.guests.map((gst) => gst.id))
+  );
+
   const openedInvitations = groups.filter(
     (g) => g.invitation_status === 'opened' || g.invitation_status === 'responded'
   ).length;
@@ -398,16 +418,38 @@ export function useWeddingData() {
       ? Math.round(((confirmedAttendingGuests + confirmedDeclined) / totalGuests) * 100)
       : 0;
 
-  const eventAttendance = INITIAL_EVENTS.map((evt) => {
-    const attendees = allResponses.filter(
-      (r) => r.status === 'attending' && r.attending_event_ids.includes(evt.id)
-    ).length;
-    return {
-      eventId: evt.id,
-      eventTitle: evt.title,
-      attendees,
-    };
-  });
+  const prebodaConfirmedGuests = allResponses.filter(
+    (r) =>
+      r.status === 'attending' &&
+      (prebodaGuestIds.has(r.guest_id) ||
+        (Array.isArray(r.attending_event_ids) &&
+          r.attending_event_ids.includes('evt-preboda-cata')))
+  ).length;
+  const prebodaConfirmedPlusOnes = allResponses.filter(
+    (r) =>
+      r.status === 'attending' &&
+      r.plus_one_attending &&
+      (prebodaGuestIds.has(r.guest_id) ||
+        (Array.isArray(r.attending_event_ids) &&
+          r.attending_event_ids.includes('evt-preboda-cata')))
+  ).length;
+  const prebodaConfirmedHeadcount = prebodaConfirmedGuests + prebodaConfirmedPlusOnes;
+
+  // Only 2 events in Event Attendance: Preboda and Boda
+  const eventAttendance = [
+    {
+      eventId: 'evt-preboda-cata',
+      eventTitle: 'Preboda & Cata Privada de Vinos',
+      invited: totalPrebodaGuests,
+      attendees: prebodaConfirmedHeadcount,
+    },
+    {
+      eventId: 'evt-boda',
+      eventTitle: 'Boda en Bodega Concejo',
+      invited: totalBodaGuests,
+      attendees: totalConfirmedHeadcount,
+    },
+  ];
 
   // Adult vs Child headcount
   const allGuests = groups.flatMap((g) => g.guests);
@@ -457,11 +499,11 @@ export function useWeddingData() {
     }
   }
 
-  // Quick 1-click attendance status change for a single guest in a group
+  // Quick 1-click attendance status change for a single guest in a group (supports 'attending', 'declined', and 'pending' to reset/uncheck)
   const setSingleGuestAttendance = async (
     groupId: string,
     guestId: string,
-    newStatus: 'attending' | 'declined'
+    newStatus: 'attending' | 'declined' | 'pending'
   ) => {
     const currentGroups = getStoredGroups();
     const currentRSVPs = getStoredRSVPS();
@@ -473,7 +515,7 @@ export function useWeddingData() {
       const prev = existingSub?.responses.find((r) => r.guest_id === g.id);
       const isChild = g.guest_type === 'child' || g.is_child === true;
       const statusToUse: RSVPStatus =
-        g.id === guestId ? newStatus : prev?.status || 'attending';
+        g.id === guestId ? newStatus : prev?.status || 'pending';
       return {
         guestId: g.id,
         status: statusToUse,
@@ -486,6 +528,50 @@ export function useWeddingData() {
     });
 
     await saveManualGroupRSVP(groupId, updatedResponses);
+  };
+
+  // Cycle or set group invitation status ('draft' = Sin enviar, 'sent' = Enviada, 'responded' = Aceptada)
+  const updateGroupInvitationStatus = async (
+    groupId: string,
+    nextStatus: 'draft' | 'sent' | 'responded'
+  ) => {
+    const currentGroups = getStoredGroups();
+    const currentRSVPs = getStoredRSVPS();
+    const grp = currentGroups.find((g) => g.id === groupId);
+    if (!grp) return;
+
+    if (nextStatus === 'responded') {
+      // If set to Aceptada, confirm all guests in the group who aren't already declined
+      const existingSub = currentRSVPs.find((r) => r.group_id === groupId);
+      const updatedResponses = grp.guests.map((g) => {
+        const prev = existingSub?.responses.find((r) => r.guest_id === g.id);
+        const isChild = g.guest_type === 'child' || g.is_child === true;
+        return {
+          guestId: g.id,
+          status: (prev?.status === 'declined' ? 'declined' : 'attending') as RSVPStatus,
+          dietaryChoice: (prev?.dietary_choice || (isChild ? 'child' : 'standard')) as DietaryOption,
+          allergies: prev?.allergies || g.allergies || '',
+          plusOneAttending: prev?.plus_one_attending || false,
+          plusOneName: prev?.plus_one_name,
+          message: prev?.message || 'Invitación marcada como Aceptada',
+        };
+      });
+      await saveManualGroupRSVP(groupId, updatedResponses);
+    } else {
+      // If set to 'draft' (Sin enviar) or 'sent' (Enviada), also reset pending if it was responded
+      const updatedGroups = currentGroups.map((g) =>
+        g.id === groupId ? { ...g, invitation_status: nextStatus } : g
+      );
+      setStoredGroups(updatedGroups);
+      setGroups(updatedGroups);
+
+      // If resetting from responded to Sin enviar / Enviada, reset guests to pending (sin marcar)
+      if (grp.invitation_status === 'responded') {
+        const updatedRSVPs = currentRSVPs.filter((r) => r.group_id !== groupId);
+        setStoredRSVPs(updatedRSVPs);
+        setRsvps(updatedRSVPs);
+      }
+    }
   };
 
   // Update Guest Type function
@@ -655,6 +741,11 @@ export function useWeddingData() {
     stats: {
       totalGuests,
       totalGroups,
+      totalBodaGuests,
+      totalBodaGroups,
+      totalPrebodaGuests,
+      totalPrebodaGroups,
+      prebodaConfirmed: prebodaConfirmedHeadcount,
       totalAdults,
       totalChildren,
       openedInvitations,
@@ -673,6 +764,7 @@ export function useWeddingData() {
     saveManualRSVP: saveManualGroupRSVP,
     quickConfirmGroup: quickConfirmGroupAttendance,
     setSingleGuestAttendance,
+    updateGroupInvitationStatus,
     updateGuestType,
     updateGroupName,
     updateGuestDetails,

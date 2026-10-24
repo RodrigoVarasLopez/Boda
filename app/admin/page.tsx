@@ -23,6 +23,10 @@ export default function AdminOverviewPage() {
   const { stats, groups, rsvps } = useWeddingData();
   const totalGuests = stats.totalGuests;
   const totalGroups = stats.totalGroups;
+  const totalBodaGuests = stats.totalBodaGuests ?? stats.totalGuests;
+  const totalBodaGroups = stats.totalBodaGroups ?? stats.totalGroups;
+  const totalPrebodaGuests = stats.totalPrebodaGuests ?? 0;
+  const totalPrebodaGroups = stats.totalPrebodaGroups ?? 0;
   const confirmedAttending = stats.confirmedAttending;
   const confirmedPlusOnes = stats.confirmedPlusOnes;
   const totalConfirmedHeadcount = stats.totalConfirmedHeadcount;
@@ -58,22 +62,35 @@ export default function AdminOverviewPage() {
         </Link>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: INVITADOS */}
+      {/* KPI Cards Grid: Boda & Preboda Separated + Confirmados, Pendientes, No Asisten */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Card 1: INVITADOS A LA BODA */}
         <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
-          <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted">
-            INVITADOS
+          <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted font-semibold">
+            INVITADOS BODA
           </p>
           <p className="font-serif text-4xl font-normal text-text-primary">
-            {totalGuests}
+            {totalBodaGuests}
           </p>
           <p className="text-[11px] text-text-muted">
-            En {totalGroups} grupos y familias
+            En {totalBodaGroups} familias (Sábado)
           </p>
         </div>
 
-        {/* Card 2: CONFIRMADOS */}
+        {/* Card 2: INVITADOS A LA PREBODA */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-brand-olive/30 shadow-card space-y-2">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold">
+            INVITADOS PREBODA
+          </p>
+          <p className="font-serif text-4xl font-normal text-brand-olive">
+            {totalPrebodaGuests}
+          </p>
+          <p className="text-[11px] text-text-muted">
+            En {totalPrebodaGroups} familias (Viernes)
+          </p>
+        </div>
+
+        {/* Card 3: CONFIRMADOS */}
         <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
           <p className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold">
             CONFIRMADOS (ASISTEN)
@@ -93,7 +110,7 @@ export default function AdminOverviewPage() {
           </p>
         </div>
 
-        {/* Card 3: PENDIENTES */}
+        {/* Card 4: PENDIENTES */}
         <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
           <p className="text-[10px] font-mono tracking-widest uppercase text-brand-terracotta font-semibold">
             PENDIENTES
@@ -102,12 +119,12 @@ export default function AdminOverviewPage() {
             {pendingCount}
           </p>
           <p className="text-[11px] text-text-muted">
-            Esperando respuesta
+            Sin marcar / esperando
           </p>
         </div>
 
-        {/* Card 4: NO ASISTEN */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2">
+        {/* Card 5: NO ASISTEN */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-2 col-span-2 lg:col-span-1">
           <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted font-semibold">
             NO ASISTEN
           </p>
@@ -166,16 +183,31 @@ export default function AdminOverviewPage() {
             </div>
           </div>
 
-          {/* Attendance per Event */}
+          {/* Attendance per Event (Only Preboda & Boda) */}
           <div className="pt-4 border-t border-border-subtle space-y-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary block">
-              Asistencia por Evento
+              Asistencia por Evento (Preboda y Boda)
             </span>
-            <div className="space-y-2">
-              {stats.eventAttendance.map((evt) => (
-                <div key={evt.eventId} className="flex justify-between items-center text-xs py-1">
-                  <span className="text-text-primary">{evt.eventTitle}</span>
-                  <span className="font-mono text-text-muted">{evt.attendees} pers.</span>
+            <div className="space-y-2.5">
+              {stats.eventAttendance.map((evt: any) => (
+                <div
+                  key={evt.eventId}
+                  className="flex justify-between items-center text-xs p-3 rounded-xl bg-bg-secondary/30 border border-border-subtle"
+                >
+                  <div>
+                    <span className="font-semibold text-text-primary block">{evt.eventTitle}</span>
+                    <span className="text-[11px] text-text-muted">
+                      {evt.invited ?? 0} personas invitadas en total
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-bold text-sm text-brand-olive block">
+                      {evt.attendees} confirmados
+                    </span>
+                    <span className="text-[10px] font-mono text-text-muted">
+                      de {evt.invited ?? 0} inv.
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

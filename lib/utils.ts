@@ -12,25 +12,36 @@ export function generateOpaqueToken(prefix: string = 'token'): string {
   return `${prefix}-${randomHex}`;
 }
 
+export function getDefaultWhatsAppNote(
+  recipientName: string = '',
+  hasPreboda: boolean = false
+): string {
+  if (hasPreboda) {
+    return `¡Nos casamos! 💍🍷 Nos hace muchísima ilusión compartir con vosotros nuestro gran día el sábado 28 de agosto de 2027 en Bodega Concejo (Valoria la Buena, Valladolid), y contar también con vosotros el viernes 27 en nuestra Preboda y Cata Privada. Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
+  }
+  return `¡Nos casamos! 💍✨ Nos hace muchísima ilusión compartir con vosotros nuestro gran día el sábado 28 de agosto de 2027 en Bodega Concejo (Valoria la Buena, Valladolid). Aquí tenéis vuestra invitación personal para ver todos los detalles y confirmar asistencia:`;
+}
+
 export function buildWhatsAppLink(
   phoneNumber: string = '',
   recipientName: string,
   coupleNames: string,
   weddingDate: string,
   invitationUrl: string,
-  customNote: string = ''
+  customNote: string = '',
+  hasPreboda: boolean = false
 ): string {
-  let message = `Hola ${recipientName} ❤️\n\n`;
-  if (customNote && customNote.trim()) {
-    message += `${customNote.trim()}\n\n`;
-  } else {
-    message += `Tenemos algo muy especial que compartir contigo.\n\n`;
-    message += `Nos casamos y nos encantaría celebrar este día contigo.\n\n`;
+  const noteToUse =
+    customNote && customNote.trim()
+      ? customNote.trim()
+      : getDefaultWhatsAppNote(recipientName, hasPreboda);
+
+  let message = `¡Hola ${recipientName}! ❤️\n\n`;
+  message += `${noteToUse}\n\n`;
+  if (!noteToUse.includes(invitationUrl)) {
+    message += `👉 ${invitationUrl}\n\n`;
   }
-  message += `Hemos preparado tu invitación personal aquí:\n\n`;
-  message += `${invitationUrl}\n\n`;
-  message += `${coupleNames}\n`;
-  message += `25 · 08 · 2027`;
+  message += `Con todo nuestro cariño,\n${coupleNames}\n28 · 08 · 2027`;
 
   const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(message);

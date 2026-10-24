@@ -49,6 +49,7 @@ export default function AdminGuestsPage() {
     removeGuestFromGroup,
     setGroupStageEvents,
     setSingleGuestAttendance,
+    updateGroupInvitationStatus,
     createGroup,
     deleteGroup,
     syncLocalGuestsToSupabase,
@@ -176,12 +177,38 @@ export default function AdminGuestsPage() {
     guestId: string,
     currentStatus?: 'attending' | 'declined' | 'pending'
   ) => {
-    const nextStatus = currentStatus === 'attending' ? 'declined' : 'attending';
+    const nextStatus: 'attending' | 'declined' | 'pending' =
+      currentStatus === 'attending'
+        ? 'declined'
+        : currentStatus === 'declined'
+        ? 'pending'
+        : 'attending';
     await setSingleGuestAttendance(groupId, guestId, nextStatus);
     showToast(
       nextStatus === 'attending'
-        ? 'Marcado como Asiste (sumado al banquete)'
-        : 'Marcado como No asiste (descontado del banquete)'
+        ? '✓ Marcado como Asiste (confirmado)'
+        : nextStatus === 'declined'
+        ? '✕ Marcado como No asiste (baja)'
+        : '↺ Estado reseteado (Sin marcar)'
+    );
+  };
+
+  const handleCycleInvitationStatus = async (grp: GuestGroup) => {
+    const current = grp.invitation_status;
+    const next: 'draft' | 'sent' | 'responded' =
+      current === 'draft'
+        ? 'sent'
+        : current === 'sent' || current === 'opened'
+        ? 'responded'
+        : 'draft';
+
+    await updateGroupInvitationStatus(grp.id, next);
+    showToast(
+      next === 'responded'
+        ? `✓ Invitación de "${grp.name}" marcada como Aceptada (invitados confirmados)`
+        : next === 'sent'
+        ? `✉ Invitación de "${grp.name}" marcada como Enviada`
+        : `↺ Invitación de "${grp.name}" marcada como Sin enviar (asistencia reseteada)`
     );
   };
 
@@ -217,6 +244,8 @@ export default function AdminGuestsPage() {
         ? grp.guests.some((g) => g.is_child || g.guest_type === 'child')
         : selectedStatusFilter === 'preboda'
         ? grp.allowed_event_ids.includes('evt-preboda-cata')
+        : selectedStatusFilter === 'sent'
+        ? grp.invitation_status === 'sent' || grp.invitation_status === 'opened'
         : grp.invitation_status === selectedStatusFilter;
 
     return matchesSearch && matchesStatus;
@@ -231,7 +260,21 @@ export default function AdminGuestsPage() {
 
   const handleOpenWhatsApp = (grp: GuestGroup) => {
     const url = `${window.location.origin}/i/${grp.token}`;
-    const wa = buildWhatsAppLink('', grp.name, INITIAL_WEDDING.couple_names, INITIAL_WEDDING.wedding_date, url, grp.custom_message);
+    const hasPreboda =
+      Array.isArray(grp.allowed_event_ids) &&
+      grp.allowed_event_ids.includes('evt-preboda-cata');
+    const savedMsg = (grp.custom_message || '').trim();
+    const cleanNote =
+      savedMsg === 'Incluye invitación a Preboda & Cata Privada' ? '' : savedMsg;
+    const wa = buildWhatsAppLink(
+      '',
+      grp.name,
+      INITIAL_WEDDING.couple_names,
+      INITIAL_WEDDING.wedding_date,
+      url,
+      cleanNote,
+      hasPreboda
+    );
     window.open(wa, '_blank');
   };
 
@@ -378,11 +421,11 @@ export default function AdminGuestsPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           {[
             { id: 'all', label: 'Todos' },
-            { id: 'preboda', label: '🍷 Con Preboda' },
+            { id: 'preboda', label: `🍷 Con Preboda (${stats.totalPrebodaGuests ?? 0})` },
             { id: 'children', label: `👶 Con Niños (${stats.totalChildren ?? 0})` },
+            { id: 'draft', label: 'Sin enviar' },
             { id: 'sent', label: 'Enviada' },
-            { id: 'opened', label: 'Abierta' },
-            { id: 'responded', label: 'Respondida' },
+            { id: 'responded', label: 'Aceptada' },
           ].map((status) => (
             <button
               key={status.id}
@@ -482,21 +525,28 @@ export default function AdminGuestsPage() {
                     {grp.guests.length} personas · Doble clic en un nombre para editarlo
                   </p>
                 </div>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold capitalize shrink-0 ${
+                <button
+                  type="button"
+                  onClick={() => handleCycleInvitationStatus(grp)}
+                  title="Haz clic para cambiar estado: Sin enviar → Enviada → Aceptada"
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold shrink-0 cursor-pointer border transition-all ${
                     grp.invitation_status === 'responded'
-                      ? 'bg-brand-olive/15 text-brand-olive'
-                      : grp.invitation_status === 'opened'
-                      ? 'bg-blue-100 text-blue-800'
-                      : grp.invitation_status === 'sent'
-                      ? 'bg-amber-100 text-amber-800'
+                      ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                      : grp.invitation_status === 'opened' || grp.invitation_status === 'sent'
+                      ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200'
                       : grp.invitation_status === 'revoked'
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-zinc-200 text-zinc-700'
+                      ? 'bg-rose-100 text-rose-800 border-rose-200'
+                      : 'bg-zinc-200 text-zinc-700 border-zinc-300 hover:bg-zinc-300'
                   }`}
                 >
-                  {INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
-                </span>
+                  {grp.invitation_status === 'responded'
+                    ? '✓ Aceptada'
+                    : grp.invitation_status === 'sent' || grp.invitation_status === 'opened'
+                    ? 'Enviada'
+                    : grp.invitation_status === 'draft'
+                    ? 'Sin enviar'
+                    : INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
+                </button>
               </div>
 
               {/* Mobile Preboda Toggle Centered */}
@@ -520,6 +570,8 @@ export default function AdminGuestsPage() {
                 {grp.guests.map((g) => {
                   const isChild = Boolean(g.is_child || g.guest_type === 'child');
                   const isEditingThisGuest = editingGuestId === g.id;
+                  const guestResp = allResponses.find((r) => r.guest_id === g.id);
+                  const rsvpStatus = guestResp?.status;
                   const fullName = `${g.first_name} ${g.last_name || ''}`.trim();
                   return (
                     <div
@@ -557,6 +609,25 @@ export default function AdminGuestsPage() {
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickToggleAttendance(grp.id, g.id, rsvpStatus)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all border ${
+                            rsvpStatus === 'declined'
+                              ? 'bg-rose-100 text-rose-700 border-rose-200'
+                              : rsvpStatus === 'attending'
+                              ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                              : 'bg-bg-card text-text-muted border-border-subtle'
+                          }`}
+                        >
+                          <span>
+                            {rsvpStatus === 'declined'
+                              ? '✕ Baja'
+                              : rsvpStatus === 'attending'
+                              ? '✓ Asiste'
+                              : 'Sin marcar'}
+                          </span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleQuickToggleChild(g.id, isChild)}
@@ -834,10 +905,10 @@ export default function AdminGuestsPage() {
                                     onClick={() => handleQuickToggleAttendance(grp.id, g.id, rsvpStatus)}
                                     title={
                                       rsvpStatus === 'declined'
-                                        ? 'Marcado como No asiste (no cuenta en banquete). Clic para marcar que Asiste'
+                                        ? 'Marcado como No asiste. Clic para dejar Sin marcar (resetear)'
                                         : rsvpStatus === 'attending'
                                         ? 'Confirmado que Asiste. Clic para marcar como No asiste (baja)'
-                                        : 'Clic para confirmar asistencia o marcar baja'
+                                        : 'Sin marcar. Clic para confirmar que Asiste'
                                     }
                                     className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer border whitespace-nowrap ${
                                       rsvpStatus === 'declined'
@@ -852,7 +923,7 @@ export default function AdminGuestsPage() {
                                         ? '✕ Baja'
                                         : rsvpStatus === 'attending'
                                         ? '✓ Asiste'
-                                        : 'Asiste'}
+                                        : 'Sin marcar'}
                                     </span>
                                   </button>
                                   <button
@@ -989,23 +1060,30 @@ export default function AdminGuestsPage() {
                         </button>
                       </td>
 
-                      {/* Status Badge (Centered) */}
-                      <td className="py-3.5 px-3 align-middle text-center whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 rounded-full text-[11px] font-semibold capitalize inline-flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                      {/* Status Badge (Clickable: Sin enviar -> Enviada -> Aceptada) */}
+                      <td className="py-3.5 px-3 align-middle text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleCycleInvitationStatus(grp)}
+                          title="Haz clic para cambiar estado: Sin enviar → Enviada → Aceptada"
+                          className={`px-3 py-1 rounded-full text-[11px] font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer border transition-all ${
                             grp.invitation_status === 'responded'
-                              ? 'bg-brand-olive/15 text-brand-olive'
-                              : grp.invitation_status === 'opened'
-                              ? 'bg-blue-100 text-blue-800'
-                              : grp.invitation_status === 'sent'
-                              ? 'bg-amber-100 text-amber-800'
+                              ? 'bg-brand-olive text-white border-brand-olive shadow-xs hover:bg-brand-olive/90'
+                              : grp.invitation_status === 'opened' || grp.invitation_status === 'sent'
+                              ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200'
                               : grp.invitation_status === 'revoked'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-zinc-200 text-zinc-700'
+                              ? 'bg-rose-100 text-rose-800 border-rose-200'
+                              : 'bg-zinc-200 text-zinc-700 border-zinc-300 hover:bg-zinc-300'
                           }`}
                         >
-                          {INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
-                        </span>
+                          {grp.invitation_status === 'responded'
+                            ? '✓ Aceptada'
+                            : grp.invitation_status === 'sent' || grp.invitation_status === 'opened'
+                            ? 'Enviada'
+                            : grp.invitation_status === 'draft'
+                            ? 'Sin enviar'
+                            : INVITATION_STATUS_LABELS[grp.invitation_status] || grp.invitation_status}
+                        </button>
                       </td>
 
                       {/* Actions Toolbar (Compact, Single-Line, Fits 100% Inside Card) */}

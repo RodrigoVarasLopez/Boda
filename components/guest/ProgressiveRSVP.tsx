@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wedding, GuestGroup, Event, GuestRSVPResponse, DietaryOption, RSVPStatus } from '@/lib/types';
 import { Check, X, UserPlus, Heart, Sparkles, Edit3, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { submitRSVPAction } from '@/app/actions';
+import { saveManualGroupRSVP, getStoredRSVPS } from '@/lib/guest-store';
 
 interface ProgressiveRSVPProps {
   wedding: Wedding;
@@ -61,7 +62,75 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isSubmitted, setIsSubmitted] = useState<boolean>(!!existingRSVP && existingRSVP.length > 0);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(() => {
+    if (
+      existingRSVP &&
+      existingRSVP.length > 0 &&
+      existingRSVP.some((r) => r.status === 'attending' || r.status === 'declined')
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  // Sync static saved RSVP from store or localStorage so reopening the invitation never resets the response
+  useEffect(() => {
+    if (!group) return;
+
+    let savedList: GuestRSVPResponse[] | undefined = existingRSVP;
+
+    if (!savedList || savedList.length === 0) {
+      const storedAll = getStoredRSVPS();
+      const foundInStore = storedAll.find(
+        (r) => r.group_id === group.id || r.token === group.token
+      );
+      if (foundInStore && foundInStore.responses?.length > 0) {
+        savedList = foundInStore.responses;
+      }
+    }
+
+    if (
+      (!savedList || savedList.length === 0) &&
+      typeof window !== 'undefined' &&
+      group.token
+    ) {
+      try {
+        const rawTokenBackup = localStorage.getItem(`boda_rsvp_token_${group.token}`);
+        if (rawTokenBackup) {
+          const parsed = JSON.parse(rawTokenBackup);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            savedList = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    const hasDecidedResponse =
+      savedList &&
+      savedList.length > 0 &&
+      savedList.some((r) => r.status === 'attending' || r.status === 'declined');
+
+    if (hasDecidedResponse && savedList) {
+      const nextMap: Record<string, GuestRSVPResponse> = {};
+      defaultGuests.forEach((g) => {
+        const existing = savedList!.find((r) => r.guest_id === g.id);
+        nextMap[g.id] = existing || {
+          guest_id: g.id,
+          guest_name: `${g.first_name} ${g.last_name}`.trim(),
+          status: 'attending',
+          attending_event_ids: allowedEvents.map((e) => e.id),
+          dietary_choice: 'standard',
+          allergies: '',
+          plus_one_attending: false,
+          plus_one_name: '',
+          plus_one_dietary: 'standard',
+          message: '',
+        };
+      });
+      setResponses(nextMap);
+      setIsSubmitted(true);
+    }
+  }, [group?.id, group?.token, existingRSVP]);
 
   const triggerConfetti = () => {
     try {
@@ -145,6 +214,34 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     const finalResponses = Object.values(responses);
 
     try {
+      // 1. Persist directly into our shared guest/RSVP store & set group status to 'responded' (Aceptada)
+      if (group?.id) {
+        await saveManualGroupRSVP(
+          group.id,
+          finalResponses.map((r) => ({
+            guestId: r.guest_id,
+            status: r.status,
+            dietaryChoice: r.dietary_choice,
+            allergies: r.allergies,
+            plusOneAttending: r.plus_one_attending,
+            plusOneName: r.plus_one_name,
+            plusOneDietary: r.plus_one_dietary,
+            message: r.message,
+          }))
+        );
+      }
+
+      // 2. Also persist dedicated per-token static snapshot
+      if (typeof window !== 'undefined' && group?.token) {
+        try {
+          localStorage.setItem(
+            `boda_rsvp_token_${group.token}`,
+            JSON.stringify(finalResponses)
+          );
+        } catch {}
+      }
+
+      // 3. Call server action for Supabase token table if configured
       if (group?.token) {
         await submitRSVPAction({
           token: group.token,

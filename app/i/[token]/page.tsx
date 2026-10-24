@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import {
@@ -31,19 +31,30 @@ export default function PersonalizedInvitationPage() {
     groups.find((g) => g.token === token) ||
     INITIAL_GROUPS.find((g) => g.token === token);
   const groupRSVP =
-    rsvps.find((r) => r.token === token) ||
+    rsvps.find((r) => r.token === token || (group && r.group_id === group.id)) ||
     INITIAL_RSVPS.find((r) => r.token === token);
 
   const [isRevealed, setIsRevealed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
       if (sp.get('preview') === 'true' || sp.get('revealed') === 'true') return true;
+      if (localStorage.getItem(`boda_rsvp_token_${token}`)) return true;
     }
     return (
       group?.invitation_status === 'opened' ||
       group?.invitation_status === 'responded'
     );
   });
+
+  useEffect(() => {
+    if (
+      group?.invitation_status === 'responded' ||
+      (groupRSVP && groupRSVP.responses && groupRSVP.responses.length > 0) ||
+      (typeof window !== 'undefined' && localStorage.getItem(`boda_rsvp_token_${token}`))
+    ) {
+      setIsRevealed(true);
+    }
+  }, [group?.invitation_status, groupRSVP, token]);
   const [activeSection, setActiveSection] = useState('welcome');
 
   const scrollToSection = (sectionId: string) => {
@@ -167,9 +178,7 @@ export default function PersonalizedInvitationPage() {
 
                     <p className="font-serif italic text-base sm:text-xl text-white/90 leading-relaxed pt-2 max-w-xl">
                       &ldquo;
-                      {group.custom_message ||
-                        block.content?.hero_message ||
-                        wedding.hero_message}
+                      {block.content?.hero_message || wedding.hero_message}
                       &rdquo;
                     </p>
 

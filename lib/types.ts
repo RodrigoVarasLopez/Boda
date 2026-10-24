@@ -144,17 +144,17 @@ export interface MediaPhoto {
 
 export const INVITATION_STATUS_LABELS: Record<InvitationStatus | 'all', string> = {
   all: 'Todos',
-  draft: 'Borrador',
+  draft: 'Sin enviar',
   sent: 'Enviada',
   opened: 'Abierta',
-  responded: 'Respondida',
+  responded: 'Aceptada',
   revoked: 'Revocada',
 };
 
 export const RSVP_STATUS_LABELS: Record<RSVPStatus, string> = {
   attending: 'Asiste',
   declined: 'No asiste',
-  pending: 'Pendiente',
+  pending: 'Sin marcar',
 };
 
 // ==========================================

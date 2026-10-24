@@ -21,7 +21,6 @@ export const PersonalizedWelcome: React.FC<PersonalizedWelcomeProps> = ({
     ? group.name
     : introBlock?.title || 'Bienvenidos a Nuestra Boda';
   const welcomeQuote =
-    group?.custom_message ||
     introBlock?.content?.welcome_quote ||
     wedding.welcome_quote;
   const welcomeBody =

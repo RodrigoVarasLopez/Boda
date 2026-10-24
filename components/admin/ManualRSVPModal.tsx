@@ -71,7 +71,7 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
       return {
         guestId: g.id,
         guestName: `${g.first_name} ${g.last_name}`.trim(),
-        status: existing?.status || (group.invitation_status === 'responded' ? 'attending' : 'attending'),
+        status: existing?.status || 'pending',
         dietaryChoice:
           existing?.dietary_choice ||
           (g.dietary_restrictions as DietaryOption) ||
@@ -212,7 +212,7 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
           {/* Quick Bulk Actions */}
           <div className="p-3.5 rounded-2xl bg-bg-secondary/40 border border-border-subtle flex flex-col sm:flex-row justify-between items-center gap-3">
             <span className="font-medium text-text-secondary">Acción rápida para todo el grupo:</span>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => handleSetAllStatus('attending')}
@@ -228,6 +228,14 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
               >
                 <XCircle className="w-3.5 h-3.5" />
                 <span>No asiste nadie</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetAllStatus('pending')}
+                className="flex-1 sm:flex-none py-1.5 px-3 rounded-xl border border-border-subtle bg-bg-card text-text-secondary hover:bg-bg-secondary transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Sin marcar</span>
               </button>
             </div>
           </div>
@@ -255,11 +263,15 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
                     )}
                   </div>
 
-                  {/* Attendance Switcher */}
+                  {/* Attendance Switcher (Click active button again to uncheck, or click Sin marcar) */}
                   <div className="inline-flex rounded-xl bg-bg-secondary/60 p-1 border border-border-subtle">
                     <button
                       type="button"
-                      onClick={() => handleMemberChange(member.guestId, { status: 'attending' })}
+                      onClick={() =>
+                        handleMemberChange(member.guestId, {
+                          status: member.status === 'attending' ? 'pending' : 'attending',
+                        })
+                      }
                       className={`py-1 px-2.5 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                         member.status === 'attending'
                           ? 'bg-brand-olive text-white font-semibold shadow-xs'
@@ -271,7 +283,11 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleMemberChange(member.guestId, { status: 'declined' })}
+                      onClick={() =>
+                        handleMemberChange(member.guestId, {
+                          status: member.status === 'declined' ? 'pending' : 'declined',
+                        })
+                      }
                       className={`py-1 px-2.5 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                         member.status === 'declined'
                           ? 'bg-rose-600 text-white font-semibold shadow-xs'
@@ -280,6 +296,17 @@ export const ManualRSVPModal: React.FC<ManualRSVPModalProps> = ({
                     >
                       <XCircle className="w-3 h-3" />
                       <span>No asiste</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMemberChange(member.guestId, { status: 'pending' })}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                        member.status === 'pending'
+                          ? 'bg-bg-card text-text-primary font-semibold shadow-xs border border-border-subtle'
+                          : 'text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      <span>Sin marcar</span>
                     </button>
                   </div>
                 </div>
