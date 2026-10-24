@@ -2,18 +2,20 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Event, GuestGroup } from '@/lib/types';
-import { Clock, MapPin, Calendar, Sparkles, Navigation, Wine } from 'lucide-react';
-import { formatDateEs, generateGoogleCalendarUrl, downloadICSFile } from '@/lib/utils';
+import { Event, GuestGroup, CMSBlock } from '@/lib/types';
+import { Clock, MapPin, Calendar, Sparkles, Navigation } from 'lucide-react';
+import { generateGoogleCalendarUrl, downloadICSFile } from '@/lib/utils';
 
 interface WeekendScheduleProps {
   events: Event[];
   group?: GuestGroup;
+  timelineBlock?: CMSBlock;
 }
 
 export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
   events,
   group,
+  timelineBlock,
 }) => {
   // Filter events according to group access rules (Preboda / Boda)
   const visibleEvents = events
@@ -30,6 +32,32 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
   const saturdayEvents = visibleEvents.filter((e) => e.day === 'saturday');
 
   const [activeCalendarModal, setActiveCalendarModal] = useState<Event | null>(null);
+
+  const sectionBadge = timelineBlock?.subtitle || 'Itinerario · Dos Momentos';
+  const sectionTitle = group?.name
+    ? timelineBlock?.title || 'El Plan de Vuestra Boda'
+    : timelineBlock?.content?.public_title || 'Programa del Fin de Semana';
+  const sectionDescription =
+    timelineBlock?.content?.description ||
+    'La celebración se divide en dos momentos únicos entre viñedos, bodega y música en directo.';
+
+  const fridayTag = timelineBlock?.content?.friday_tag || 'PARTE 1 · VIERNES 27 AGOSTO';
+  const fridayBadge = timelineBlock?.content?.friday_badge || 'Amigos · Exclusivo';
+  const fridayTitle = timelineBlock?.content?.friday_title || 'Preboda & Cata en la Bodega';
+  const fridayDescription =
+    timelineBlock?.content?.friday_description ||
+    'Una velada íntima reservada para nuestros amigos más cercanos: paseo por los viñedos, visita guiada a la sala de crianza en barricas de roble y cata de nuestros mejores vinos de autor con maridaje antes del gran día.';
+
+  const saturdayTag = timelineBlock?.content?.saturday_tag || 'PARTE 2 · SÁBADO 28 AGOSTO';
+  const saturdayBadge =
+    timelineBlock?.content?.saturday_badge || 'El Gran Día · Todos los Invitados';
+  const saturdayTitle = timelineBlock?.content?.saturday_title || 'Boda en Bodega Concejo';
+  const saturdayDescription =
+    timelineBlock?.content?.saturday_description ||
+    'Ceremonia civil al aire libre, banquete en la terraza de viñedos con música en directo y la mejor fiesta con DJ y barra libre bajo las estrellas.';
+  const saturdayAddress =
+    timelineBlock?.content?.saturday_address ||
+    'Ctra. Valoria Km 3,6 · 47200 Valoria La Buena (Valladolid)';
 
   const renderEventCard = (evt: Event) => {
     const eventTime = new Date(evt.start_time).toLocaleTimeString('es-ES', {
@@ -108,7 +136,10 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
           {/* Action Buttons: Maps & Calendar */}
           <div className="p-5 sm:p-6 pt-0 border-t border-border-subtle/40 flex items-center justify-between gap-2 mt-auto">
             <a
-              href={evt.google_maps_url || `https://maps.google.com/?q=${encodeURIComponent(`${evt.location_name} ${evt.address}`)}`}
+              href={
+                evt.google_maps_url ||
+                `https://maps.google.com/?q=${encodeURIComponent(`${evt.location_name} ${evt.address}`)}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-bg-secondary hover:bg-bg-secondary/80 text-text-primary text-[11px] font-medium transition-colors"
@@ -136,13 +167,13 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.2em] bg-bg-secondary text-text-accent border border-border-subtle shadow-xs">
           <Sparkles className="w-3 h-3" />
-          <span>Itinerario · Dos Momentos</span>
+          <span>{sectionBadge}</span>
         </div>
         <h2 className="font-serif text-3xl sm:text-5xl text-text-primary font-normal tracking-tight">
-          {group?.name ? `El Plan de Vuestra Boda` : 'Programa del Fin de Semana'}
+          {sectionTitle}
         </h2>
         <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-          La celebración se divide en dos momentos únicos entre viñedos, bodega y música en directo.
+          {sectionDescription}
         </p>
       </div>
 
@@ -154,17 +185,17 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
           <div className="p-6 sm:p-8 rounded-3xl bg-brand-olive/10 border border-brand-olive/20 shadow-soft space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[10px] font-mono tracking-widest uppercase text-brand-olive font-semibold">
-                PARTE 1 · VIERNES 27 AGOSTO
+                {fridayTag}
               </span>
               <span className="px-3 py-0.5 rounded-full text-[10px] font-semibold bg-brand-olive/20 text-brand-olive">
-                Amigos · Exclusivo
+                {fridayBadge}
               </span>
             </div>
             <h3 className="font-serif text-2xl sm:text-3xl font-normal text-text-primary">
-              Preboda &amp; Cata en la Bodega
+              {fridayTitle}
             </h3>
             <p className="text-xs sm:text-sm text-text-secondary leading-relaxed max-w-2xl">
-              Una velada íntima reservada para nuestros amigos más cercanos: paseo por los viñedos, visita guiada a la sala de crianza en barricas de roble y cata de nuestros mejores vinos de autor con maridaje antes del gran día.
+              {fridayDescription}
             </p>
           </div>
 
@@ -182,22 +213,22 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
           <div className="p-6 sm:p-8 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[10px] font-mono tracking-widest uppercase text-text-accent font-semibold">
-                PARTE 2 · SÁBADO 28 AGOSTO
+                {saturdayTag}
               </span>
               <span className="px-3 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary">
-                El Gran Día · Todos los Invitados
+                {saturdayBadge}
               </span>
             </div>
             <h3 className="font-serif text-2xl sm:text-3xl font-normal text-text-primary">
-              Boda en Bodega Concejo
+              {saturdayTitle}
             </h3>
             <p className="text-xs sm:text-sm text-text-secondary leading-relaxed max-w-2xl">
-              Ceremonia civil al aire libre, banquete en la terraza de viñedos con música en directo y la mejor fiesta con DJ y barra libre bajo las estrellas.
+              {saturdayDescription}
             </p>
             <div className="pt-3 border-t border-border-subtle/60 flex flex-wrap items-center justify-between gap-3 text-xs text-text-muted">
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-brand-olive" />
-                Ctra. Valoria Km 3,6 · 47200 Valoria La Buena (Valladolid)
+                {saturdayAddress}
               </span>
               <a
                 href="https://maps.google.com/?q=Bodega+Concejo+Ctra+Valoria+Km+3.6+47200+Valoria+la+Buena+Valladolid"

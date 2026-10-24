@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { Wedding, GuestBookEntry, MediaPhoto } from '@/lib/types';
+import { Wedding, GuestBookEntry, MediaPhoto, CMSBlock } from '@/lib/types';
 import { useMediaStore } from '@/lib/media-store';
 import { submitGuestbookAction } from '@/app/actions';
 import { MediaViewer } from '@/components/media/MediaViewer';
@@ -26,6 +26,7 @@ interface MemoriesSectionProps {
   photos?: MediaPhoto[];
   invitationId?: string;
   defaultGuestName?: string;
+  contactBlock?: CMSBlock;
 }
 
 const PAGE_SIZE = 12;
@@ -36,6 +37,7 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
   photos: initialPhotos,
   invitationId,
   defaultGuestName = '',
+  contactBlock,
 }) => {
   const {
     photos: storePhotos,
@@ -120,13 +122,14 @@ export const MemoriesSection: React.FC<MemoriesSectionProps> = ({
       <div className="text-center space-y-4 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.2em] bg-bg-secondary text-text-accent border border-border-subtle shadow-xs">
           <Sparkles className="w-3 h-3" />
-          <span>Memorias de la Boda</span>
+          <span>{contactBlock?.content?.memories_badge || 'Memorias de la Boda'}</span>
         </div>
         <h2 className="font-serif text-3xl sm:text-5xl text-text-primary font-normal tracking-tight">
-          Libro de Firmas &amp; Galería
+          {contactBlock?.content?.memories_title || 'Libro de Firmas & Galería'}
         </h2>
         <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
-          Comparte unas palabras con Rodrigo &amp; Stephanie y revive los momentos más especiales de este fin de semana en Bodega Concejo.
+          {contactBlock?.content?.memories_description ||
+            'Comparte unas palabras con Rodrigo & Stephanie y revive los momentos más especiales de este fin de semana en Bodega Concejo.'}
         </p>
       </div>
 

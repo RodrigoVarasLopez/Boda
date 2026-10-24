@@ -20,10 +20,11 @@ import {
 } from 'lucide-react';
 import { formatDateEs } from '@/lib/utils';
 import { useWeddingData } from '@/lib/guest-store';
+import { useCMSData } from '@/lib/cms-store';
 
 export default function AdminEventsPage() {
   const { groups, setGroupStageEvents } = useWeddingData();
-  const [events] = useState<Event[]>(INITIAL_EVENTS);
+  const { events } = useCMSData();
   const [expandedEventIds, setExpandedEventIds] = useState<Record<string, boolean>>({});
   const [searchByEvent, setSearchByEvent] = useState<Record<string, string>>({});
   const [filterModeByEvent, setFilterModeByEvent] = useState<Record<string, 'assigned' | 'all'>>({});
