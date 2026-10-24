@@ -144,15 +144,24 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
     }
   };
 
-  const handleStatusChange = (guestId: string, status: RSVPStatus) => {
+  const handleStatusChange = (
+    guestId: string,
+    status: RSVPStatus,
+    autoAdvanceToMenu: boolean = false
+  ) => {
     setResponses((prev) => ({
       ...prev,
       [guestId]: {
         ...prev[guestId],
         status,
-        attending_event_ids: status === 'attending' ? allowedEvents.map((e) => e.id) : [],
+        attending_event_ids:
+          status === 'attending' ? allowedEvents.map((e) => e.id) : [],
       },
     }));
+
+    if (autoAdvanceToMenu && status === 'attending') {
+      setCurrentStep(2);
+    }
   };
 
   const handleDietaryChange = (guestId: string, choice: DietaryOption) => {
@@ -338,7 +347,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
-                        onClick={() => handleStatusChange(g.id, 'attending')}
+                        onClick={() => handleStatusChange(g.id, 'attending', true)}
                         className={`py-3 px-4 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all cursor-pointer ${
                           res?.status === 'attending'
                             ? 'bg-primary text-primary-text border-primary font-semibold shadow-soft'
@@ -351,7 +360,7 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => handleStatusChange(g.id, 'declined')}
+                        onClick={() => handleStatusChange(g.id, 'declined', false)}
                         className={`py-3 px-4 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all cursor-pointer ${
                           res?.status === 'declined'
                             ? 'bg-rose-900 text-white border-rose-900 font-semibold shadow-soft'
@@ -381,17 +390,57 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
           {/* STEP 2: DIETARY & ALLERGIES & PLUS ONE */}
           {currentStep === 2 && (
             <div className="space-y-5 animate-fade-in">
+              <div className="p-3 rounded-2xl bg-brand-olive/10 border border-brand-olive/25 text-center">
+                <span className="text-xs font-semibold text-brand-olive">
+                  Menú &amp; Preferencias Alimentarias
+                </span>
+              </div>
+
               {defaultGuests.map((g) => {
                 const res = responses[g.id];
-                if (res?.status === 'declined') return null;
+                const isDeclined = res?.status === 'declined';
 
                 return (
                   <div key={g.id} className="p-4 rounded-2xl bg-bg-secondary/40 border border-border-subtle space-y-4">
-                    <p className="font-semibold text-xs uppercase tracking-wider text-text-accent">
-                      {g.first_name} {g.last_name}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-xs uppercase tracking-wider text-text-accent">
+                        {g.first_name} {g.last_name}
+                      </p>
+                      {defaultGuests.length > 1 && (
+                        <div className="inline-flex rounded-lg bg-bg-card p-0.5 border border-border-subtle">
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(g.id, 'attending', false)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold cursor-pointer transition-colors ${
+                              !isDeclined
+                                ? 'bg-primary text-primary-text'
+                                : 'text-text-muted hover:text-text-primary'
+                            }`}
+                          >
+                            ✓ Asiste
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(g.id, 'declined', false)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold cursor-pointer transition-colors ${
+                              isDeclined
+                                ? 'bg-rose-800 text-white'
+                                : 'text-text-muted hover:text-text-primary'
+                            }`}
+                          >
+                            No asiste
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                    {/* Dietary Choice */}
+                    {isDeclined ? (
+                      <p className="text-xs text-text-muted italic">
+                        Marcado como que no podrá asistir.
+                      </p>
+                    ) : (
+                      <>
+                        {/* Dietary Choice */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-text-secondary block">
                         Preferencia alimentaria
@@ -452,6 +501,8 @@ export const ProgressiveRSVP: React.FC<ProgressiveRSVPProps> = ({
                           </div>
                         )}
                       </div>
+                    )}
+                      </>
                     )}
                   </div>
                 );
