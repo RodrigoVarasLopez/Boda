@@ -730,6 +730,28 @@ export function useWeddingData() {
     return await setGroupStageEventsAction({ groupId, preboda, boda });
   };
 
+  // Reorder Groups (e.g. via drag-and-drop or batch reordering)
+  const reorderGroups = (newGroups: GuestGroup[]) => {
+    setGroups(newGroups);
+    setStoredGroups(newGroups);
+  };
+
+  // Move a group Up or Down by 1 position
+  const moveGroup = (groupId: string, direction: 'up' | 'down') => {
+    setGroups((prev) => {
+      const base = prev.length > 0 ? prev : getStoredGroups();
+      const list = [...base];
+      const index = list.findIndex((g) => g.id === groupId);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const [moved] = list.splice(index, 1);
+      list.splice(targetIndex, 0, moved);
+      setStoredGroups(list);
+      return list;
+    });
+  };
+
   return {
     isLoaded,
     isLoadingSupabase,
@@ -772,6 +794,8 @@ export function useWeddingData() {
     removeGuestFromGroup,
     toggleGroupEvent,
     setGroupStageEvents,
+    reorderGroups,
+    moveGroup,
     createGroup,
     deleteGroup,
     syncLocalGuestsToSupabase,

@@ -28,6 +28,9 @@ import {
   Wine,
   Heart,
   Trash2,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
 import { GuestDrawer } from '@/components/admin/GuestDrawer';
 import { ManualRSVPModal } from '@/components/admin/ManualRSVPModal';
@@ -48,6 +51,8 @@ export default function AdminGuestsPage() {
     addGuestToGroup,
     removeGuestFromGroup,
     setGroupStageEvents,
+    reorderGroups,
+    moveGroup,
     setSingleGuestAttendance,
     updateGroupInvitationStatus,
     createGroup,
@@ -66,6 +71,8 @@ export default function AdminGuestsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
 
   // Derive active drawer/modal group from live `groups` state so edits never go stale
   const selectedDrawerGroup = groups.find((g) => g.id === selectedDrawerGroupId) || null;
@@ -250,6 +257,70 @@ export default function AdminGuestsPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const handleMoveGroup = (groupId: string, direction: 'up' | 'down') => {
+    const currentIndex = filteredGroups.findIndex((g) => g.id === groupId);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= filteredGroups.length) return;
+
+    const targetGroup = filteredGroups[targetIndex];
+    const newGroups = [...groups];
+    const fromIdx = newGroups.findIndex((g) => g.id === groupId);
+    if (fromIdx === -1) return;
+    const [removed] = newGroups.splice(fromIdx, 1);
+    const toIdx = newGroups.findIndex((g) => g.id === targetGroup.id);
+    if (toIdx === -1) return;
+
+    newGroups.splice(toIdx, 0, removed);
+    reorderGroups(newGroups);
+    showToast(direction === 'up' ? '▲ Fila subida de posición' : '▼ Fila bajada de posición');
+  };
+
+  const handleDragStart = (e: React.DragEvent, groupId: string) => {
+    e.dataTransfer.setData('text/plain', groupId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedGroupId(groupId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, groupId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverGroupId !== groupId) {
+      setDragOverGroupId(groupId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, groupId: string) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    if (dragOverGroupId === groupId) {
+      setDragOverGroupId(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetGroupId: string) => {
+    e.preventDefault();
+    const sourceId = draggedGroupId || e.dataTransfer.getData('text/plain');
+    setDraggedGroupId(null);
+    setDragOverGroupId(null);
+    if (!sourceId || sourceId === targetGroupId) return;
+
+    const newGroups = [...groups];
+    const fromIndex = newGroups.findIndex((g) => g.id === sourceId);
+    const toIndex = newGroups.findIndex((g) => g.id === targetGroupId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = newGroups.splice(fromIndex, 1);
+    newGroups.splice(toIndex, 0, moved);
+
+    reorderGroups(newGroups);
+    showToast('✓ Posición del invitado actualizada');
+  };
+
+  const handleDragEnd = () => {
+    setDraggedGroupId(null);
+    setDragOverGroupId(null);
+  };
 
   const handleCopyLink = (token: string) => {
     const url = `${window.location.origin}/i/${token}`;
@@ -483,17 +554,73 @@ export default function AdminGuestsPage() {
 
       {/* MOBILE VIEW: ACCORDION CARDS */}
       <div className="grid grid-cols-1 gap-3 md:hidden">
-        {filteredGroups.map((grp) => {
+        {filteredGroups.map((grp, index) => {
           const isEditingThisGroup = editingGroupId === grp.id;
           const isAddingToThisGroup = addingToGroupId === grp.id;
           const hasPreboda = grp.allowed_event_ids.includes('evt-preboda-cata');
+          const isDragging = draggedGroupId === grp.id;
+          const isOver = dragOverGroupId === grp.id;
 
           return (
             <div
               key={grp.id}
+              draggable={!isEditingThisGroup && !editingGuestId && !addingToGroupId}
+              onDragStart={(e) => handleDragStart(e, grp.id)}
+              onDragOver={(e) => handleDragOver(e, grp.id)}
+              onDragLeave={(e) => handleDragLeave(e, grp.id)}
+              onDrop={(e) => handleDrop(e, grp.id)}
+              onDragEnd={handleDragEnd}
               onClick={() => setSelectedDrawerGroupId(grp.id)}
-              className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-card space-y-3 transition-transform cursor-pointer"
+              className={`p-4 rounded-2xl bg-bg-card border shadow-card space-y-3 transition-all cursor-pointer ${
+                isDragging
+                  ? 'opacity-40 bg-bg-secondary/40 border-dashed border-primary'
+                  : isOver
+                  ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                  : 'border-border-subtle'
+              }`}
             >
+              {/* Mobile Position Bar: Handle, Index, Up/Down Buttons */}
+              <div
+                className="flex items-center justify-between gap-2 border-b border-border-subtle/50 pb-2 mb-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-1.5">
+                  <div
+                    title="Arrastra para reordenar"
+                    className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-secondary cursor-grab active:cursor-grabbing"
+                  >
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[11px] font-mono text-text-muted font-semibold">
+                    #{index + 1}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-text-muted uppercase tracking-wider mr-1">
+                    Posición:
+                  </span>
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => handleMoveGroup(grp.id, 'up')}
+                    title="Subir posición"
+                    className="p-1.5 rounded-lg border border-border-subtle bg-bg-secondary/40 text-text-primary hover:bg-bg-secondary disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === filteredGroups.length - 1}
+                    onClick={() => handleMoveGroup(grp.id, 'down')}
+                    title="Bajar posición"
+                    className="p-1.5 rounded-lg border border-border-subtle bg-bg-secondary/40 text-text-primary hover:bg-bg-secondary disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
               <div className="flex justify-between items-start gap-2" onClick={(e) => e.stopPropagation()}>
                 <div className="flex-1 min-w-0">
                   {isEditingThisGroup ? (
@@ -803,7 +930,8 @@ export default function AdminGuestsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-bg-secondary/40 text-text-muted uppercase text-[10px] tracking-wider font-semibold border-b border-border-subtle">
                 <tr>
-                  <th className="py-3.5 pl-5 pr-3">Nombre de la Familia</th>
+                  <th className="py-3.5 pl-4 pr-1 text-center w-16 whitespace-nowrap">Posición</th>
+                  <th className="py-3.5 pl-3 pr-3">Nombre de la Familia</th>
                   <th className="py-3.5 px-3">Invitados (Doble clic para editar nombre)</th>
                   <th className="py-3.5 px-3 text-center whitespace-nowrap">Preboda</th>
                   <th className="py-3.5 px-3 text-center whitespace-nowrap">Estado Invitación</th>
@@ -811,18 +939,67 @@ export default function AdminGuestsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50">
-                {filteredGroups.map((grp) => {
+                {filteredGroups.map((grp, index) => {
                   const isEditingThisGroup = editingGroupId === grp.id;
                   const isAddingToThisGroup = addingToGroupId === grp.id;
                   const hasPreboda = grp.allowed_event_ids.includes('evt-preboda-cata');
+                  const isDragging = draggedGroupId === grp.id;
+                  const isOver = dragOverGroupId === grp.id;
 
                   return (
                     <tr
                       key={grp.id}
-                      className="hover:bg-bg-secondary/20 transition-colors"
+                      draggable={!isEditingThisGroup && !editingGuestId && !addingToGroupId}
+                      onDragStart={(e) => handleDragStart(e, grp.id)}
+                      onDragOver={(e) => handleDragOver(e, grp.id)}
+                      onDragLeave={(e) => handleDragLeave(e, grp.id)}
+                      onDrop={(e) => handleDrop(e, grp.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`transition-all ${
+                        isDragging
+                          ? 'opacity-40 bg-bg-secondary/50'
+                          : isOver
+                          ? 'bg-brand-olive/10 border-t-2 border-t-primary'
+                          : 'hover:bg-bg-secondary/20'
+                      }`}
                     >
+                      {/* Position / Drag Handle & Up-Down Buttons */}
+                      <td className="py-3.5 pl-4 pr-1 align-middle text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div
+                            title="Arrastra para reordenar esta fila"
+                            className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-secondary cursor-grab active:cursor-grabbing transition-colors"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-[11px] font-mono text-text-muted/70 w-4 text-center select-none font-medium">
+                            {index + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleMoveGroup(grp.id, 'up')}
+                              title="Subir posición"
+                              className="p-0.5 rounded hover:bg-bg-secondary text-text-muted hover:text-text-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === filteredGroups.length - 1}
+                              onClick={() => handleMoveGroup(grp.id, 'down')}
+                              title="Bajar posición"
+                              className="p-0.5 rounded hover:bg-bg-secondary text-text-muted hover:text-text-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+
                       {/* Group Name (Double-Click Inline Editable - No Button / No Box) */}
-                      <td className="py-3.5 pl-5 pr-3 align-middle max-w-[220px]" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 pl-3 pr-3 align-middle max-w-[220px]" onClick={(e) => e.stopPropagation()}>
                         {isEditingThisGroup ? (
                           <input
                             type="text"
@@ -833,6 +1010,7 @@ export default function AdminGuestsPage() {
                               if (e.key === 'Enter') handleSaveInlineGroupName(grp.id, grp.name);
                               if (e.key === 'Escape') setEditingGroupId(null);
                             }}
+                            onDragStart={(e) => e.stopPropagation()}
                             autoFocus
                             className="w-full py-0.5 bg-transparent border-b border-primary text-base font-serif text-text-primary focus:outline-none"
                           />
@@ -842,6 +1020,7 @@ export default function AdminGuestsPage() {
                               setEditingGroupId(grp.id);
                               setGroupNameDraft(grp.name);
                             }}
+                            onDragStart={(e) => e.stopPropagation()}
                             title="Doble clic para editar el nombre de la familia"
                             className="font-serif text-base font-normal text-text-primary hover:text-text-accent transition-colors block cursor-text select-none leading-snug"
                           >
@@ -882,6 +1061,7 @@ export default function AdminGuestsPage() {
                                         if (e.key === 'Enter') handleSaveInlineGuestName(g.id, fullName);
                                         if (e.key === 'Escape') setEditingGuestId(null);
                                       }}
+                                      onDragStart={(e) => e.stopPropagation()}
                                       autoFocus
                                       className="w-full py-0.5 bg-transparent border-b border-primary text-xs font-medium text-text-primary focus:outline-none"
                                     />
@@ -891,6 +1071,7 @@ export default function AdminGuestsPage() {
                                         setEditingGuestId(g.id);
                                         setGuestFullNameDraft(fullName);
                                       }}
+                                      onDragStart={(e) => e.stopPropagation()}
                                       title="Doble clic para editar nombre y apellidos"
                                       className="block truncate text-left text-text-primary hover:text-text-accent font-medium cursor-text select-none"
                                     >
