@@ -23,6 +23,12 @@ import { createClient as createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase/admin';
 import { INITIAL_GROUPS, INITIAL_WEDDING, INITIAL_EVENTS, INITIAL_RSVPS, INITIAL_CMS_BLOCKS } from '@/lib/mock-data';
 import {
+  Wedding,
+  WeddingStatus,
+  ThemeType,
+  PlannerOrganization,
+  PlatformUser,
+  PlatformUserRole,
   GuestGroup,
   GroupRSVPSubmission,
   GuestRSVPResponse,
@@ -32,6 +38,7 @@ import {
   MediaPhotoStatus,
   GuestBookEntryStatus,
 } from '@/lib/types';
+import { cookies } from 'next/headers';
 import { validateMediaFile, buildStoragePath, sanitizeFileName, MEDIA_STORAGE_BUCKET } from '@/lib/media/urls';
 import { getStoredPhotos, setStoredPhotos, getStoredGuestbook, setStoredGuestbook } from '@/lib/media-data';
 import {
@@ -417,8 +424,19 @@ export async function getGuestsDataAction() {
         return {
           success: true,
           source: 'supabase',
+          weddingId,
           groups: mappedGroups,
           rsvps: mappedRSVPs,
+        };
+      }
+
+      if (!grpErr && groupsData && groupsData.length === 0) {
+        return {
+          success: true,
+          source: 'supabase',
+          weddingId,
+          groups: [],
+          rsvps: [],
         };
       }
     } catch (err) {
@@ -1335,8 +1353,25 @@ export async function deleteGuestbookAction(entryId: string) {
 // BUDGET MODULE SERVER ACTIONS (PHASE 20)
 // ==========================================
 
-async function resolveWeddingUuid(supabaseClient: any): Promise<string> {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveWeddingUuid(supabaseClient: any, explicitWeddingId?: string): Promise<string> {
   try {
+    if (explicitWeddingId && UUID_REGEX.test(explicitWeddingId)) {
+      return explicitWeddingId;
+    }
+    const cookieStore = await cookies();
+    const cookieWeddingId = cookieStore.get('boda_active_wedding_id')?.value;
+    if (cookieWeddingId && UUID_REGEX.test(cookieWeddingId)) {
+      if (cookieWeddingId === WEDDING_UUID) return WEDDING_UUID;
+      const { data: exists } = await supabaseClient
+        .from('weddings')
+        .select('id')
+        .eq('id', cookieWeddingId)
+        .maybeSingle();
+      if (exists?.id) return exists.id;
+    }
+
     const { data } = await supabaseClient
       .from('weddings')
       .select('id')
@@ -1367,10 +1402,11 @@ export async function getBudgetDataAction() {
         console.error('Error fetching categories from Supabase:', catErr);
       }
 
-      // If no categories exist yet in Supabase, seed the 12 official ones
+      // If no categories exist yet in Supabase for this wedding, seed the 12 official ones
       if (!categories || categories.length === 0) {
+        const isMainWedding = weddingId === WEDDING_UUID;
         const seedPayload = INITIAL_BUDGET_CATEGORIES.map((c) => ({
-          id: c.id,
+          id: isMainWedding ? c.id : crypto.randomUUID(),
           wedding_id: weddingId,
           name: c.name,
           description: c.description,
@@ -1828,10 +1864,27 @@ export async function createPaymentAction(rawInput: unknown) {
         .maybeSingle();
 
       if (!existingSup) {
-        // Ensure hidden Banquet category exists so foreign key constraint succeeds
+        // Ensure hidden Banquet category exists for this wedding so foreign key constraint succeeds
+        let targetBanquetCatId = BANQUET_CATEGORY_ID;
+        let targetSupplierId = validated.supplier_id;
+
+        if (weddingId !== WEDDING_UUID) {
+          const { data: existingCat } = await adminClient
+            .from('budget_categories')
+            .select('id')
+            .eq('wedding_id', weddingId)
+            .eq('is_active', false)
+            .maybeSingle();
+
+          targetBanquetCatId = existingCat?.id || crypto.randomUUID();
+          if (targetSupplierId === BANQUET_SUPPLIER_ID) {
+            targetSupplierId = crypto.randomUUID();
+          }
+        }
+
         await adminClient.from('budget_categories').upsert(
           {
-            id: BANQUET_CATEGORY_ID,
+            id: targetBanquetCatId,
             wedding_id: weddingId,
             name: 'Banquete & Catering',
             description: 'Banquete nupcial y gastos asociados',
@@ -1845,9 +1898,9 @@ export async function createPaymentAction(rawInput: unknown) {
 
         await adminClient.from('budget_suppliers').upsert(
           {
-            id: validated.supplier_id,
+            id: targetSupplierId,
             wedding_id: weddingId,
-            category_id: BANQUET_CATEGORY_ID,
+            category_id: targetBanquetCatId,
             name: DEFAULT_BANQUET_SUPPLIER.name,
             contact_name: DEFAULT_BANQUET_SUPPLIER.contact_name,
             email: DEFAULT_BANQUET_SUPPLIER.email,
@@ -1862,6 +1915,8 @@ export async function createPaymentAction(rawInput: unknown) {
           },
           { onConflict: 'id' }
         );
+
+        validated.supplier_id = targetSupplierId;
       }
 
       const { error } = await adminClient.from('budget_payments').insert({
@@ -2361,6 +2416,648 @@ export async function setGroupStageEventsAction(payload: {
   revalidatePath('/admin/budget');
   return { success: true, allowed_event_ids: nextAllowed };
 }
+
+// ============================================================================
+// MULTI-TENANT SAAS: WEDDING PLANNERS (B2B), BASIC USERS (B2C) & SUPER ADMIN
+// ============================================================================
+
+const DEFAULT_PLATFORM_ORG_ID = 'org-platform-default';
+const DEFAULT_PLATFORM_ORG: PlannerOrganization = {
+  id: DEFAULT_PLATFORM_ORG_ID,
+  name: 'Administración Oficial · Cartera Directa B2C',
+  slug: 'administracion-oficial-b2c',
+  owner_email: 'rodrigovaraslopez@gmail.com',
+  is_platform_default: true,
+  plan_tier: 'b2c_default',
+  max_weddings: 9999,
+};
+
+/**
+ * Set Active Wedding ID Cookie (Server Action)
+ */
+export async function setActiveWeddingCookieAction(weddingId: string) {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set('boda_active_wedding_id', weddingId, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    });
+    revalidatePath('/admin');
+    revalidatePath('/admin/guests');
+    revalidatePath('/admin/budget');
+    revalidatePath('/admin/weddings');
+    return { success: true, weddingId };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Load all Multi-Tenant SaaS Data (Organizations, Users, and Real Weddings with live stats)
+ */
+export async function getPlatformSaaSDataAction() {
+  if (!isSupabaseConfigured()) {
+    return {
+      success: false,
+      organizations: [DEFAULT_PLATFORM_ORG],
+      users: [] as PlatformUser[],
+      weddings: [INITIAL_WEDDING],
+      activeWeddingId: WEDDING_UUID,
+    };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const activeWeddingId = await resolveWeddingUuid(adminClient);
+
+    // 1. Fetch Auth Users
+    const { data: authData } = await adminClient.auth.admin.listUsers();
+    const rawUsers = authData?.users || [];
+
+    const orgsMap = new Map<string, PlannerOrganization>();
+    orgsMap.set(DEFAULT_PLATFORM_ORG_ID, { ...DEFAULT_PLATFORM_ORG });
+
+    const platformUsers: PlatformUser[] = rawUsers.map((u) => {
+      const meta = u.user_metadata || {};
+      const email = (u.email || '').toLowerCase();
+      let role: PlatformUserRole = meta.role as PlatformUserRole;
+      if (!role || !['super_admin', 'wedding_planner', 'basic_user'].includes(role)) {
+        if (email === 'rodrigovaraslopez@gmail.com') role = 'super_admin';
+        else if (email.includes('weddingplanner')) role = 'wedding_planner';
+        else role = 'basic_user';
+      }
+
+      const orgId =
+        meta.planner_org_id ||
+        (role === 'wedding_planner' ? `org-wp-${u.id.substring(0, 8)}` : DEFAULT_PLATFORM_ORG_ID);
+      const orgName =
+        meta.planner_org_name ||
+        (role === 'wedding_planner'
+          ? `${meta.full_name || email.split('@')[0]} · Agencia B2B`
+          : DEFAULT_PLATFORM_ORG.name);
+
+      if (role === 'wedding_planner' && !orgsMap.has(orgId)) {
+        orgsMap.set(orgId, {
+          id: orgId,
+          name: orgName,
+          slug: orgName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, ''),
+          owner_user_id: u.id,
+          owner_email: u.email || null,
+          is_platform_default: false,
+          plan_tier: 'pro_planner',
+          max_weddings: 25,
+          created_at: u.created_at,
+        });
+      }
+
+      if (role === 'super_admin') {
+        const def = orgsMap.get(DEFAULT_PLATFORM_ORG_ID)!;
+        def.owner_user_id = u.id;
+        def.owner_email = u.email || def.owner_email;
+      }
+
+      return {
+        id: u.id,
+        email: u.email || '',
+        full_name: meta.full_name || (u.email ? u.email.split('@')[0] : 'Usuario'),
+        role,
+        planner_org_id: orgId,
+        planner_org_name: orgName,
+        assigned_wedding_ids: Array.isArray(meta.assigned_wedding_ids)
+          ? meta.assigned_wedding_ids
+          : [WEDDING_UUID],
+        phone: meta.phone || undefined,
+        is_active: true,
+        created_at: u.created_at,
+      };
+    });
+
+    // 2. Fetch Real Weddings from Supabase
+    const { data: dbWeddings } = await adminClient
+      .from('weddings')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    // 3. Fetch Guest Counts per Wedding
+    const { data: allGroups } = await adminClient
+      .from('guest_groups')
+      .select('id, wedding_id');
+    const { data: allGuests } = await adminClient
+      .from('guests')
+      .select('id, group_id, status, is_child');
+    const { data: allSuppliers } = await adminClient
+      .from('budget_suppliers')
+      .select('wedding_id, is_selected, estimated_price, quoted_price, final_price');
+    const { data: allPayments } = await adminClient
+      .from('budget_payments')
+      .select('wedding_id, amount, status');
+    const { data: allMenus } = await adminClient
+      .from('budget_menu_config')
+      .select('*');
+
+    const groupToWedding = new Map<string, string>();
+    (allGroups || []).forEach((g: any) => groupToWedding.set(g.id, g.wedding_id));
+
+    const guestCountByWedding = new Map<string, number>();
+    const confirmedCountByWedding = new Map<string, number>();
+    (allGuests || []).forEach((gst: any) => {
+      const wid = groupToWedding.get(gst.group_id);
+      if (!wid) return;
+      guestCountByWedding.set(wid, (guestCountByWedding.get(wid) || 0) + 1);
+      if (gst.status === 'attending') {
+        confirmedCountByWedding.set(wid, (confirmedCountByWedding.get(wid) || 0) + 1);
+      }
+    });
+
+    const mappedWeddings: Wedding[] = (dbWeddings || []).map((row: any) => {
+      const meta = row.iban_details || {};
+      const orgId = meta.planner_org_id || DEFAULT_PLATFORM_ORG_ID;
+      const orgObj = orgsMap.get(orgId);
+      const plannerName =
+        meta.planner_name || orgObj?.name || DEFAULT_PLATFORM_ORG.name;
+
+      if (!orgsMap.has(orgId)) {
+        orgsMap.set(orgId, {
+          id: orgId,
+          name: plannerName,
+          slug: plannerName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          is_platform_default: orgId === DEFAULT_PLATFORM_ORG_ID,
+          plan_tier: orgId === DEFAULT_PLATFORM_ORG_ID ? 'b2c_default' : 'pro_planner',
+          max_weddings: 25,
+        });
+      }
+
+      const realGuests = guestCountByWedding.get(row.id) || 0;
+      const realConfirmed = confirmedCountByWedding.get(row.id) || 0;
+
+      // Calculate contracted & paid budget for this wedding
+      const wSuppliers = (allSuppliers || []).filter(
+        (s: any) => s.wedding_id === row.id && s.is_selected
+      );
+      const suppliersTotal = wSuppliers.reduce((acc: number, s: any) => {
+        const p = Number(s.final_price ?? s.quoted_price ?? s.estimated_price ?? 0);
+        return acc + p;
+      }, 0);
+
+      const wMenu = (allMenus || []).find((m: any) => m.wedding_id === row.id);
+      const menuAdultPrice = Number(wMenu?.adult_price ?? 145);
+      const menuEst = realGuests > 0 ? realGuests * menuAdultPrice : 0;
+
+      const wPayments = (allPayments || []).filter(
+        (p: any) => p.wedding_id === row.id && (p.status === 'paid' || p.status === 'partial')
+      );
+      const paidTotal = wPayments.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
+
+      const coupleNames =
+        meta.couple_names || `${row.couple_name_1} & ${row.couple_name_2}`;
+
+      return {
+        id: row.id,
+        slug: row.slug,
+        couple_names: coupleNames,
+        bride_name: row.couple_name_1 || 'Novia',
+        groom_name: row.couple_name_2 || 'Novio',
+        wedding_date: row.wedding_date,
+        location_summary: row.venue_address
+          ? `${row.venue_name} · ${row.venue_address}`
+          : row.venue_name,
+        theme: (row.theme as ThemeType) || 'mediterranean',
+        privacy_mode: false,
+        rsvp_deadline: row.rsvp_deadline || row.wedding_date,
+        hero_message:
+          meta.hero_message || 'Nos casamos y no nos imaginaríamos este día sin vosotros',
+        welcome_quote:
+          meta.welcome_quote ||
+          'Queremos compartir contigo uno de los momentos más importantes de nuestras vidas.',
+        status:
+          meta.wedding_status ||
+          (row.status === 'published' ? 'confirmed' : ('planning' as WeddingStatus)),
+        planner_org_id: orgId,
+        planner_name: plannerName,
+        owner_user_id: row.owner_id || meta.owner_user_id || null,
+        owner_email: meta.owner_email || null,
+        guest_target_count: Number(meta.guest_target_count || 150),
+        budget_target: Number(meta.budget_target || 30000),
+        real_guest_count: realGuests,
+        real_confirmed_count: realConfirmed,
+        real_budget_contracted: suppliersTotal + menuEst,
+        real_budget_paid: paidTotal,
+        iban_details: {
+          account_holder: meta.account_holder || coupleNames,
+          iban: meta.iban || 'ES91 2100 0418 4502 0005 1234',
+          bank_name: meta.bank_name || 'CaixaBank',
+          bic_swift: meta.bic_swift,
+        },
+      };
+    });
+
+    return {
+      success: true,
+      organizations: Array.from(orgsMap.values()),
+      users: platformUsers,
+      weddings: mappedWeddings.length > 0 ? mappedWeddings : [INITIAL_WEDDING],
+      activeWeddingId,
+    };
+  } catch (err: any) {
+    console.error('Error in getPlatformSaaSDataAction:', err);
+    return {
+      success: false,
+      error: err?.message,
+      organizations: [DEFAULT_PLATFORM_ORG],
+      users: [] as PlatformUser[],
+      weddings: [INITIAL_WEDDING],
+      activeWeddingId: WEDDING_UUID,
+    };
+  }
+}
+
+/**
+ * Create a New Wedding in Supabase Database (B2B Planner or B2C Admin Portfolio)
+ */
+export async function createWeddingInDbAction(payload: {
+  couple_names: string;
+  bride_name?: string;
+  groom_name?: string;
+  wedding_date: string;
+  location_summary: string;
+  slug?: string;
+  theme?: ThemeType;
+  guest_target_count?: number;
+  budget_target?: number;
+  planner_org_id?: string;
+  planner_name?: string;
+  owner_email?: string;
+  create_couple_user?: boolean;
+  couple_password?: string;
+}) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const newWeddingId = crypto.randomUUID();
+
+    const [part1, part2] = payload.couple_names.split('&').map((s) => s.trim());
+    const brideName = payload.bride_name || part1 || 'Novia';
+    const groomName = payload.groom_name || part2 || 'Novio';
+
+    const baseSlug = (
+      payload.slug ||
+      payload.couple_names
+        .toLowerCase()
+        .replace(/[&]/g, 'y')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+    );
+
+    // Ensure unique slug
+    const { data: existingSlug } = await adminClient
+      .from('weddings')
+      .select('id')
+      .eq('slug', baseSlug)
+      .maybeSingle();
+
+    const finalSlug = existingSlug
+      ? `${baseSlug}-${Math.random().toString(36).substring(2, 5)}`
+      : baseSlug;
+
+    const orgId = payload.planner_org_id || DEFAULT_PLATFORM_ORG_ID;
+    const orgName = payload.planner_name || DEFAULT_PLATFORM_ORG.name;
+
+    // 1. Insert Wedding row in Supabase
+    const { error: wedErr } = await adminClient.from('weddings').insert({
+      id: newWeddingId,
+      owner_id: null,
+      slug: finalSlug,
+      couple_name_1: brideName,
+      couple_name_2: groomName,
+      wedding_date: new Date(payload.wedding_date).toISOString(),
+      venue_name: payload.location_summary.split('·')[0]?.trim() || payload.location_summary,
+      venue_address: payload.location_summary,
+      status: 'published',
+      theme: payload.theme || 'editorial',
+      rsvp_deadline: new Date(
+        new Date(payload.wedding_date).getTime() - 30 * 24 * 3600 * 1000
+      ).toISOString(),
+      iban_details: {
+        couple_names: payload.couple_names,
+        account_holder: payload.couple_names,
+        iban: 'ES00 0000 0000 0000 0000 0000',
+        bank_name: 'Entidad Bancaria',
+        planner_org_id: orgId,
+        planner_name: orgName,
+        owner_email: payload.owner_email || null,
+        guest_target_count: payload.guest_target_count || 150,
+        budget_target: payload.budget_target || 30000,
+        wedding_status: 'planning',
+      },
+    });
+
+    if (wedErr) {
+      console.error('Error creating wedding in Supabase:', wedErr);
+      return { success: false, error: wedErr.message };
+    }
+
+    // 2. Seed initial Budget Categories & Menu Config for this new wedding (with fresh UUIDs!)
+    const seedCategories = INITIAL_BUDGET_CATEGORIES.filter((c) => c.budget_type !== 'per_guest').map(
+      (c) => ({
+        id: crypto.randomUUID(),
+        wedding_id: newWeddingId,
+        name: c.name,
+        description: c.description,
+        budget_type: c.budget_type,
+        icon: c.icon,
+        sort_order: c.sort_order,
+        is_active: true,
+      })
+    );
+
+    await adminClient.from('budget_categories').insert(seedCategories);
+    await adminClient.from('budget_menu_config').upsert(
+      {
+        wedding_id: newWeddingId,
+        adult_price: 150,
+        child_price: 55,
+        use_manual_counts: false,
+        notes: 'Menú base banquete',
+      },
+      { onConflict: 'wedding_id' }
+    );
+
+    // 3. Optionally create or link the Basic User (Couple) account in Supabase Auth
+    if (payload.owner_email && payload.owner_email.trim()) {
+      const cleanEmail = payload.owner_email.trim().toLowerCase();
+      const { data: usersList } = await adminClient.auth.admin.listUsers();
+      const existingUser = usersList?.users?.find(
+        (u) => (u.email || '').toLowerCase() === cleanEmail
+      );
+
+      if (existingUser) {
+        const meta = existingUser.user_metadata || {};
+        const prevIds = Array.isArray(meta.assigned_wedding_ids) ? meta.assigned_wedding_ids : [];
+        await adminClient.auth.admin.updateUserById(existingUser.id, {
+          user_metadata: {
+            ...meta,
+            assigned_wedding_ids: Array.from(new Set([...prevIds, newWeddingId])),
+          },
+        });
+      } else if (payload.create_couple_user && payload.couple_password) {
+        await adminClient.auth.admin.createUser({
+          email: cleanEmail,
+          password: payload.couple_password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: payload.couple_names,
+            role: 'basic_user',
+            planner_org_id: orgId,
+            planner_org_name: orgName,
+            assigned_wedding_ids: [newWeddingId],
+          },
+        });
+      }
+    }
+
+    // 4. Set cookie to activate the newly created wedding
+    const cookieStore = await cookies();
+    cookieStore.set('boda_active_wedding_id', newWeddingId, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    });
+
+    revalidatePath('/admin/weddings');
+    revalidatePath('/admin');
+    revalidatePath('/admin/budget');
+    revalidatePath('/admin/guests');
+
+    return {
+      success: true,
+      weddingId: newWeddingId,
+      slug: finalSlug,
+    };
+  } catch (err: any) {
+    console.error('Exception creating wedding in DB:', err);
+    return { success: false, error: err?.message || 'Error al crear la boda' };
+  }
+}
+
+/**
+ * Delete a Wedding from Supabase (Protects main Stephanie & Rodrigo wedding!)
+ */
+export async function deleteWeddingFromDbAction(weddingId: string) {
+  if (weddingId === WEDDING_UUID) {
+    return {
+      success: false,
+      error: 'La boda principal de Stephanie & Rodrigo está protegida y no puede eliminarse.',
+    };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const { error } = await adminClient.from('weddings').delete().eq('id', weddingId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const cookieStore = await cookies();
+    const currentActive = cookieStore.get('boda_active_wedding_id')?.value;
+    if (currentActive === weddingId) {
+      cookieStore.set('boda_active_wedding_id', WEDDING_UUID, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: 'lax',
+      });
+    }
+
+    revalidatePath('/admin/weddings');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Create a Platform User (Super Admin, Wedding Planner B2B, or Basic User / Couple B2C)
+ */
+export async function createPlatformUserAction(payload: {
+  email: string;
+  password: string;
+  full_name: string;
+  role: PlatformUserRole;
+  planner_org_id?: string;
+  planner_org_name?: string;
+  assigned_wedding_id?: string;
+  create_new_wedding?: boolean;
+  new_wedding_couple?: string;
+  new_wedding_date?: string;
+  new_wedding_location?: string;
+}) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const cleanEmail = payload.email.trim().toLowerCase();
+
+    if (!cleanEmail || !payload.password || payload.password.length < 6) {
+      return {
+        success: false,
+        error: 'Introduce un email válido y una contraseña de al menos 6 caracteres.',
+      };
+    }
+
+    let orgId = payload.planner_org_id || DEFAULT_PLATFORM_ORG_ID;
+    let orgName = payload.planner_org_name || DEFAULT_PLATFORM_ORG.name;
+
+    if (payload.role === 'wedding_planner') {
+      if (!payload.planner_org_id || payload.planner_org_id === DEFAULT_PLATFORM_ORG_ID) {
+        orgId = `org-wp-${Date.now().toString(36)}`;
+      }
+      orgName =
+        payload.planner_org_name?.trim() || `${payload.full_name.trim()} · Agencia Wedding Planner`;
+    } else if (payload.role === 'super_admin') {
+      orgId = DEFAULT_PLATFORM_ORG_ID;
+      orgName = DEFAULT_PLATFORM_ORG.name;
+    }
+
+    const assignedWeddingIds: string[] = [];
+    if (payload.assigned_wedding_id) {
+      assignedWeddingIds.push(payload.assigned_wedding_id);
+    }
+
+    // If creating a basic_user and requesting a new wedding for them automatically
+    if (
+      payload.role === 'basic_user' &&
+      payload.create_new_wedding &&
+      payload.new_wedding_couple
+    ) {
+      const wedRes = await createWeddingInDbAction({
+        couple_names: payload.new_wedding_couple,
+        wedding_date: payload.new_wedding_date || '2027-09-18T17:00:00.000Z',
+        location_summary: payload.new_wedding_location || 'Finca / Espacio de Celebración',
+        planner_org_id: orgId,
+        planner_name: orgName,
+        owner_email: cleanEmail,
+      });
+      if (wedRes.success && wedRes.weddingId) {
+        assignedWeddingIds.push(wedRes.weddingId);
+      }
+    }
+
+    if (assignedWeddingIds.length === 0 && payload.role === 'basic_user') {
+      assignedWeddingIds.push(WEDDING_UUID);
+    }
+
+    const { data, error } = await adminClient.auth.admin.createUser({
+      email: cleanEmail,
+      password: payload.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: payload.full_name.trim(),
+        role: payload.role,
+        planner_org_id: orgId,
+        planner_org_name: orgName,
+        assigned_wedding_ids: assignedWeddingIds,
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/weddings');
+    return {
+      success: true,
+      userId: data.user?.id,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error al crear usuario' };
+  }
+}
+
+/**
+ * Update a Platform User's Role, Portfolio Organization or Assigned Weddings
+ */
+export async function updatePlatformUserAction(payload: {
+  userId: string;
+  full_name?: string;
+  role: PlatformUserRole;
+  planner_org_id: string;
+  planner_org_name: string;
+  assigned_wedding_ids: string[];
+}) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const { data: existing } = await adminClient.auth.admin.getUserById(payload.userId);
+    const prevMeta = existing?.user?.user_metadata || {};
+
+    const { error } = await adminClient.auth.admin.updateUserById(payload.userId, {
+      user_metadata: {
+        ...prevMeta,
+        ...(payload.full_name ? { full_name: payload.full_name } : {}),
+        role: payload.role,
+        planner_org_id: payload.planner_org_id,
+        planner_org_name: payload.planner_org_name,
+        assigned_wedding_ids: payload.assigned_wedding_ids,
+      },
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/weddings');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Delete a Platform User (Protects main Super Admin rodrigovaraslopez@gmail.com)
+ */
+export async function deletePlatformUserAction(userId: string) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const { data: target } = await adminClient.auth.admin.getUserById(userId);
+    if (target?.user?.email?.toLowerCase() === 'rodrigovaraslopez@gmail.com') {
+      return {
+        success: false,
+        error: 'El Super Administrador principal de la plataforma está protegido y no se puede eliminar.',
+      };
+    }
+
+    const { error } = await adminClient.auth.admin.deleteUser(userId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/weddings');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
 
 
 

@@ -16,15 +16,40 @@ import {
   setGroupStageEventsAction,
 } from '@/app/actions';
 
+const MAIN_WEDDING_ID = 'a0000000-0000-0000-0000-000000000001';
 const STORAGE_KEY_GROUPS = 'boda_groups_store_v3';
 const STORAGE_KEY_RSVPS = 'boda_rsvps_store_v3';
 const STORAGE_KEY_DELETED = 'boda_deleted_groups_v3';
 const UPDATE_EVENT_NAME = 'boda_store_updated';
 
+function getCurrentActiveWeddingId(): string {
+  if (typeof window === 'undefined') return MAIN_WEDDING_ID;
+  try {
+    return localStorage.getItem('boda_planner_active_wedding_id_v3') || MAIN_WEDDING_ID;
+  } catch {
+    return MAIN_WEDDING_ID;
+  }
+}
+
+function getGroupsStorageKey(): string {
+  const wid = getCurrentActiveWeddingId();
+  return wid === MAIN_WEDDING_ID ? STORAGE_KEY_GROUPS : `${STORAGE_KEY_GROUPS}__${wid}`;
+}
+
+function getRsvpsStorageKey(): string {
+  const wid = getCurrentActiveWeddingId();
+  return wid === MAIN_WEDDING_ID ? STORAGE_KEY_RSVPS : `${STORAGE_KEY_RSVPS}__${wid}`;
+}
+
+function getDeletedStorageKey(): string {
+  const wid = getCurrentActiveWeddingId();
+  return wid === MAIN_WEDDING_ID ? STORAGE_KEY_DELETED : `${STORAGE_KEY_DELETED}__${wid}`;
+}
+
 function getDeletedGroupIds(): string[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_DELETED);
+    const raw = localStorage.getItem(getDeletedStorageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -39,16 +64,17 @@ function addDeletedGroupId(groupId: string, groupName?: string) {
     const current = new Set(getDeletedGroupIds());
     current.add(groupId);
     if (groupName) current.add(`name:${groupName.trim().toLowerCase()}`);
-    localStorage.setItem(STORAGE_KEY_DELETED, JSON.stringify(Array.from(current)));
+    localStorage.setItem(getDeletedStorageKey(), JSON.stringify(Array.from(current)));
   } catch {}
 }
 
 // Helper to get initial groups (always returns fresh copy, never mutates INITIAL_GROUPS in place)
 export function getStoredGroups(): GuestGroup[] {
   if (typeof window === 'undefined') return INITIAL_GROUPS;
+  const wid = getCurrentActiveWeddingId();
   const deletedSet = new Set(getDeletedGroupIds());
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_GROUPS);
+    const raw = localStorage.getItem(getGroupsStorageKey());
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -61,6 +87,9 @@ export function getStoredGroups(): GuestGroup[] {
   } catch (e) {
     console.warn('Error reading stored groups:', e);
   }
+  if (wid !== MAIN_WEDDING_ID) {
+    return [];
+  }
   const cloned: GuestGroup[] = JSON.parse(JSON.stringify(INITIAL_GROUPS));
   return cloned.filter(
     (g) => !deletedSet.has(g.id) && !deletedSet.has(`name:${(g.name || '').trim().toLowerCase()}`)
@@ -70,14 +99,18 @@ export function getStoredGroups(): GuestGroup[] {
 // Helper to get initial RSVPs
 export function getStoredRSVPS(): GroupRSVPSubmission[] {
   if (typeof window === 'undefined') return INITIAL_RSVPS;
+  const wid = getCurrentActiveWeddingId();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_RSVPS);
+    const raw = localStorage.getItem(getRsvpsStorageKey());
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn('Error reading stored RSVPs:', e);
+  }
+  if (wid !== MAIN_WEDDING_ID) {
+    return [];
   }
   return JSON.parse(JSON.stringify(INITIAL_RSVPS));
 }
@@ -86,7 +119,7 @@ export function getStoredRSVPS(): GroupRSVPSubmission[] {
 export function setStoredGroups(groups: GuestGroup[]) {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(groups));
+      localStorage.setItem(getGroupsStorageKey(), JSON.stringify(groups));
     } catch (e) {
       console.warn('Error saving groups to localStorage:', e);
     }
@@ -98,7 +131,7 @@ export function setStoredGroups(groups: GuestGroup[]) {
 export function setStoredRSVPs(rsvps: GroupRSVPSubmission[]) {
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_RSVPS, JSON.stringify(rsvps));
+      localStorage.setItem(getRsvpsStorageKey(), JSON.stringify(rsvps));
     } catch (e) {
       console.warn('Error saving RSVPs to localStorage:', e);
     }
@@ -276,9 +309,21 @@ export function useWeddingData() {
       const res = await getGuestsDataAction();
       if (res && res.success && res.source === 'supabase') {
         setIsSupabaseOnline(true);
-        if (res.groups && res.groups.length > 0) {
+        const wid = getCurrentActiveWeddingId();
+        if (wid !== MAIN_WEDDING_ID) {
+          const deletedSet = new Set(getDeletedGroupIds());
+          const filtered = (res.groups || []).filter(
+            (g: GuestGroup) =>
+              !deletedSet.has(g.id) &&
+              !deletedSet.has(`name:${(g.name || '').trim().toLowerCase()}`)
+          );
+          setGroups(filtered);
+          setRsvps(res.rsvps || []);
+          setStoredGroups(filtered);
+          setStoredRSVPs(res.rsvps || []);
+        } else if (res.groups && res.groups.length > 0) {
           const hasLocalStore =
-            typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_GROUPS) !== null;
+            typeof window !== 'undefined' && localStorage.getItem(getGroupsStorageKey()) !== null;
           if (!hasLocalStore) {
             const deletedSet = new Set(getDeletedGroupIds());
             const filtered = res.groups.filter(
@@ -310,11 +355,17 @@ export function useWeddingData() {
 
     // 3. Event listeners for cross-tab or cross-component state updates
     const handleUpdate = () => reloadData();
+    const handleWeddingChange = () => {
+      reloadData();
+      fetchSupabaseData();
+    };
     window.addEventListener(UPDATE_EVENT_NAME, handleUpdate);
+    window.addEventListener('boda_planner_updated', handleWeddingChange);
     window.addEventListener('storage', handleUpdate);
 
     return () => {
       window.removeEventListener(UPDATE_EVENT_NAME, handleUpdate);
+      window.removeEventListener('boda_planner_updated', handleWeddingChange);
       window.removeEventListener('storage', handleUpdate);
     };
   }, [reloadData, fetchSupabaseData]);

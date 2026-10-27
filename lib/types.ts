@@ -1,6 +1,43 @@
 export type ThemeType = 'editorial' | 'mediterranean' | 'cinematic';
 export type WeddingStatus = 'draft' | 'planning' | 'confirmed' | 'archived';
 
+// ==========================================
+// SAAS MULTI-TENANT ROLES & ORGANIZATIONS
+// ==========================================
+
+export type PlatformUserRole = 'super_admin' | 'wedding_planner' | 'basic_user';
+
+export const USER_ROLE_LABELS: Record<PlatformUserRole, string> = {
+  super_admin: 'Administrador Global (Super Admin)',
+  wedding_planner: 'Wedding Planner (Agencia B2B)',
+  basic_user: 'Usuario Básico / Pareja (B2C)',
+};
+
+export interface PlannerOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  owner_user_id?: string | null;
+  owner_email?: string | null;
+  is_platform_default: boolean; // true for the Admin's own B2C portfolio
+  plan_tier: 'b2c_default' | 'pro_planner' | 'enterprise';
+  max_weddings: number;
+  created_at?: string;
+}
+
+export interface PlatformUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: PlatformUserRole;
+  planner_org_id: string;
+  planner_org_name?: string;
+  assigned_wedding_ids: string[];
+  phone?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface SaveTheDateImages {
   hero_mobile: string;
   hero_desktop: string;
@@ -39,9 +76,16 @@ export interface Wedding {
   hero_message: string;
   welcome_quote: string;
   status?: WeddingStatus;
+  planner_org_id?: string;
   planner_name?: string;
+  owner_user_id?: string | null;
+  owner_email?: string | null;
   guest_target_count?: number;
   budget_target?: number;
+  real_guest_count?: number;
+  real_confirmed_count?: number;
+  real_budget_contracted?: number;
+  real_budget_paid?: number;
   iban_details?: {
     account_holder: string;
     iban: string;

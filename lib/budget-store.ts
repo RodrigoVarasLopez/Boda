@@ -65,49 +65,61 @@ export function useBudgetStore() {
     reloadData();
     setIsLoaded(true);
 
-    // Hydrate live from Supabase
     let isMounted = true;
-    getBudgetDataAction().then((res) => {
-      if (res && res.success && isMounted) {
-        if (res.categories && res.categories.length > 0) {
-          setCategories(res.categories);
-          setStoredBudgetCategories(res.categories);
-        }
-        if (res.suppliers) {
-          setSuppliers(res.suppliers);
-          setStoredBudgetSuppliers(res.suppliers);
-        }
-        if (res.payments) {
-          setPayments(res.payments);
-          setStoredBudgetPayments(res.payments);
-        }
-        if (res.menuConfig) {
-          setMenuConfig(res.menuConfig);
-          setStoredBudgetMenuConfig(res.menuConfig);
-        }
-      }
-    }).catch((err) => {
-      console.warn('Initial Supabase budget sync notice:', err);
-    });
+    const hydrateFromServer = () => {
+      getBudgetDataAction()
+        .then((res) => {
+          if (res && res.success && isMounted) {
+            if (res.categories && res.categories.length > 0) {
+              setCategories(res.categories);
+              setStoredBudgetCategories(res.categories);
+            }
+            if (res.suppliers) {
+              setSuppliers(res.suppliers);
+              setStoredBudgetSuppliers(res.suppliers);
+            }
+            if (res.payments) {
+              setPayments(res.payments);
+              setStoredBudgetPayments(res.payments);
+            }
+            if (res.menuConfig) {
+              setMenuConfig(res.menuConfig);
+              setStoredBudgetMenuConfig(res.menuConfig);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('Initial Supabase budget sync notice:', err);
+        });
+    };
+
+    hydrateFromServer();
 
     const handleUpdate = () => reloadData();
+    const handleWeddingChange = () => {
+      reloadData();
+      hydrateFromServer();
+    };
     const handleStorage = (e: StorageEvent) => {
       if (
-        e.key === STORAGE_KEY_BUDGET_CATEGORIES ||
-        e.key === STORAGE_KEY_BUDGET_SUPPLIERS ||
-        e.key === STORAGE_KEY_BUDGET_PAYMENTS ||
-        e.key === STORAGE_KEY_BUDGET_MENU
+        !e.key ||
+        e.key.startsWith(STORAGE_KEY_BUDGET_CATEGORIES) ||
+        e.key.startsWith(STORAGE_KEY_BUDGET_SUPPLIERS) ||
+        e.key.startsWith(STORAGE_KEY_BUDGET_PAYMENTS) ||
+        e.key.startsWith(STORAGE_KEY_BUDGET_MENU)
       ) {
         reloadData();
       }
     };
 
     window.addEventListener(BUDGET_UPDATE_EVENT, handleUpdate);
+    window.addEventListener('boda_planner_updated', handleWeddingChange);
     window.addEventListener('storage', handleStorage);
 
     return () => {
       isMounted = false;
       window.removeEventListener(BUDGET_UPDATE_EVENT, handleUpdate);
+      window.removeEventListener('boda_planner_updated', handleWeddingChange);
       window.removeEventListener('storage', handleStorage);
     };
   }, [reloadData]);

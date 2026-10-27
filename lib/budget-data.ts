@@ -895,10 +895,24 @@ let inMemorySuppliers: BudgetSupplier[] | null = null;
 let inMemoryPayments: BudgetPayment[] | null = null;
 let inMemoryMenuConfig: BudgetMenuConfig | null = null;
 
+function getCurrentBudgetWeddingId(): string {
+  if (typeof window === 'undefined') return WEDDING_UUID;
+  try {
+    return localStorage.getItem('boda_planner_active_wedding_id_v3') || WEDDING_UUID;
+  } catch {
+    return WEDDING_UUID;
+  }
+}
+
+function getScopedBudgetKey(baseKey: string): string {
+  const wid = getCurrentBudgetWeddingId();
+  return wid === WEDDING_UUID ? baseKey : `${baseKey}__${wid}`;
+}
+
 export function getStoredBudgetCategories(): BudgetCategory[] {
   if (typeof window === 'undefined') return INITIAL_BUDGET_CATEGORIES;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_BUDGET_CATEGORIES);
+    const raw = localStorage.getItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_CATEGORIES));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -913,7 +927,7 @@ export function setStoredBudgetCategories(categories: BudgetCategory[]) {
   inMemoryCategories = categories;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_BUDGET_CATEGORIES, JSON.stringify(categories));
+      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_CATEGORIES), JSON.stringify(categories));
     } catch (e) {
       console.warn('Error saving stored budget categories:', e);
     }
@@ -923,8 +937,9 @@ export function setStoredBudgetCategories(categories: BudgetCategory[]) {
 
 export function getStoredBudgetSuppliers(): BudgetSupplier[] {
   if (typeof window === 'undefined') return INITIAL_SUPPLIERS;
+  const wid = getCurrentBudgetWeddingId();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_BUDGET_SUPPLIERS);
+    const raw = localStorage.getItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_SUPPLIERS));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -932,14 +947,14 @@ export function getStoredBudgetSuppliers(): BudgetSupplier[] {
   } catch (e) {
     console.warn('Error reading stored budget suppliers:', e);
   }
-  return INITIAL_SUPPLIERS;
+  return wid === WEDDING_UUID ? INITIAL_SUPPLIERS : [];
 }
 
 export function setStoredBudgetSuppliers(suppliers: BudgetSupplier[]) {
   inMemorySuppliers = suppliers;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_BUDGET_SUPPLIERS, JSON.stringify(suppliers));
+      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_SUPPLIERS), JSON.stringify(suppliers));
     } catch (e) {
       console.warn('Error saving stored budget suppliers:', e);
     }
@@ -949,8 +964,9 @@ export function setStoredBudgetSuppliers(suppliers: BudgetSupplier[]) {
 
 export function getStoredBudgetPayments(): BudgetPayment[] {
   if (typeof window === 'undefined') return INITIAL_PAYMENTS;
+  const wid = getCurrentBudgetWeddingId();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_BUDGET_PAYMENTS);
+    const raw = localStorage.getItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_PAYMENTS));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -958,14 +974,14 @@ export function getStoredBudgetPayments(): BudgetPayment[] {
   } catch (e) {
     console.warn('Error reading stored budget payments:', e);
   }
-  return INITIAL_PAYMENTS;
+  return wid === WEDDING_UUID ? INITIAL_PAYMENTS : [];
 }
 
 export function setStoredBudgetPayments(payments: BudgetPayment[]) {
   inMemoryPayments = payments;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_BUDGET_PAYMENTS, JSON.stringify(payments));
+      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_PAYMENTS), JSON.stringify(payments));
     } catch (e) {
       console.warn('Error saving stored budget payments:', e);
     }
@@ -976,7 +992,7 @@ export function setStoredBudgetPayments(payments: BudgetPayment[]) {
 export function getStoredBudgetMenuConfig(): BudgetMenuConfig {
   if (typeof window === 'undefined') return inMemoryMenuConfig || DEFAULT_MENU_CONFIG;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_BUDGET_MENU);
+    const raw = localStorage.getItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_MENU));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed.adult_price === 'number') {
@@ -1013,7 +1029,7 @@ export function setStoredBudgetMenuConfig(config: BudgetMenuConfig) {
   inMemoryMenuConfig = normalized;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_BUDGET_MENU, JSON.stringify(normalized));
+      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_MENU), JSON.stringify(normalized));
     } catch (e) {
       console.warn('Error saving stored menu config:', e);
     }

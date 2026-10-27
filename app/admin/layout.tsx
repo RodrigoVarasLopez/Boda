@@ -45,19 +45,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'wedding_planner' | 'basic_user'>(
+    'super_admin'
+  );
   const [loggingOut, setLoggingOut] = useState(false);
   const { groups } = useWeddingData();
-  const { activeWedding } = useWeddingPlanner();
+  const { activeWedding, selectWedding } = useWeddingPlanner();
 
   React.useEffect(() => {
     if (pathname === '/admin/login') return;
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.email) {
-        setUserEmail(data.user.email);
-      }
-    }).catch(() => {});
-  }, [pathname]);
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (data?.user) {
+          const email = (data.user.email || '').toLowerCase();
+          setUserEmail(data.user.email || null);
+          const metaRole = data.user.user_metadata?.role;
+          if (
+            metaRole === 'super_admin' ||
+            metaRole === 'wedding_planner' ||
+            metaRole === 'basic_user'
+          ) {
+            setUserRole(metaRole);
+          } else if (email === 'rodrigovaraslopez@gmail.com') {
+            setUserRole('super_admin');
+          } else if (email.includes('weddingplanner')) {
+            setUserRole('wedding_planner');
+          } else if (email) {
+            setUserRole('basic_user');
+          }
+
+          // If basic_user has an assigned wedding, ensure it is active
+          const assignedIds = data.user.user_metadata?.assigned_wedding_ids;
+          if (metaRole === 'basic_user' && Array.isArray(assignedIds) && assignedIds.length === 1) {
+            selectWedding(assignedIds[0]);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [pathname, selectWedding]);
 
   if (pathname === '/admin/login') {
     return <>{children}</>;
@@ -82,12 +109,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.location.replace('/admin/login');
   };
 
-  const isPlanner = userEmail?.toLowerCase().includes('weddingplanner');
-  const userLabel = isPlanner
-    ? 'Wedding Planner'
-    : userEmail
+  const isPlannerOrAdmin = userRole === 'super_admin' || userRole === 'wedding_planner';
+  const visibleNavItems = isPlannerOrAdmin
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== '/admin/weddings');
+
+  const userLabel =
+    userRole === 'super_admin'
+      ? 'Super Admin'
+      : userRole === 'wedding_planner'
+      ? 'Wedding Planner'
+      : userEmail
       ? userEmail.split('@')[0]
-      : 'Admin';
+      : 'Pareja';
+
+  const roleBadgeShort =
+    userRole === 'super_admin' ? '👑' : userRole === 'wedding_planner' ? 'WP' : '💍';
 
   const firstToken = groups.length > 0 ? groups[0].token : null;
   const guestUrl = firstToken ? `/i/${firstToken}` : '/admin/guests';
@@ -199,7 +236,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             title={userEmail || 'Sesión activa'}
           >
             <div className="w-6 h-6 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-[10px] font-medium text-text-primary shadow-xs">
-              {isPlanner ? 'WP' : 'R&S'}
+              {roleBadgeShort}
             </div>
             <span className="max-w-[130px] truncate font-medium text-text-primary">
               {userLabel}
@@ -223,7 +260,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex md:w-56 bg-bg-card border-r border-border-subtle flex-col justify-between p-4 sticky top-[61px] h-[calc(100vh-61px)] z-30">
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -246,7 +283,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="space-y-2">
             {userEmail && (
               <div className="px-3 py-2 rounded-xl bg-bg-secondary/60 border border-border-subtle text-[11px] text-center truncate" title={userEmail}>
-                <span className="text-text-muted block text-[10px] uppercase tracking-wider">Conectado como</span>
+                <span className="text-text-muted block text-[10px] uppercase tracking-wider">
+                  {userLabel}
+                </span>
                 <span className="font-medium text-text-primary truncate block">{userEmail}</span>
               </div>
             )}
@@ -268,8 +307,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Sparkles className="w-3 h-3 text-amber-600" />
                 <span>Save the Date</span>
               </div>
-              <p className="font-serif italic text-text-primary font-medium">Rodrigo &amp; Stephanie</p>
-              <p className="font-mono text-[10px] text-text-muted group-hover:text-text-primary">28 · 08 · 2027 ↗</p>
+              <p className="font-serif italic text-text-primary font-medium truncate">
+                {activeWedding.couple_names}
+              </p>
+              <p className="font-mono text-[10px] text-text-muted group-hover:text-text-primary">
+                Abrir vista ↗
+              </p>
             </Link>
           </div>
         </aside>
@@ -277,7 +320,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-bg-card border-b border-border-subtle p-4 space-y-1.5 animate-fade-in z-30">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (

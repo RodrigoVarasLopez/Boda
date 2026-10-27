@@ -37,15 +37,26 @@ export const DEFAULT_SAVE_THE_DATE_CONFIG: SaveTheDateConfig = {
   images: DEFAULT_SAVE_THE_DATE_IMAGES,
 };
 
+const MAIN_WEDDING_ID = 'a0000000-0000-0000-0000-000000000001';
 const STD_STORAGE_KEY = 'boda_save_the_date_config_v3';
 const STD_UPDATE_EVENT = 'boda-std-updated';
+
+function getScopedStdKey(): string {
+  if (typeof window === 'undefined') return STD_STORAGE_KEY;
+  try {
+    const wid = localStorage.getItem('boda_planner_active_wedding_id_v3') || MAIN_WEDDING_ID;
+    return wid === MAIN_WEDDING_ID ? STD_STORAGE_KEY : `${STD_STORAGE_KEY}__${wid}`;
+  } catch {
+    return STD_STORAGE_KEY;
+  }
+}
 
 export function getStoredSaveTheDateConfig(): SaveTheDateConfig {
   if (typeof window === 'undefined') {
     return DEFAULT_SAVE_THE_DATE_CONFIG;
   }
   try {
-    const raw = localStorage.getItem(STD_STORAGE_KEY);
+    const raw = localStorage.getItem(getScopedStdKey());
     if (!raw) return DEFAULT_SAVE_THE_DATE_CONFIG;
     const parsed = JSON.parse(raw);
     return {
@@ -64,7 +75,7 @@ export function getStoredSaveTheDateConfig(): SaveTheDateConfig {
 export function saveSaveTheDateConfig(config: SaveTheDateConfig) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STD_STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(getScopedStdKey(), JSON.stringify(config));
     window.dispatchEvent(new CustomEvent(STD_UPDATE_EVENT));
   } catch (e) {
     console.error('Error saving Save the Date config:', e);
@@ -84,7 +95,7 @@ export function useSaveTheDateConfig() {
     setIsLoaded(true);
 
     const handleStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === STD_STORAGE_KEY) {
+      if (!e.key || e.key.startsWith(STD_STORAGE_KEY)) {
         refresh();
       }
     };
@@ -92,10 +103,12 @@ export function useSaveTheDateConfig() {
 
     window.addEventListener('storage', handleStorage);
     window.addEventListener(STD_UPDATE_EVENT, handleCustom);
+    window.addEventListener('boda_planner_updated', handleCustom);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener(STD_UPDATE_EVENT, handleCustom);
+      window.removeEventListener('boda_planner_updated', handleCustom);
     };
   }, [refresh]);
 
