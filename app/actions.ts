@@ -46,6 +46,9 @@ import {
   serializeMenuNotesWithExtras,
   parseMenuNotesAndExtras,
   WEDDING_UUID,
+  BANQUET_CATEGORY_ID,
+  BANQUET_SUPPLIER_ID,
+  DEFAULT_BANQUET_SUPPLIER,
   INITIAL_BUDGET_CATEGORIES,
   normalizeCategoryId,
 } from '@/lib/budget-data';
@@ -1452,7 +1455,7 @@ export async function getBudgetDataAction() {
       return {
         success: true,
         source: 'supabase',
-        categories: categories || getStoredBudgetCategories(),
+        categories: (categories || getStoredBudgetCategories()).filter((c: any) => c.is_active !== false),
         suppliers: suppliers || [],
         payments: payments || [],
         menuConfig: menuConfig || getStoredBudgetMenuConfig(),
@@ -1816,6 +1819,51 @@ export async function createPaymentAction(rawInput: unknown) {
     try {
       const adminClient = createAdminClient();
       const weddingId = await resolveWeddingUuid(adminClient);
+
+      // Ensure supplier exists in Supabase before inserting payment (e.g. Banquet supplier)
+      const { data: existingSup } = await adminClient
+        .from('budget_suppliers')
+        .select('id')
+        .eq('id', validated.supplier_id)
+        .maybeSingle();
+
+      if (!existingSup) {
+        // Ensure hidden Banquet category exists so foreign key constraint succeeds
+        await adminClient.from('budget_categories').upsert(
+          {
+            id: BANQUET_CATEGORY_ID,
+            wedding_id: weddingId,
+            name: 'Banquete & Catering',
+            description: 'Banquete nupcial y gastos asociados',
+            budget_type: 'per_guest',
+            icon: 'UtensilsCrossed',
+            sort_order: 12,
+            is_active: false,
+          },
+          { onConflict: 'id' }
+        );
+
+        await adminClient.from('budget_suppliers').upsert(
+          {
+            id: validated.supplier_id,
+            wedding_id: weddingId,
+            category_id: BANQUET_CATEGORY_ID,
+            name: DEFAULT_BANQUET_SUPPLIER.name,
+            contact_name: DEFAULT_BANQUET_SUPPLIER.contact_name,
+            email: DEFAULT_BANQUET_SUPPLIER.email,
+            phone: DEFAULT_BANQUET_SUPPLIER.phone,
+            website: DEFAULT_BANQUET_SUPPLIER.website,
+            instagram: DEFAULT_BANQUET_SUPPLIER.instagram,
+            currency: 'EUR',
+            rating: 5,
+            status: 'selected',
+            comments: DEFAULT_BANQUET_SUPPLIER.comments,
+            is_selected: true,
+          },
+          { onConflict: 'id' }
+        );
+      }
+
       const { error } = await adminClient.from('budget_payments').insert({
         id: newId,
         wedding_id: weddingId,

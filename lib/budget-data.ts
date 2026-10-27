@@ -18,6 +18,30 @@ export const BUDGET_UPDATE_EVENT = 'boda_budget_updated';
 export const WEDDING_UUID = 'a0000000-0000-0000-0000-000000000001';
 export const WEDDING_ID = WEDDING_UUID;
 
+export const BANQUET_CATEGORY_ID = 'c0000000-0000-0000-0000-000000000012';
+export const BANQUET_SUPPLIER_ID = 's0000000-0000-0000-0000-000000000015';
+
+export const DEFAULT_BANQUET_SUPPLIER: BudgetSupplier = {
+  id: BANQUET_SUPPLIER_ID,
+  category_id: BANQUET_CATEGORY_ID,
+  wedding_id: WEDDING_UUID,
+  name: 'Bodega Concejo · Banquete',
+  contact_name: 'Dirección de Eventos Concejo',
+  email: 'eventos@concejobodegas.com',
+  phone: '+34 983 38 50 09',
+  website: 'https://www.concejobodegas.com',
+  instagram: '@concejobodegas',
+  estimated_price: null,
+  quoted_price: null,
+  final_price: null,
+  currency: 'EUR',
+  rating: 5,
+  status: 'selected',
+  comments: 'Banquete nupcial y gastos asociados',
+  notes: null,
+  is_selected: true,
+};
+
 // Legacy category ID translation map
 export const LEGACY_CATEGORY_MAP: Record<string, string> = {
   'cat-flores-iglesia': 'c0000000-0000-0000-0000-000000000001',
@@ -463,6 +487,15 @@ export interface BudgetMetrics {
     extraExpenses: BanquetExpenseItem[];
     total: number;
   };
+  banquetMetric: {
+    supplier: BudgetSupplier;
+    effectivePrice: number;
+    paidAmount: number;
+    pendingAmount: number;
+    payments: BudgetPayment[];
+    finalPaymentDueDate: string | null;
+    daysUntilFinalPayment: number | null;
+  };
   categoryBreakdown: Array<{
     category: BudgetCategory;
     selectedSupplier: BudgetSupplier | null;
@@ -507,7 +540,9 @@ export function calculateBudgetMetrics(
   const alerts: BudgetMetrics['alerts'] = [];
   const upcomingFinalPayments: UpcomingFinalPaymentItem[] = [];
 
-  const categoryBreakdown = categories.map((cat) => {
+  const activeCategories = categories.filter((c) => c.is_active !== false);
+
+  const categoryBreakdown = activeCategories.map((cat) => {
     const catSuppliers = suppliers.filter((s) => s.category_id === cat.id);
     const selectedSupplier =
       catSuppliers.find((s) => s.is_selected) ||
@@ -674,6 +709,156 @@ export function calculateBudgetMetrics(
     };
   });
 
+  // Resolve Banquet Metric (whether or not a 'Menú' category card exists in Partidas y Proveedores)
+  const existingMenuBreakdown = categoryBreakdown.find(
+    (cb) =>
+      cb.category.name.toLowerCase().includes('menú') ||
+      cb.category.name.toLowerCase().includes('menu') ||
+      cb.category.name.toLowerCase().includes('banquete') ||
+      cb.category.budget_type === 'per_guest'
+  );
+
+  let banquetMetric: BudgetMetrics['banquetMetric'];
+
+  if (existingMenuBreakdown) {
+    const fallbackSup: BudgetSupplier = {
+      ...DEFAULT_BANQUET_SUPPLIER,
+      category_id: existingMenuBreakdown.category.id,
+      estimated_price: menuSummary.total,
+      quoted_price: menuSummary.total,
+      final_price: menuSummary.total,
+    };
+    banquetMetric = {
+      supplier: existingMenuBreakdown.selectedSupplier || fallbackSup,
+      effectivePrice: existingMenuBreakdown.effectivePrice || menuSummary.total,
+      paidAmount: existingMenuBreakdown.paidAmount,
+      pendingAmount: existingMenuBreakdown.pendingAmount,
+      payments: existingMenuBreakdown.categoryPayments,
+      finalPaymentDueDate: existingMenuBreakdown.finalPaymentDueDate,
+      daysUntilFinalPayment: existingMenuBreakdown.daysUntilFinalPayment,
+    };
+  } else {
+    const matchedBanquetSup =
+      suppliers.find(
+        (s) =>
+          (menuConfig.supplier_id && s.id === menuConfig.supplier_id) ||
+          s.id === BANQUET_SUPPLIER_ID ||
+          s.category_id === BANQUET_CATEGORY_ID
+      ) || {
+        ...DEFAULT_BANQUET_SUPPLIER,
+        estimated_price: menuSummary.total,
+        quoted_price: menuSummary.total,
+        final_price: menuSummary.total,
+      };
+
+    const banquetSupWithPrice: BudgetSupplier = {
+      ...matchedBanquetSup,
+      estimated_price: menuSummary.total,
+      quoted_price: menuSummary.total,
+      final_price: menuSummary.total,
+    };
+
+    const banquetPayments = payments
+      .filter(
+        (p) =>
+          p.supplier_id === banquetSupWithPrice.id || p.supplier_id === BANQUET_SUPPLIER_ID
+      )
+      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+
+    const banquetPaid = banquetPayments
+      .filter((p) => isPaymentSettled(p))
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const banquetEffective = menuSummary.total;
+    const banquetPending = Math.max(0, banquetEffective - banquetPaid);
+
+    if (banquetEffective > 0) {
+      totalContracted += banquetEffective;
+      totalEstimated += banquetEffective;
+    }
+    totalPaid += banquetPaid;
+
+    const finalInfo = getSupplierFinalPaymentInfo(banquetSupWithPrice.id, banquetPayments);
+    const finalDueDate = banquetPending > 0 ? finalInfo.dueDate : null;
+    const daysUntilDue = banquetPending > 0 ? finalInfo.daysUntilDue : null;
+
+    if (banquetPending > 0 && (finalDueDate || banquetPaid > 0)) {
+      let urgency: UpcomingFinalPaymentItem['urgency'] = 'unscheduled';
+      if (daysUntilDue !== null) {
+        if (daysUntilDue < 0) {
+          urgency = 'overdue';
+          alerts.unshift({
+            type: 'error',
+            message: `¡PAGO VENCIDO! El pago final de ${banquetSupWithPrice.name} (Banquete) por ${formatCurrency(banquetPending)} venció el ${formatDateES(finalDueDate)} (hace ${Math.abs(daysUntilDue)} días).`,
+            categoryId: BANQUET_CATEGORY_ID,
+            supplierId: banquetSupWithPrice.id,
+            dueDate: finalDueDate,
+          });
+        } else if (daysUntilDue === 0) {
+          urgency = 'overdue';
+          alerts.unshift({
+            type: 'error',
+            message: `¡VENCE HOY! Hoy es la fecha límite del pago final a ${banquetSupWithPrice.name} (Banquete): ${formatCurrency(banquetPending)}.`,
+            categoryId: BANQUET_CATEGORY_ID,
+            supplierId: banquetSupWithPrice.id,
+            dueDate: finalDueDate,
+          });
+        } else if (daysUntilDue <= 30) {
+          urgency = 'urgent';
+          alerts.unshift({
+            type: 'warning',
+            message: `Pago final próximo (en ${daysUntilDue} días): ${banquetSupWithPrice.name} (Banquete) — Pendiente ${formatCurrency(banquetPending)} (Límite: ${formatDateES(finalDueDate)}).`,
+            categoryId: BANQUET_CATEGORY_ID,
+            supplierId: banquetSupWithPrice.id,
+            dueDate: finalDueDate,
+          });
+        } else if (daysUntilDue <= 60) {
+          urgency = 'upcoming';
+          alerts.push({
+            type: 'info',
+            message: `Recordatorio de pago final (en ${daysUntilDue} días): ${banquetSupWithPrice.name} (Banquete) — ${formatCurrency(banquetPending)} el ${formatDateES(finalDueDate)}.`,
+            categoryId: BANQUET_CATEGORY_ID,
+            supplierId: banquetSupWithPrice.id,
+            dueDate: finalDueDate,
+          });
+        } else {
+          urgency = 'scheduled';
+        }
+      }
+
+      upcomingFinalPayments.push({
+        category: {
+          id: BANQUET_CATEGORY_ID,
+          wedding_id: WEDDING_UUID,
+          name: 'Banquete & Catering',
+          description: 'Banquete nupcial y gastos asociados',
+          budget_type: 'per_guest',
+          icon: 'UtensilsCrossed',
+          sort_order: 12,
+          is_active: false,
+        },
+        supplier: banquetSupWithPrice,
+        effectivePrice: banquetEffective,
+        paidAmount: banquetPaid,
+        pendingAmount: banquetPending,
+        dueDate: finalDueDate,
+        daysUntilDue,
+        urgency,
+        scheduledPayment: finalInfo.scheduledPayment,
+      });
+    }
+
+    banquetMetric = {
+      supplier: banquetSupWithPrice,
+      effectivePrice: banquetEffective,
+      paidAmount: banquetPaid,
+      pendingAmount: banquetPending,
+      payments: banquetPayments,
+      finalPaymentDueDate: finalDueDate,
+      daysUntilFinalPayment: daysUntilDue,
+    };
+  }
+
   // Sort upcomingFinalPayments: those with a dueDate sorted chronologically first, then unscheduled ones
   upcomingFinalPayments.sort((a, b) => {
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
@@ -681,11 +866,6 @@ export function calculateBudgetMetrics(
     if (!a.dueDate && b.dueDate) return 1;
     return b.pendingAmount - a.pendingAmount;
   });
-
-  if (!menuIncludedInCategory && menuSummary.total > 0) {
-    totalContracted += menuSummary.total;
-    totalEstimated += menuSummary.total;
-  }
 
   const totalPending = Math.max(0, totalContracted - totalPaid);
   const percentContracted = totalEstimated > 0 ? Math.min(100, Math.round((totalContracted / totalEstimated) * 100)) : 0;
@@ -699,6 +879,7 @@ export function calculateBudgetMetrics(
     percentContracted,
     percentPaid,
     menuSummary,
+    banquetMetric,
     categoryBreakdown,
     upcomingFinalPayments,
     alerts,

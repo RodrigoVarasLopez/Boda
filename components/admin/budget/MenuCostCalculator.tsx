@@ -4,11 +4,14 @@ import React, { useState, useEffect } from 'react';
 import {
   BudgetMenuConfig,
   BudgetSupplier,
+  BudgetPayment,
   BanquetExpenseItem,
   BanquetExpenseType,
 } from '@/lib/types';
 import {
   formatCurrency,
+  formatDateES,
+  isPaymentSettled,
   calculateMenuTotal,
   calculateBanquetExpenseItemTotal,
 } from '@/lib/budget-data';
@@ -19,6 +22,8 @@ import {
   Calculator,
   Edit2,
   Check,
+  CheckCircle2,
+  Clock,
   Sparkles,
   Info,
   Plus,
@@ -33,9 +38,13 @@ interface MenuCostCalculatorProps {
   attendingAdults: number;
   attendingChildren: number;
   menuSupplier?: BudgetSupplier | null;
+  banquetPayments?: BudgetPayment[];
   paidAmount?: number;
   pendingAmount?: number;
   onOpenBanquetPayments?: () => void;
+  onEditBanquetPayment?: (payment: BudgetPayment) => void;
+  onMarkBanquetPaymentPaid?: (paymentId: string) => Promise<void>;
+  onDeleteBanquetPayment?: (paymentId: string) => Promise<void>;
   onUpdateMenuConfig: (data: {
     adult_price?: number;
     child_price?: number;
@@ -102,9 +111,13 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
   attendingAdults,
   attendingChildren,
   menuSupplier,
+  banquetPayments = [],
   paidAmount = 0,
   pendingAmount = 0,
   onOpenBanquetPayments,
+  onEditBanquetPayment,
+  onMarkBanquetPaymentPaid,
+  onDeleteBanquetPayment,
   onUpdateMenuConfig,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -319,10 +332,15 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
             <button
               type="button"
               onClick={onOpenBanquetPayments}
-              className="px-3.5 py-2 rounded-xl border border-border-strong bg-bg-secondary/60 hover:bg-bg-secondary text-text-primary text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-border-strong bg-bg-secondary/60 hover:bg-bg-secondary text-text-primary text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <CreditCard className="w-3.5 h-3.5 text-text-accent" />
               <span>Pagos Banquete</span>
+              {banquetPayments.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  {banquetPayments.length}
+                </span>
+              )}
             </button>
           )}
 
@@ -485,18 +503,33 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
           </div>
 
           {paidAmount > 0 ? (
-            <div className="flex items-center justify-between text-[10px] pt-1 border-t border-border-subtle/60">
+            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-border-subtle/60">
               <span className="font-semibold text-emerald-700">
                 Pagado: {formatCurrency(paidAmount)}
               </span>
-              <span className="font-semibold text-amber-800">
-                Falta: {formatCurrency(pendingAmount)}
-              </span>
+              <button
+                type="button"
+                onClick={onOpenBanquetPayments}
+                className="font-semibold text-amber-800 hover:underline cursor-pointer"
+              >
+                Falta: {formatCurrency(pendingAmount)} →
+              </button>
             </div>
           ) : (
-            <div className="text-[10px] text-text-muted flex items-center gap-1">
-              <Info className="w-3 h-3 text-text-accent shrink-0" />
-              <span>Suma automática al presupuesto global</span>
+            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-border-subtle/60">
+              <span className="text-text-muted flex items-center gap-1">
+                <Info className="w-3 h-3 text-text-accent shrink-0" />
+                <span>Sin pagos aún</span>
+              </span>
+              {onOpenBanquetPayments && (
+                <button
+                  type="button"
+                  onClick={onOpenBanquetPayments}
+                  className="font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  + Registrar señal →
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -734,6 +767,125 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* LISTA DE PAGOS Y SEÑALES DEL BANQUETE */}
+      {banquetPayments.length > 0 && (
+        <div className="space-y-2.5 pt-2 border-t border-border-subtle">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+              Pagos, Señales y Vencimientos del Banquete ({banquetPayments.length})
+            </span>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-semibold text-emerald-700">
+                Abonado: {formatCurrency(paidAmount)}
+              </span>
+              <span className="font-semibold text-amber-800">
+                Pendiente: {formatCurrency(pendingAmount)}
+              </span>
+              {onOpenBanquetPayments && (
+                <button
+                  type="button"
+                  onClick={onOpenBanquetPayments}
+                  className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  + Añadir pago
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {banquetPayments.map((pay) => {
+              const settled = isPaymentSettled(pay);
+              return (
+                <div
+                  key={pay.id}
+                  className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${
+                    settled
+                      ? 'bg-emerald-50/40 border-emerald-200/80'
+                      : 'bg-amber-50/40 border-amber-200/80'
+                  }`}
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {settled ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      )}
+                      <span className="text-xs font-bold text-text-primary truncate">
+                        {pay.notes || (settled ? 'Señal / Pago abonado' : 'Pago programado')}
+                      </span>
+                      <span
+                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-semibold ${
+                          settled
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {pay.status === 'partial'
+                          ? 'Señal / Parcial'
+                          : pay.status === 'paid'
+                          ? 'Pagado'
+                          : 'Pendiente'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-muted">
+                      {settled && pay.paid_at
+                        ? `Abonado el ${formatDateES(pay.paid_at)}`
+                        : pay.due_date
+                        ? `Vencimiento límite: ${formatDateES(pay.due_date)}`
+                        : 'Sin fecha límite asignada'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`font-serif font-bold text-sm mr-1 ${
+                        settled ? 'text-emerald-800' : 'text-amber-900'
+                      }`}
+                    >
+                      {formatCurrency(Number(pay.amount))}
+                    </span>
+                    {!settled && onMarkBanquetPaymentPaid && (
+                      <button
+                        type="button"
+                        onClick={() => onMarkBanquetPaymentPaid(pay.id)}
+                        title="Marcar como pagado hoy"
+                        className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Abonar</span>
+                      </button>
+                    )}
+                    {onEditBanquetPayment && (
+                      <button
+                        type="button"
+                        onClick={() => onEditBanquetPayment(pay)}
+                        title="Editar pago"
+                        className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onDeleteBanquetPayment && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteBanquetPayment(pay.id)}
+                        title="Eliminar pago"
+                        className="p-1.5 rounded-lg text-text-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

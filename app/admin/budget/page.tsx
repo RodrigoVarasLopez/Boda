@@ -14,6 +14,8 @@ import {
   getEffectiveSupplierPrice,
   isPaymentSettled,
   getSupplierFinalPaymentInfo,
+  BANQUET_CATEGORY_ID,
+  BANQUET_SUPPLIER_ID,
 } from '@/lib/budget-data';
 import { BudgetDashboard } from '@/components/admin/budget/BudgetDashboard';
 import { MenuCostCalculator } from '@/components/admin/budget/MenuCostCalculator';
@@ -344,42 +346,12 @@ export default function AdminBudgetPage() {
 
       {/* 2. Menu Cost Dynamic Calculator */}
       {(() => {
-        const menuCat = categories.find(
-          (c) =>
-            c.name.toLowerCase().includes('menú') ||
-            c.name.toLowerCase().includes('menu') ||
-            c.name.toLowerCase().includes('banquete') ||
-            c.budget_type === 'per_guest'
-        );
-        const menuMetric = menuCat ? categoryMetricsMap[menuCat.id] : null;
+        const banquetMetric = metrics.banquetMetric;
 
-        const handleOpenBanquetPayments = async () => {
-          if (!menuCat) return;
-          const catSuppliers = suppliers.filter((s) => s.category_id === menuCat.id);
-          const existingSup =
-            catSuppliers.find((s) => s.is_selected) || catSuppliers[0] || null;
-
-          if (existingSup) {
-            setPaymentModalSupplier(existingSup);
-            setPaymentToEdit(null);
-            setIsPaymentModalOpen(true);
-          } else {
-            const created = await createSupplier({
-              category_id: menuCat.id,
-              name: 'Bodega Concejo · Banquete',
-              estimated_price: metrics.menuSummary.total,
-              quoted_price: metrics.menuSummary.total,
-              final_price: metrics.menuSummary.total,
-              status: 'selected',
-              is_selected: true,
-              comments: 'Banquete nupcial y gastos asociados',
-            });
-            if (created) {
-              setPaymentModalSupplier(created);
-              setPaymentToEdit(null);
-              setIsPaymentModalOpen(true);
-            }
-          }
+        const handleOpenBanquetPayments = () => {
+          setPaymentModalSupplier(banquetMetric.supplier);
+          setPaymentToEdit(null);
+          setIsPaymentModalOpen(true);
         };
 
         return (
@@ -387,10 +359,26 @@ export default function AdminBudgetPage() {
             menuConfig={menuConfig}
             attendingAdults={attendingAdults}
             attendingChildren={attendingChildren}
-            menuSupplier={menuMetric?.selectedSupplier}
-            paidAmount={menuMetric?.paidAmount || 0}
-            pendingAmount={menuMetric?.pendingAmount || 0}
+            menuSupplier={banquetMetric.supplier}
+            banquetPayments={banquetMetric.payments}
+            paidAmount={banquetMetric.paidAmount}
+            pendingAmount={banquetMetric.pendingAmount}
             onOpenBanquetPayments={handleOpenBanquetPayments}
+            onEditBanquetPayment={(pay) => {
+              setPaymentModalSupplier(banquetMetric.supplier);
+              setPaymentToEdit(pay);
+              setIsPaymentModalOpen(true);
+            }}
+            onMarkBanquetPaymentPaid={async (payId) => {
+              await markPaymentAsPaid(payId);
+              showToast('¡Pago del banquete marcado como abonado!');
+            }}
+            onDeleteBanquetPayment={async (payId) => {
+              if (window.confirm('¿Eliminar este registro de pago del banquete?')) {
+                await deletePayment(payId);
+                showToast('Pago del banquete eliminado');
+              }
+            }}
             onUpdateMenuConfig={async (data) => {
               await updateMenuConfig(data);
               showToast('Presupuesto del banquete actualizado');
@@ -714,83 +702,100 @@ export default function AdminBudgetPage() {
       />
 
       {/* 4. Payment Form Modal */}
-      {paymentModalSupplier && (
-        <PaymentFormModal
-          isOpen={isPaymentModalOpen}
-          supplier={paymentModalSupplier}
-          supplierPayments={payments.filter((p) => p.supplier_id === paymentModalSupplier.id)}
-          paymentToEdit={paymentToEdit}
-          contractedTotal={
-            categoryMetricsMap[paymentModalSupplier.category_id]?.effectivePrice ||
-            getEffectiveSupplierPrice(paymentModalSupplier)
-          }
-          alreadyPaidAmount={payments
-            .filter((p) => p.supplier_id === paymentModalSupplier.id && isPaymentSettled(p))
-            .reduce((acc, p) => acc + Number(p.amount), 0)}
-          onClose={() => {
-            setIsPaymentModalOpen(false);
-            setPaymentModalSupplier(null);
-            setPaymentToEdit(null);
-          }}
-          onSelectPaymentToEdit={(pay) => setPaymentToEdit(pay)}
-          onDeletePayment={async (payId) => {
-            if (window.confirm('¿Eliminar este registro de pago?')) {
-              await deletePayment(payId);
-              if (paymentToEdit?.id === payId) setPaymentToEdit(null);
-              showToast('Pago eliminado');
-            }
-          }}
-          onMarkPaymentPaid={async (payId) => {
-            await markPaymentAsPaid(payId);
-            showToast('¡Pago marcado como abonado!');
-          }}
-          onSetFinalPaymentDate={async (supId, dueDate, total) => {
-            await setSupplierFinalPaymentDate(supId, dueDate, total);
-            showToast(
-              dueDate
-                ? 'Fecha límite de pago final guardada'
-                : 'Fecha límite de pago final eliminada'
-            );
-          }}
-          onSubmit={async (data) => {
-            if (data.id) {
-              await updatePayment({
-                id: data.id,
-                amount: data.amount,
-                due_date: data.due_date,
-                paid_at: data.paid_at,
-                status: data.status,
-                notes: data.notes,
-              });
-              if (data.final_payment_date) {
-                await setSupplierFinalPaymentDate(
-                  data.supplier_id,
-                  data.final_payment_date,
-                  getEffectiveSupplierPrice(paymentModalSupplier)
-                );
+      {paymentModalSupplier && (() => {
+        const isBanquetModal =
+          paymentModalSupplier.id === metrics.banquetMetric.supplier.id ||
+          paymentModalSupplier.id === BANQUET_SUPPLIER_ID ||
+          paymentModalSupplier.category_id === BANQUET_CATEGORY_ID;
+
+        const modalContractedTotal = isBanquetModal
+          ? metrics.banquetMetric.effectivePrice
+          : categoryMetricsMap[paymentModalSupplier.category_id]?.effectivePrice ||
+            getEffectiveSupplierPrice(paymentModalSupplier);
+
+        const modalPayments = isBanquetModal
+          ? metrics.banquetMetric.payments
+          : payments.filter((p) => p.supplier_id === paymentModalSupplier.id);
+
+        const modalPaidAmount = isBanquetModal
+          ? metrics.banquetMetric.paidAmount
+          : payments
+              .filter((p) => p.supplier_id === paymentModalSupplier.id && isPaymentSettled(p))
+              .reduce((acc, p) => acc + Number(p.amount), 0);
+
+        return (
+          <PaymentFormModal
+            isOpen={isPaymentModalOpen}
+            supplier={paymentModalSupplier}
+            supplierPayments={modalPayments}
+            paymentToEdit={paymentToEdit}
+            contractedTotal={modalContractedTotal}
+            alreadyPaidAmount={modalPaidAmount}
+            onClose={() => {
+              setIsPaymentModalOpen(false);
+              setPaymentModalSupplier(null);
+              setPaymentToEdit(null);
+            }}
+            onSelectPaymentToEdit={(pay) => setPaymentToEdit(pay)}
+            onDeletePayment={async (payId) => {
+              if (window.confirm('¿Eliminar este registro de pago?')) {
+                await deletePayment(payId);
+                if (paymentToEdit?.id === payId) setPaymentToEdit(null);
+                showToast('Pago eliminado');
               }
-              showToast('Pago actualizado con éxito');
-            } else {
-              await createPayment({
-                supplier_id: data.supplier_id,
-                amount: data.amount,
-                due_date: data.due_date,
-                paid_at: data.paid_at,
-                status: data.status,
-                notes: data.notes,
-              });
-              if (data.final_payment_date) {
-                await setSupplierFinalPaymentDate(
-                  data.supplier_id,
-                  data.final_payment_date,
-                  getEffectiveSupplierPrice(paymentModalSupplier)
-                );
+            }}
+            onMarkPaymentPaid={async (payId) => {
+              await markPaymentAsPaid(payId);
+              showToast('¡Pago marcado como abonado!');
+            }}
+            onSetFinalPaymentDate={async (supId, dueDate, total) => {
+              await setSupplierFinalPaymentDate(supId, dueDate, total);
+              showToast(
+                dueDate
+                  ? 'Fecha límite de pago final guardada'
+                  : 'Fecha límite de pago final eliminada'
+              );
+            }}
+            onSubmit={async (data) => {
+              if (data.id) {
+                await updatePayment({
+                  id: data.id,
+                  amount: data.amount,
+                  due_date: data.due_date,
+                  paid_at: data.paid_at,
+                  status: data.status,
+                  notes: data.notes,
+                });
+                if (data.final_payment_date) {
+                  await setSupplierFinalPaymentDate(
+                    data.supplier_id,
+                    data.final_payment_date,
+                    modalContractedTotal
+                  );
+                }
+                showToast('Pago actualizado con éxito');
+              } else {
+                await createPayment({
+                  supplier_id: data.supplier_id,
+                  amount: data.amount,
+                  due_date: data.due_date,
+                  paid_at: data.paid_at,
+                  status: data.status,
+                  notes: data.notes,
+                });
+                if (data.final_payment_date) {
+                  await setSupplierFinalPaymentDate(
+                    data.supplier_id,
+                    data.final_payment_date,
+                    modalContractedTotal
+                  );
+                }
+                showToast('Pago registrado con éxito');
               }
-              showToast('Pago registrado con éxito');
-            }
-          }}
-        />
-      )}
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
