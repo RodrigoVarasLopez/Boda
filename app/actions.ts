@@ -2615,6 +2615,33 @@ export async function getPlatformSaaSDataAction() {
       const coupleNames =
         meta.couple_names || `${row.couple_name_1} & ${row.couple_name_2}`;
 
+      // Resolve Wedding Planners granted access to this wedding (via wedding metadata OR user_metadata.assigned_wedding_ids)
+      const metaPlannerIds: string[] = Array.isArray(meta.assigned_planner_ids)
+        ? meta.assigned_planner_ids
+        : [];
+      const plannersFromUsers = platformUsers.filter(
+        (u) =>
+          u.role === 'wedding_planner' &&
+          (u.assigned_wedding_ids.includes(row.id) ||
+            metaPlannerIds.includes(u.id) ||
+            u.planner_org_id === orgId)
+      );
+      const assignedPlannerIds = Array.from(
+        new Set([...metaPlannerIds, ...plannersFromUsers.map((u) => u.id)])
+      );
+      const assignedPlannerEmails = Array.from(
+        new Set([
+          ...(Array.isArray(meta.assigned_planner_emails) ? meta.assigned_planner_emails : []),
+          ...plannersFromUsers.map((u) => u.email),
+        ])
+      );
+      const sharedPlannerOrgIds = Array.from(
+        new Set([
+          ...(Array.isArray(meta.shared_planner_org_ids) ? meta.shared_planner_org_ids : []),
+          ...plannersFromUsers.map((u) => u.planner_org_id),
+        ])
+      );
+
       return {
         id: row.id,
         slug: row.slug,
@@ -2638,6 +2665,9 @@ export async function getPlatformSaaSDataAction() {
           (row.status === 'published' ? 'confirmed' : ('planning' as WeddingStatus)),
         planner_org_id: orgId,
         planner_name: plannerName,
+        assigned_planner_ids: assignedPlannerIds,
+        assigned_planner_emails: assignedPlannerEmails,
+        shared_planner_org_ids: sharedPlannerOrgIds,
         owner_user_id: row.owner_id || meta.owner_user_id || null,
         owner_email: meta.owner_email || null,
         guest_target_count: Number(meta.guest_target_count || 150),
@@ -3057,6 +3087,120 @@ export async function deletePlatformUserAction(userId: string) {
     return { success: false, error: err?.message };
   }
 }
+
+/**
+ * Grant or Revoke Wedding Planners Access to a B2C (or B2B) Wedding from Admin "Mis Bodas"
+ * Synchronizes both `weddings.iban_details` and `auth.users` (`user_metadata.assigned_wedding_ids`)
+ */
+export async function assignWeddingPlannersToWeddingAction(payload: {
+  weddingId: string;
+  plannerUserIds: string[];
+  primaryPlannerOrgId?: string;
+  primaryPlannerName?: string;
+}) {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase no está configurado' };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+
+    // 1. Fetch the wedding row
+    const { data: weddingRow, error: wedFetchErr } = await adminClient
+      .from('weddings')
+      .select('id, iban_details')
+      .eq('id', payload.weddingId)
+      .single();
+
+    if (wedFetchErr || !weddingRow) {
+      return { success: false, error: wedFetchErr?.message || 'Boda no encontrada' };
+    }
+
+    // 2. Fetch all Auth users so we can sync Wedding Planner accounts
+    const { data: usersData } = await adminClient.auth.admin.listUsers();
+    const allAuthUsers = usersData?.users || [];
+
+    const selectedPlanners = allAuthUsers.filter(
+      (u) => payload.plannerUserIds.includes(u.id)
+    );
+    const assignedEmails = selectedPlanners
+      .map((u) => u.email || '')
+      .filter(Boolean);
+    const sharedOrgIds = Array.from(
+      new Set(
+        selectedPlanners
+          .map((u) => (u.user_metadata || {}).planner_org_id as string)
+          .filter(Boolean)
+      )
+    );
+
+    const prevMeta = weddingRow.iban_details || {};
+    const nextOrgId = payload.primaryPlannerOrgId || prevMeta.planner_org_id || DEFAULT_PLATFORM_ORG_ID;
+    const nextOrgName = payload.primaryPlannerName || prevMeta.planner_name || DEFAULT_PLATFORM_ORG.name;
+
+    // 3. Update wedding metadata in `weddings.iban_details`
+    const { error: wedUpdateErr } = await adminClient
+      .from('weddings')
+      .update({
+        iban_details: {
+          ...prevMeta,
+          planner_org_id: nextOrgId,
+          planner_name: nextOrgName,
+          assigned_planner_ids: payload.plannerUserIds,
+          assigned_planner_emails: assignedEmails,
+          shared_planner_org_ids: sharedOrgIds,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', payload.weddingId);
+
+    if (wedUpdateErr) {
+      return { success: false, error: wedUpdateErr.message };
+    }
+
+    // 4. Sync `assigned_wedding_ids` on all `wedding_planner` users in Supabase Auth
+    const plannerAuthUsers = allAuthUsers.filter((u) => {
+      const meta = u.user_metadata || {};
+      const email = (u.email || '').toLowerCase();
+      return meta.role === 'wedding_planner' || email.includes('planner');
+    });
+
+    for (const wpUser of plannerAuthUsers) {
+      const wpMeta = wpUser.user_metadata || {};
+      const currentAssigned: string[] = Array.isArray(wpMeta.assigned_wedding_ids)
+        ? wpMeta.assigned_wedding_ids
+        : [];
+      const shouldHaveAccess = payload.plannerUserIds.includes(wpUser.id);
+
+      let nextAssigned = currentAssigned;
+      if (shouldHaveAccess && !currentAssigned.includes(payload.weddingId)) {
+        nextAssigned = [...currentAssigned, payload.weddingId];
+      } else if (!shouldHaveAccess && currentAssigned.includes(payload.weddingId)) {
+        nextAssigned = currentAssigned.filter((id) => id !== payload.weddingId);
+      }
+
+      if (
+        nextAssigned.length !== currentAssigned.length ||
+        nextAssigned.some((id, idx) => id !== currentAssigned[idx])
+      ) {
+        await adminClient.auth.admin.updateUserById(wpUser.id, {
+          user_metadata: {
+            ...wpMeta,
+            assigned_wedding_ids: nextAssigned,
+          },
+        });
+      }
+    }
+
+    revalidatePath('/admin/weddings');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error in assignWeddingPlannersToWeddingAction:', err);
+    return { success: false, error: err?.message || 'Error al asignar Wedding Planners' };
+  }
+}
+
 
 
 

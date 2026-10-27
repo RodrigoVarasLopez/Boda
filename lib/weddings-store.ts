@@ -17,6 +17,7 @@ import {
   createPlatformUserAction,
   updatePlatformUserAction,
   deletePlatformUserAction,
+  assignWeddingPlannersToWeddingAction,
 } from '@/app/actions';
 
 export const MAIN_WEDDING_ID = 'a0000000-0000-0000-0000-000000000001';
@@ -296,6 +297,22 @@ export function useWeddingPlanner() {
     [reloadPlatformData]
   );
 
+  const assignPlannersToWedding = useCallback(
+    async (payload: {
+      weddingId: string;
+      plannerUserIds: string[];
+      primaryPlannerOrgId?: string;
+      primaryPlannerName?: string;
+    }) => {
+      const res = await assignWeddingPlannersToWeddingAction(payload);
+      if (res && res.success) {
+        await reloadPlatformData();
+      }
+      return res;
+    },
+    [reloadPlatformData]
+  );
+
   const stats = useMemo(() => {
     const totalWeddings = weddings.length;
     const confirmedWeddings = weddings.filter((w) => w.status === 'confirmed').length;
@@ -331,6 +348,7 @@ export function useWeddingPlanner() {
     createPlatformUser,
     updatePlatformUser,
     deletePlatformUser,
+    assignPlannersToWedding,
     reloadPlatformData,
     stats,
     isLoaded,

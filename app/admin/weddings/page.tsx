@@ -57,6 +57,7 @@ export default function WeddingPlannerPage() {
     createPlatformUser,
     updatePlatformUser,
     deletePlatformUser,
+    assignPlannersToWedding,
     isLoadingSaaS,
   } = useWeddingPlanner();
 
@@ -69,6 +70,123 @@ export default function WeddingPlannerPage() {
   const [activeMainTab, setActiveMainTab] = useState<'planner_area' | 'guest_area' | 'users_roles'>(
     'planner_area'
   );
+
+  // Modal: Dar Acceso a Wedding Planners a una Boda B2C / B2B desde "Mis Bodas"
+  const [accessModalWeddingId, setAccessModalWeddingId] = useState<string | null>(null);
+  const [selectedPlannerUserIds, setSelectedPlannerUserIds] = useState<string[]>([]);
+  const [selectedPrimaryOrgId, setSelectedPrimaryOrgId] = useState<string>(DEFAULT_PLATFORM_ORG_ID);
+  const [savingPlannerAccess, setSavingPlannerAccess] = useState(false);
+
+  // Modal: Gestionar a qué bodas B2C tiene acceso una Wedding Planner concreta (desde Usuarios)
+  const [accessModalPlannerUserId, setAccessModalPlannerUserId] = useState<string | null>(null);
+  const [selectedPlannerWeddingIds, setSelectedPlannerWeddingIds] = useState<string[]>([]);
+  const [savingUserWeddingsAccess, setSavingUserWeddingsAccess] = useState(false);
+
+  // Lista de todos los usuarios con rol Wedding Planner
+  const weddingPlannerUsers = useMemo(
+    () => users.filter((u) => u.role === 'wedding_planner'),
+    [users]
+  );
+
+  const openWeddingPlannerAccessModal = (weddingId: string) => {
+    const targetWedding = weddings.find((w) => w.id === weddingId);
+    if (!targetWedding) return;
+
+    // Determinar qué Wedding Planners tienen ya acceso a esta boda
+    const initialPlannerIds = weddingPlannerUsers
+      .filter(
+        (u) =>
+          targetWedding.assigned_planner_ids?.includes(u.id) ||
+          u.assigned_wedding_ids?.includes(weddingId) ||
+          (targetWedding.planner_org_id &&
+            targetWedding.planner_org_id !== DEFAULT_PLATFORM_ORG_ID &&
+            u.planner_org_id === targetWedding.planner_org_id)
+      )
+      .map((u) => u.id);
+
+    setAccessModalWeddingId(weddingId);
+    setSelectedPlannerUserIds(initialPlannerIds);
+    setSelectedPrimaryOrgId(targetWedding.planner_org_id || DEFAULT_PLATFORM_ORG_ID);
+  };
+
+  const handleSaveWeddingPlannerAccess = async () => {
+    if (!accessModalWeddingId) return;
+    setSavingPlannerAccess(true);
+    try {
+      const orgObj = organizations.find((o) => o.id === selectedPrimaryOrgId);
+      const res = await assignPlannersToWedding({
+        weddingId: accessModalWeddingId,
+        plannerUserIds: selectedPlannerUserIds,
+        primaryPlannerOrgId: selectedPrimaryOrgId,
+        primaryPlannerName:
+          orgObj?.name || 'Administración Oficial · Cartera Directa B2C',
+      });
+      if (res && !res.success) {
+        alert(res.error || 'Error al guardar los permisos de Wedding Planner');
+        return;
+      }
+      setAccessModalWeddingId(null);
+      showToast('Acceso de Wedding Planners actualizado en esta boda');
+    } finally {
+      setSavingPlannerAccess(false);
+    }
+  };
+
+  const openPlannerUserWeddingsModal = (plannerUserId: string) => {
+    const plannerUser = users.find((u) => u.id === plannerUserId);
+    if (!plannerUser) return;
+    const accessibleIds = weddings
+      .filter(
+        (w) =>
+          plannerUser.assigned_wedding_ids?.includes(w.id) ||
+          w.assigned_planner_ids?.includes(plannerUser.id) ||
+          (w.planner_org_id && w.planner_org_id === plannerUser.planner_org_id)
+      )
+      .map((w) => w.id);
+    setAccessModalPlannerUserId(plannerUserId);
+    setSelectedPlannerWeddingIds(accessibleIds);
+  };
+
+  const handleSavePlannerUserWeddingsAccess = async () => {
+    if (!accessModalPlannerUserId) return;
+    const plannerUser = users.find((u) => u.id === accessModalPlannerUserId);
+    if (!plannerUser) return;
+    setSavingUserWeddingsAccess(true);
+    try {
+      // 1. Update user's assigned_wedding_ids
+      await updatePlatformUser({
+        userId: plannerUser.id,
+        role: plannerUser.role,
+        planner_org_id: plannerUser.planner_org_id,
+        planner_org_name:
+          plannerUser.planner_org_name || `${plannerUser.full_name} · Agencia Wedding Planner`,
+        assigned_wedding_ids: selectedPlannerWeddingIds,
+      });
+
+      // 2. Also sync each wedding's assigned_planner_ids in weddings table
+      for (const w of weddings) {
+        const currentIds = w.assigned_planner_ids || [];
+        const hasPlanner = currentIds.includes(plannerUser.id);
+        const shouldHavePlanner = selectedPlannerWeddingIds.includes(w.id);
+        if (shouldHavePlanner && !hasPlanner) {
+          await assignPlannersToWedding({
+            weddingId: w.id,
+            plannerUserIds: Array.from(new Set([...currentIds, plannerUser.id])),
+          });
+        } else if (!shouldHavePlanner && hasPlanner) {
+          await assignPlannersToWedding({
+            weddingId: w.id,
+            plannerUserIds: currentIds.filter((id) => id !== plannerUser.id),
+          });
+        }
+      }
+
+      setAccessModalPlannerUserId(null);
+      showToast(`Bodas B2C/B2B con acceso actualizadas para ${plannerUser.full_name}`);
+    } finally {
+      setSavingUserWeddingsAccess(false);
+    }
+  };
 
   // Create User Modal / Drawer State
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -95,18 +213,28 @@ export default function WeddingPlannerPage() {
     setTimeout(() => setCopiedText(null), 2800);
   };
 
-  // Filtered weddings by selected Planner Organization and status
+  // Filtered weddings by selected Planner Organization (including shared B2C weddings!) and status
   const filteredWeddings = useMemo(() => {
     return weddings.filter((w) => {
-      if (selectedOrgFilter !== 'all' && (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) !== selectedOrgFilter) {
-        return false;
+      if (selectedOrgFilter !== 'all') {
+        const isPrimaryOrg = (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) === selectedOrgFilter;
+        const isSharedWithOrg =
+          w.shared_planner_org_ids?.includes(selectedOrgFilter) ||
+          weddingPlannerUsers.some(
+            (u) =>
+              u.planner_org_id === selectedOrgFilter &&
+              (w.assigned_planner_ids?.includes(u.id) || u.assigned_wedding_ids?.includes(w.id))
+          );
+        if (!isPrimaryOrg && !isSharedWithOrg) {
+          return false;
+        }
       }
       if (statusFilter !== 'all' && w.status !== statusFilter) {
         return false;
       }
       return true;
     });
-  }, [weddings, selectedOrgFilter, statusFilter]);
+  }, [weddings, selectedOrgFilter, statusFilter, weddingPlannerUsers]);
 
   const filteredGuestGroups = useMemo(() => {
     const q = guestSearch.trim().toLowerCase();
@@ -327,9 +455,23 @@ export default function WeddingPlannerPage() {
 
             {/* Tarjetas por cada Wedding Planner / Cartera */}
             {organizations.map((org) => {
-              const orgWeddings = weddings.filter(
+              const orgOwnWeddings = weddings.filter(
                 (w) => (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) === org.id
               );
+              const orgSharedB2CWeddings = !org.is_platform_default
+                ? weddings.filter(
+                    (w) =>
+                      (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) !== org.id &&
+                      (w.shared_planner_org_ids?.includes(org.id) ||
+                        weddingPlannerUsers.some(
+                          (u) =>
+                            u.planner_org_id === org.id &&
+                            (w.assigned_planner_ids?.includes(u.id) ||
+                              u.assigned_wedding_ids?.includes(w.id))
+                        ))
+                  )
+                : [];
+              const totalAccessibleCount = orgOwnWeddings.length + orgSharedB2CWeddings.length;
               const orgUsers = users.filter((u) => u.planner_org_id === org.id);
               const isSelected = selectedOrgFilter === org.id;
 
@@ -365,9 +507,16 @@ export default function WeddingPlannerPage() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs pt-2 border-t border-border-subtle/60">
-                    <span className="font-semibold text-text-primary">
-                      {orgWeddings.length} {orgWeddings.length === 1 ? 'boda' : 'bodas'}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-text-primary">
+                        {totalAccessibleCount} {totalAccessibleCount === 1 ? 'boda' : 'bodas'}
+                      </span>
+                      {orgSharedB2CWeddings.length > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold">
+                          +{orgSharedB2CWeddings.length} B2C con acceso
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-text-muted">
                         {orgUsers.length} {orgUsers.length === 1 ? 'usuario' : 'usuarios'}
@@ -595,12 +744,73 @@ export default function WeddingPlannerPage() {
                     </div>
 
                     {/* Etiqueta de la Wedding Planner propietaria (B2C Admin vs B2B Planner) */}
-                    <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-bg-secondary/70 border border-border-subtle text-text-secondary truncate flex items-center gap-1.5">
-                      <Briefcase className="w-3 h-3 text-primary shrink-0" />
-                      <span className="truncate">
-                        {w.planner_name || 'Administración Oficial · Cartera Directa B2C'}
-                      </span>
+                    <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-bg-secondary/70 border border-border-subtle text-text-secondary truncate flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Briefcase className="w-3 h-3 text-primary shrink-0" />
+                        <span className="truncate">
+                          {w.planner_name || 'Administración Oficial · Cartera Directa B2C'}
+                        </span>
+                      </div>
+                      {(w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) === DEFAULT_PLATFORM_ORG_ID && (
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold shrink-0">
+                          B2C
+                        </span>
+                      )}
                     </div>
+
+                    {/* Panel de Wedding Planners con Acceso a esta Boda B2C / B2B */}
+                    {(() => {
+                      const plannersWithAccess = weddingPlannerUsers.filter(
+                        (u) =>
+                          w.assigned_planner_ids?.includes(u.id) ||
+                          u.assigned_wedding_ids?.includes(w.id) ||
+                          (w.planner_org_id &&
+                            w.planner_org_id !== DEFAULT_PLATFORM_ORG_ID &&
+                            u.planner_org_id === w.planner_org_id)
+                      );
+
+                      return (
+                        <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-emerald-900 flex items-center gap-1">
+                              <KeyRound className="w-3 h-3 text-emerald-700 shrink-0" />
+                              <span>
+                                Wedding Planners con acceso ({plannersWithAccess.length})
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => openWeddingPlannerAccessModal(w.id)}
+                              className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+                            >
+                              <UserPlus className="w-3 h-3" />
+                              <span>Dar Acceso Planner</span>
+                            </button>
+                          </div>
+
+                          {plannersWithAccess.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {plannersWithAccess.map((wp) => (
+                                <span
+                                  key={wp.id}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-emerald-300 text-[10px] font-semibold text-emerald-900"
+                                >
+                                  <span>💼 {wp.full_name}</span>
+                                  <span className="text-emerald-700/80 font-normal">
+                                    ({wp.email})
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-emerald-800/80">
+                              Solo gestionada por Administración B2C y la pareja. Pulsa{' '}
+                              <strong>«Dar Acceso Planner»</strong> para habilitar a un Wedding Planner en esta boda.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div>
                       <h3 className="font-serif text-2xl font-bold text-text-primary tracking-tight">
@@ -1111,14 +1321,37 @@ export default function WeddingPlannerPage() {
                               Todas las bodas ({weddings.length})
                             </span>
                           ) : u.role === 'wedding_planner' ? (
-                            <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full">
-                              Cartera propia (
-                              {
-                                weddings.filter((w) => w.planner_org_id === u.planner_org_id)
-                                  .length
-                              }{' '}
-                              bodas)
-                            </span>
+                            <div className="flex flex-col items-start gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                                  Cartera propia:{' '}
+                                  {
+                                    weddings.filter((w) => w.planner_org_id === u.planner_org_id)
+                                      .length
+                                  }
+                                </span>
+                                <span className="text-[11px] font-semibold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                                  Bodas B2C con acceso:{' '}
+                                  {
+                                    weddings.filter(
+                                      (w) =>
+                                        (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) !==
+                                          u.planner_org_id &&
+                                        (u.assigned_wedding_ids?.includes(w.id) ||
+                                          w.assigned_planner_ids?.includes(u.id))
+                                    ).length
+                                  }
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openPlannerUserWeddingsModal(u.id)}
+                                className="py-1 px-2.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <KeyRound className="w-3 h-3" />
+                                <span>Dar / Gestionar acceso a bodas B2C</span>
+                              </button>
+                            </div>
                           ) : (
                             <select
                               value={u.assigned_wedding_ids[0] || MAIN_WEDDING_ID}
@@ -1190,6 +1423,275 @@ export default function WeddingPlannerPage() {
           onClose={() => setShowCreateWeddingModal(false)}
         />
       )}
+
+      {/* =====================================================================
+          MODAL 3: DAR ACCESO A WEDDING PLANNERS A UNA BODA (B2C / B2B) DESDE MIS BODAS
+      ===================================================================== */}
+      {accessModalWeddingId && (() => {
+        const targetWedding = weddings.find((w) => w.id === accessModalWeddingId);
+        if (!targetWedding) return null;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-bg-card border border-border-strong rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-card space-y-5 relative max-h-[92vh] overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setAccessModalWeddingId(null)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900">
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Permisos de Wedding Planner en Boda B2C / B2B</span>
+                </div>
+                <h2 className="font-serif text-2xl font-bold text-text-primary">
+                  Dar Acceso a Wedding Planners: {targetWedding.couple_names}
+                </h2>
+                <p className="text-xs text-text-muted">
+                  Selecciona qué <strong>Wedding Planners</strong> pueden ver y gestionar esta boda (invitados, presupuesto, RSVP, web y Save the Date) desde su panel.
+                </p>
+              </div>
+
+              {/* Selección de Wedding Planners con acceso */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-text-primary">
+                    1. Wedding Planners con acceso a {targetWedding.couple_names}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccessModalWeddingId(null);
+                      setNewUserRole('wedding_planner');
+                      setShowCreateUserModal(true);
+                    }}
+                    className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    + Crear nuevo Wedding Planner →
+                  </button>
+                </div>
+
+                {weddingPlannerUsers.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-bg-secondary/50 border border-border-subtle text-xs text-text-muted text-center">
+                    No hay usuarios con rol Wedding Planner todavía. Crea uno con el botón superior.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {weddingPlannerUsers.map((wp) => {
+                      const isChecked = selectedPlannerUserIds.includes(wp.id);
+                      return (
+                        <label
+                          key={wp.id}
+                          className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-emerald-50/80 border-emerald-400 shadow-2xs'
+                              : 'bg-bg-secondary/30 border-border-subtle hover:border-border-strong'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                              <span>💼 {wp.full_name}</span>
+                              {isChecked && (
+                                <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-700 text-white">
+                                  Con acceso
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-text-muted truncate">{wp.email}</div>
+                            {wp.planner_org_name && (
+                              <div className="text-[10px] text-emerald-800 font-medium mt-0.5 truncate">
+                                Cartera: {wp.planner_org_name}
+                              </div>
+                            )}
+                          </div>
+
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPlannerUserIds((prev) =>
+                                  Array.from(new Set([...prev, wp.id]))
+                                );
+                              } else {
+                                setSelectedPlannerUserIds((prev) =>
+                                  prev.filter((id) => id !== wp.id)
+                                );
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-border-strong text-emerald-700 cursor-pointer shrink-0"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cartera Principal de la Boda (Mantener en B2C Admin o mover a Cartera B2B) */}
+              <div className="p-4 rounded-2xl bg-bg-secondary/40 border border-border-subtle space-y-2">
+                <label className="text-xs font-bold text-text-primary block">
+                  2. Cartera Matriz Propietaria de la Boda
+                </label>
+                <p className="text-[11px] text-text-muted">
+                  Puedes mantener la boda en tu <strong>Cartera Oficial de Administración (B2C)</strong> compartiendo el acceso con las Wedding Planners marcadas arriba, o transferir la titularidad de la cartera.
+                </p>
+                <select
+                  value={selectedPrimaryOrgId}
+                  onChange={(e) => setSelectedPrimaryOrgId(e.target.value)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-bg-card border border-border-subtle text-xs font-semibold text-text-primary"
+                >
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.is_platform_default
+                        ? `👑 ${org.name} (Boda B2C del Admin)`
+                        : `💼 ${org.name} (Cartera B2B)`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setAccessModalWeddingId(null)}
+                  className="py-2.5 px-4 rounded-xl border border-border-subtle text-text-secondary text-xs font-medium cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPlannerAccess}
+                  onClick={handleSaveWeddingPlannerAccess}
+                  className="py-2.5 px-5 rounded-xl bg-primary text-primary-text text-xs font-semibold hover:bg-primary-hover shadow-soft cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {savingPlannerAccess ? 'Guardando accesos...' : 'Guardar Acceso de Wedding Planners'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* =====================================================================
+          MODAL 4: SELECCIONAR A QUÉ BODAS B2C / B2B TIENE ACCESO UN WEDDING PLANNER
+      ===================================================================== */}
+      {accessModalPlannerUserId && (() => {
+        const plannerUser = users.find((u) => u.id === accessModalPlannerUserId);
+        if (!plannerUser) return null;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-bg-card border border-border-strong rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-card space-y-5 relative max-h-[92vh] overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setAccessModalPlannerUserId(null)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Asignación de Bodas B2C y B2B</span>
+                </div>
+                <h2 className="font-serif text-2xl font-bold text-text-primary">
+                  Bodas con Acceso para {plannerUser.full_name}
+                </h2>
+                <p className="text-xs text-text-muted">
+                  Marca las bodas de <strong>Clientes Directos (B2C)</strong> o de otras carteras a las que quieres dar acceso a <strong>{plannerUser.email}</strong>.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {weddings.map((w) => {
+                  const isB2C =
+                    (w.planner_org_id || DEFAULT_PLATFORM_ORG_ID) === DEFAULT_PLATFORM_ORG_ID;
+                  const isChecked = selectedPlannerWeddingIds.includes(w.id);
+
+                  return (
+                    <label
+                      key={w.id}
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                        isChecked
+                          ? 'bg-emerald-50/80 border-emerald-400 shadow-2xs'
+                          : 'bg-bg-secondary/30 border-border-subtle hover:border-border-strong'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-text-primary">
+                            💍 {w.couple_names}
+                          </span>
+                          <span
+                            className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded-full font-bold ${
+                              isB2C
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-emerald-100 text-emerald-900'
+                            }`}
+                          >
+                            {isB2C ? '👑 Boda B2C (Admin)' : '💼 Boda B2B'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-text-muted mt-0.5 truncate">
+                          {formatDate(w.wedding_date)} · {w.location_summary}
+                        </div>
+                      </div>
+
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPlannerWeddingIds((prev) =>
+                              Array.from(new Set([...prev, w.id]))
+                            );
+                          } else {
+                            setSelectedPlannerWeddingIds((prev) =>
+                              prev.filter((id) => id !== w.id)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-border-strong text-emerald-700 cursor-pointer shrink-0"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setAccessModalPlannerUserId(null)}
+                  className="py-2.5 px-4 rounded-xl border border-border-subtle text-text-secondary text-xs font-medium cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={savingUserWeddingsAccess}
+                  onClick={handleSavePlannerUserWeddingsAccess}
+                  className="py-2.5 px-5 rounded-xl bg-primary text-primary-text text-xs font-semibold hover:bg-primary-hover shadow-soft cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {savingUserWeddingsAccess
+                      ? 'Guardando...'
+                      : 'Guardar Bodas Asignadas'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* =====================================================================
           MODAL 2: CREAR USUARIO (ADMINISTRACIÓN / WEDDING PLANNER / BÁSICO)

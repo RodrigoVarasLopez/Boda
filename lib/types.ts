@@ -78,6 +78,9 @@ export interface Wedding {
   status?: WeddingStatus;
   planner_org_id?: string;
   planner_name?: string;
+  assigned_planner_ids?: string[];
+  assigned_planner_emails?: string[];
+  shared_planner_org_ids?: string[];
   owner_user_id?: string | null;
   owner_email?: string | null;
   guest_target_count?: number;
