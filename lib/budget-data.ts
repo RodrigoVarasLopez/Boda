@@ -19,7 +19,8 @@ export const WEDDING_UUID = 'a0000000-0000-0000-0000-000000000001';
 export const WEDDING_ID = WEDDING_UUID;
 
 export const BANQUET_CATEGORY_ID = 'c0000000-0000-0000-0000-000000000012';
-export const BANQUET_SUPPLIER_ID = 's0000000-0000-0000-0000-000000000015';
+export const BANQUET_SUPPLIER_ID = 'd0000000-0000-0000-0000-000000000015';
+export const LEGACY_BANQUET_SUPPLIER_ID = 's0000000-0000-0000-0000-000000000015';
 
 export const DEFAULT_BANQUET_SUPPLIER: BudgetSupplier = {
   id: BANQUET_SUPPLIER_ID,
@@ -189,7 +190,7 @@ export const INITIAL_BUDGET_CATEGORIES: BudgetCategory[] = [
 
 // Default Menu Configuration
 export const DEFAULT_MENU_CONFIG: BudgetMenuConfig = {
-  id: 'm0000000-0000-0000-0000-000000000001',
+  id: 'f0000000-0000-0000-0000-000000000001',
   wedding_id: WEDDING_UUID,
   adult_price: 145.0,
   child_price: 75.0,
@@ -761,7 +762,9 @@ export function calculateBudgetMetrics(
     const banquetPayments = payments
       .filter(
         (p) =>
-          p.supplier_id === banquetSupWithPrice.id || p.supplier_id === BANQUET_SUPPLIER_ID
+          p.supplier_id === banquetSupWithPrice.id ||
+          p.supplier_id === BANQUET_SUPPLIER_ID ||
+          p.supplier_id === LEGACY_BANQUET_SUPPLIER_ID
       )
       .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
 

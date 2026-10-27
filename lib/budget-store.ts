@@ -29,6 +29,8 @@ import {
   STORAGE_KEY_BUDGET_PAYMENTS,
   STORAGE_KEY_BUDGET_MENU,
   WEDDING_ID,
+  BANQUET_SUPPLIER_ID,
+  LEGACY_BANQUET_SUPPLIER_ID,
 } from './budget-data';
 import { useWeddingData } from './guest-store';
 import {
@@ -248,7 +250,7 @@ export function useBudgetStore() {
     const newSupplierId =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
-        : `s0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+        : `d0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const isSelected = Boolean(data.is_selected);
 
     // If marked selected, unselect others in same category
@@ -415,15 +417,17 @@ export function useBudgetStore() {
     status?: 'pending' | 'partial' | 'paid';
     notes?: string | null;
   }) => {
+    const normalizedSupplierId =
+      data.supplier_id === LEGACY_BANQUET_SUPPLIER_ID ? BANQUET_SUPPLIER_ID : data.supplier_id;
     const currentPayments = getStoredBudgetPayments();
     const newPaymentId =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
-        : `p0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
+        : `e0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const paymentStatus = data.status || 'paid';
     const newPayment: BudgetPayment = {
       id: newPaymentId,
-      supplier_id: data.supplier_id,
+      supplier_id: normalizedSupplierId,
       wedding_id: WEDDING_ID,
       amount: Number(data.amount),
       due_date: data.due_date || null,
@@ -444,14 +448,20 @@ export function useBudgetStore() {
     try {
       const res = await createPaymentAction({
         ...data,
+        supplier_id: normalizedSupplierId,
         id: newPaymentId,
         status: paymentStatus,
         paid_at: newPayment.paid_at,
       });
-      if (res && res.id && res.id !== newPaymentId) {
-        newPayment.id = res.id;
+      if (res && res.success) {
+        const finalId = res.id || newPaymentId;
+        const finalSupId = (res as any).supplier_id || normalizedSupplierId;
+        newPayment.id = finalId;
+        newPayment.supplier_id = finalSupId;
         setStoredBudgetPayments(
-          getStoredBudgetPayments().map((p) => (p.id === newPaymentId ? { ...p, id: res.id } : p))
+          getStoredBudgetPayments().map((p) =>
+            p.id === newPaymentId ? { ...p, id: finalId, supplier_id: finalSupId } : p
+          )
         );
       }
     } catch (e) {

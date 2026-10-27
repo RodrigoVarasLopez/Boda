@@ -1849,7 +1849,13 @@ export async function deleteSupplierAction(supplierId: string) {
  */
 export async function createPaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentCreateSchema.parse(rawInput);
-  const newId = validated.id || crypto.randomUUID();
+  const newId = validated.id && UUID_REGEX.test(validated.id) ? validated.id : crypto.randomUUID();
+  if (
+    validated.supplier_id === 's0000000-0000-0000-0000-000000000015' ||
+    !UUID_REGEX.test(validated.supplier_id)
+  ) {
+    validated.supplier_id = BANQUET_SUPPLIER_ID;
+  }
 
   if (isSupabaseConfigured()) {
     try {
@@ -1958,7 +1964,7 @@ export async function createPaymentAction(rawInput: unknown) {
   ]);
 
   revalidatePath('/admin/budget');
-  return { success: true, id: newId };
+  return { success: true, id: newId, supplier_id: validated.supplier_id };
 }
 
 /**
