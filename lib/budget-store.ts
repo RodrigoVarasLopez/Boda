@@ -468,21 +468,28 @@ export function useBudgetStore() {
       console.warn('Backend payment create notice:', e);
     }
 
-    // If this payment was settled ('paid' or 'partial'), auto-adjust any existing scheduled 'Pago final' pending payment
+    // If this payment was settled ('paid' or 'partial') and there is a single generic 'Pago final' remainder, auto-adjust it
     if (isPaymentSettled(newPayment)) {
-      const sup = getStoredBudgetSuppliers().find((s) => s.id === data.supplier_id);
+      const sup = getStoredBudgetSuppliers().find((s) => s.id === normalizedSupplierId);
       if (sup) {
         const effPrice = getEffectiveSupplierPrice(sup);
-        const allSupPayments = getStoredBudgetPayments().filter((p) => p.supplier_id === data.supplier_id);
+        const allSupPayments = getStoredBudgetPayments().filter(
+          (p) => p.supplier_id === normalizedSupplierId
+        );
         const totalSettled = allSupPayments
           .filter((p) => isPaymentSettled(p))
           .reduce((sum, p) => sum + Number(p.amount), 0);
         const remaining = Math.max(0, effPrice - totalSettled);
 
-        const scheduledFinal = allSupPayments.find(
+        const pendingList = allSupPayments.filter(
           (p) => p.status === 'pending' && p.id !== newPayment.id
         );
-        if (scheduledFinal) {
+        // Only auto-adjust if there is exactly ONE generic 'Pago final' item (never overwrite multi-date schedules!)
+        if (
+          pendingList.length === 1 &&
+          (pendingList[0].notes || '').trim().toLowerCase() === 'pago final'
+        ) {
+          const scheduledFinal = pendingList[0];
           if (remaining <= 0) {
             await deletePayment(scheduledFinal.id);
           } else if (Math.abs(scheduledFinal.amount - remaining) > 0.01) {

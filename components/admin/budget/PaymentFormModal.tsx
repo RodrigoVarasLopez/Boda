@@ -72,7 +72,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const [notes, setNotes] = useState('');
   const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [loading, setLoading] = useState(false);
-  const [savingFinalDate, setSavingFinalDate] = useState(false);
+
+  // Multi-date installment scheduler state (allows adding multiple payment dates per supplier)
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleAmount, setScheduleAmount] = useState('');
+  const [scheduleNotes, setScheduleNotes] = useState('');
+  const [addingSchedule, setAddingSchedule] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -80,7 +85,20 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
   const finalInfo = supplier
     ? getSupplierFinalPaymentInfo(supplier.id, supplierPayments)
-    : { scheduledPayment: null, dueDate: null, daysUntilDue: null };
+    : { scheduledPayment: null, scheduledPayments: [], dueDate: null, daysUntilDue: null };
+
+  const scheduledPaymentsList = supplierPayments
+    .filter((p) => !isPaymentSettled(p))
+    .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'));
+
+  const totalScheduledAmount = scheduledPaymentsList.reduce(
+    (sum, p) => sum + Number(p.amount || 0),
+    0
+  );
+  const unscheduledRemaining = Math.max(
+    0,
+    contractedTotal - alreadyPaidAmount - totalScheduledAmount
+  );
 
   useEffect(() => {
     if (!isOpen || !supplier) return;
@@ -100,9 +118,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       setNotes('');
     }
 
-    const currentFinalInfo = getSupplierFinalPaymentInfo(supplier.id, supplierPayments);
-    setFinalPaymentDate(currentFinalInfo.dueDate || '');
-  }, [paymentToEdit, isOpen, supplier?.id]);
+    setFinalPaymentDate('');
+  }, [paymentToEdit, isOpen, supplier]);
 
   if (!isOpen || !mounted || !supplier) return null;
 
@@ -123,41 +140,67 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const handleQuickPercent = (pct: number) => {
     const val = (contractedTotal * pct) / 100;
     setAmount(val.toFixed(2));
-    setStatus('partial');
-    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
-    if (!notes) setNotes(`Señal / Pago parcial (${pct}%)`);
+    if (status !== 'pending') {
+      setStatus('partial');
+      if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+      if (!notes) setNotes(`Señal / Pago parcial (${pct}%)`);
+    } else {
+      if (!notes) setNotes(`Plazo programado (${pct}%)`);
+    }
   };
 
   const handleQuickRemaining = () => {
     setAmount(remainingTotal.toFixed(2));
-    setStatus('paid');
-    if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
-    if (!notes) setNotes(currentPaid > 0 ? 'Liquidación / Pago final' : 'Pago completo');
-  };
-
-  const handleSaveFinalDateOnly = async () => {
-    if (!onSetFinalPaymentDate) return;
-    setSavingFinalDate(true);
-    try {
-      await onSetFinalPaymentDate(supplier.id, finalPaymentDate || null, contractedTotal);
-    } finally {
-      setSavingFinalDate(false);
+    if (status !== 'pending') {
+      setStatus('paid');
+      if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
+      if (!notes) setNotes(currentPaid > 0 ? 'Liquidación / Pago final' : 'Pago completo');
+    } else {
+      if (!notes) setNotes('Liquidación / Pago final');
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Add a new scheduled payment date (plazo) and KEEP modal open so user can add multiple dates!
+  const handleAddScheduledInstallment = async () => {
+    if (!scheduleDate) return;
+    const parsedSchedAmount =
+      parseFloat(scheduleAmount) > 0
+        ? parseFloat(scheduleAmount)
+        : unscheduledRemaining > 0
+        ? unscheduledRemaining
+        : remainingTotal > 0
+        ? remainingTotal
+        : 1;
+
+    setAddingSchedule(true);
+    try {
+      const nextIndex = scheduledPaymentsList.length + 1;
+      await onSubmit({
+        supplier_id: supplier.id,
+        amount: parsedSchedAmount,
+        due_date: scheduleDate,
+        paid_at: null,
+        status: 'pending',
+        notes:
+          scheduleNotes.trim() ||
+          `${nextIndex}º Plazo programado (${formatDateES(scheduleDate)})`,
+        final_payment_date: null,
+      });
+      setScheduleDate('');
+      setScheduleAmount('');
+      setScheduleNotes('');
+    } finally {
+      setAddingSchedule(false);
+    }
+  };
+
+  const submitForm = async (closeAfterSave: boolean) => {
     const parsedAmount = parseFloat(amount);
 
-    // If user didn't enter a new payment amount, but changed/entered finalPaymentDate, save the final payment date!
-    if ((isNaN(parsedAmount) || parsedAmount <= 0) && finalPaymentDate && onSetFinalPaymentDate) {
-      setLoading(true);
-      try {
-        await onSetFinalPaymentDate(supplier.id, finalPaymentDate, contractedTotal);
-        onClose();
-      } finally {
-        setLoading(false);
-      }
+    // If user didn't enter an amount in bottom form, but filled the top scheduleDate, add the scheduled date!
+    if ((isNaN(parsedAmount) || parsedAmount <= 0) && scheduleDate) {
+      await handleAddScheduledInstallment();
+      if (closeAfterSave) onClose();
       return;
     }
 
@@ -181,14 +224,20 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           (status === 'partial'
             ? 'Señal / Pago parcial'
             : status === 'pending'
-            ? 'Pago final'
+            ? `Plazo de pago${dueDate ? ` (${formatDateES(dueDate)})` : ''}`
             : 'Pago registrado'),
-        final_payment_date:
-          status !== 'pending' && remainingAfterThisPayment > 0 && finalPaymentDate
-            ? finalPaymentDate
-            : null,
+        final_payment_date: null,
       });
-      onClose();
+
+      if (closeAfterSave) {
+        onClose();
+      } else {
+        if (onSelectPaymentToEdit) onSelectPaymentToEdit(null);
+        setAmount('');
+        setDueDate('');
+        setNotes('');
+        setFinalPaymentDate('');
+      }
     } catch (err) {
       console.error('Error submitting payment:', err);
     } finally {
@@ -196,7 +245,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
     }
   };
 
-  const daysUntilFinal = calculateDaysUntil(finalPaymentDate || finalInfo.dueDate);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitForm(true);
+  };
+
+  const daysUntilFinal = calculateDaysUntil(finalInfo.dueDate);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -278,57 +332,216 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             )}
           </div>
 
-          {/* 2. Dedicated Final Payment Date & Warning Box */}
-          {contractedTotal - alreadyPaidAmount > 0 && (
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                  <Bell className="w-4 h-4 text-amber-600" />
-                  <span>Fecha límite del Pago Final (Aviso automático)</span>
-                </div>
-                {daysUntilFinal !== null && (
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      daysUntilFinal < 0
-                        ? 'bg-rose-100 text-rose-800 border-rose-300'
-                        : daysUntilFinal <= 30
-                        ? 'bg-amber-200/80 text-amber-900 border-amber-400'
-                        : 'bg-white text-amber-800 border-amber-200'
-                    }`}
-                  >
-                    {daysUntilFinal < 0
-                      ? `Vencido hace ${Math.abs(daysUntilFinal)} días`
-                      : daysUntilFinal === 0
-                      ? '¡Vence hoy!'
-                      : `Faltan ${daysUntilFinal} días`}
-                  </span>
-                )}
+          {/* 2. Multi-Date Payment Schedule (Plan de Pagos por Plazos / Varias Fechas) */}
+          <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                <Bell className="w-4 h-4 text-amber-600" />
+                <span>
+                  Calendario de Fechas de Pago / Plazos ({scheduledPaymentsList.length}{' '}
+                  {scheduledPaymentsList.length === 1 ? 'fecha programada' : 'fechas programadas'})
+                </span>
               </div>
-              <p className="text-[11px] text-amber-800/90 leading-relaxed">
-                Indica cuándo hay que abonar el resto pendiente (
-                <strong>{formatCurrency(Math.max(0, contractedTotal - alreadyPaidAmount))}</strong>) para que el panel te avise con antelación.
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={finalPaymentDate}
-                  onChange={(e) => setFinalPaymentDate(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-amber-300 bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
-                />
-                {onSetFinalPaymentDate && finalPaymentDate !== (finalInfo.dueDate || '') && (
-                  <button
-                    type="button"
-                    onClick={handleSaveFinalDateOnly}
-                    disabled={savingFinalDate}
-                    className="px-3 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{savingFinalDate ? 'Guardando...' : 'Fijar fecha'}</span>
-                  </button>
-                )}
+              {daysUntilFinal !== null && (
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    daysUntilFinal < 0
+                      ? 'bg-rose-100 text-rose-800 border-rose-300'
+                      : daysUntilFinal <= 30
+                      ? 'bg-amber-200/80 text-amber-900 border-amber-400'
+                      : 'bg-white text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {daysUntilFinal < 0
+                    ? `Próximo vencido hace ${Math.abs(daysUntilFinal)} días`
+                    : daysUntilFinal === 0
+                    ? '¡Próximo pago vence hoy!'
+                    : `Próximo pago en ${daysUntilFinal} días`}
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-amber-900/85 leading-relaxed">
+              Puedes añadir <strong>todas las fechas de pago</strong> que tenga este proveedor (ej. 1ª señal, 2º pago del 50%, liquidación final). El panel te avisará automáticamente de cada fecha.
+            </p>
+
+            {/* List of Scheduled Payment Dates (Plazos Pendientes) */}
+            {scheduledPaymentsList.length > 0 && (
+              <div className="space-y-1.5">
+                {scheduledPaymentsList.map((sched, idx) => {
+                  const dUntil = calculateDaysUntil(sched.due_date);
+                  return (
+                    <div
+                      key={sched.id}
+                      className="p-2.5 rounded-xl bg-white border border-amber-200 flex items-center justify-between gap-2 text-xs shadow-2xs"
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                            {idx + 1}º Vencimiento
+                          </span>
+                          <span className="font-bold text-text-primary truncate">
+                            {sched.notes || `Plazo #${idx + 1}`}
+                          </span>
+                          <span className="font-mono font-bold text-amber-900">
+                            {formatCurrency(Number(sched.amount))}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-amber-800 font-medium flex items-center gap-2">
+                          <span>
+                            📅 Fecha: <strong>{formatDateES(sched.due_date)}</strong>
+                          </span>
+                          {dUntil !== null && (
+                            <span className="text-[10px] text-text-muted">
+                              ({dUntil < 0 ? `Vencido hace ${Math.abs(dUntil)}d` : dUntil === 0 ? '¡Hoy!' : `en ${dUntil} días`})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {onMarkPaymentPaid && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkPaymentPaid(sched.id)}
+                            title="Marcar este plazo como pagado hoy"
+                            className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Pagado</span>
+                          </button>
+                        )}
+                        {onSelectPaymentToEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onSelectPaymentToEdit(sched)}
+                            title="Editar fecha o importe de este plazo"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-amber-50 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDeletePayment && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePayment(sched.id)}
+                            title="Eliminar esta fecha de pago"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Fast Inline Builder: Add Another Payment Date / Installment */}
+            <div className="p-3 rounded-xl bg-white/90 border border-amber-300/80 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Añadir nueva fecha de pago / plazo al calendario:</span>
+                </span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[
+                    { label: '25%', pct: 25, text: 'Plazo 25%' },
+                    { label: '30%', pct: 30, text: 'Plazo 30%' },
+                    { label: '50%', pct: 50, text: '2º Pago (50%)' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        if (contractedTotal > 0) {
+                          setScheduleAmount(((contractedTotal * preset.pct) / 100).toFixed(2));
+                        }
+                        if (!scheduleNotes) setScheduleNotes(preset.text);
+                      }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  {unscheduledRemaining > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduleAmount(unscheduledRemaining.toFixed(2));
+                        if (!scheduleNotes) setScheduleNotes('Pago final / Liquidación');
+                      }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary font-semibold cursor-pointer"
+                    >
+                      Resto ({formatCurrency(unscheduledRemaining)})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                <div className="sm:col-span-4 space-y-1">
+                  <label className="text-[10px] font-semibold text-text-secondary block">
+                    Fecha de pago *
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-text-primary focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-3 space-y-1">
+                  <label className="text-[10px] font-semibold text-text-secondary block">
+                    Importe (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder={
+                      unscheduledRemaining > 0 ? unscheduledRemaining.toFixed(0) : 'Importe'
+                    }
+                    value={scheduleAmount}
+                    onChange={(e) => setScheduleAmount(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg border border-amber-300 bg-white text-text-primary focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-5 space-y-1">
+                  <label className="text-[10px] font-semibold text-text-secondary block">
+                    Concepto (ej. 2º Pago, Pago final...)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 2º Pago Banquete (50%)"
+                    value={scheduleNotes}
+                    onChange={(e) => setScheduleNotes(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-text-primary focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] text-text-muted">
+                  Puedes añadir tantas fechas como necesites sin cerrar la ventana.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAddScheduledInstallment}
+                  disabled={!scheduleDate || addingSchedule}
+                  className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 disabled:opacity-40 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>
+                    {addingSchedule ? 'Añadiendo fecha...' : '+ Añadir Fecha de Pago'}
+                  </span>
+                </button>
               </div>
             </div>
-          )}
+          </div>
 
           {/* 3. Existing Payments List for this Supplier */}
           {supplierPayments.length > 0 && (
@@ -607,7 +820,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             </div>
 
             {/* Actions */}
-            <div className="pt-3 flex items-center justify-end gap-3 border-t border-border-subtle">
+            <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-border-subtle flex-wrap">
               <button
                 type="button"
                 onClick={onClose}
@@ -616,9 +829,20 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
               >
                 Cerrar
               </button>
+              {!paymentToEdit && (
+                <button
+                  type="button"
+                  onClick={() => submitForm(false)}
+                  disabled={loading || (!amount && !scheduleDate)}
+                  className="px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Guardar y Añadir Otro</span>
+                </button>
+              )}
               <button
                 type="submit"
-                disabled={loading || (!amount && !finalPaymentDate)}
+                disabled={loading || (!amount && !scheduleDate)}
                 className="px-5 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover text-xs font-semibold transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 <CreditCard className="w-4 h-4" />
@@ -626,10 +850,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   {loading
                     ? 'Guardando...'
                     : paymentToEdit
-                    ? 'Actualizar Pago'
-                    : amount
-                    ? 'Guardar Pago'
-                    : 'Guardar Fecha de Pago Final'}
+                    ? 'Actualizar Pago / Fecha'
+                    : 'Guardar y Cerrar'}
                 </span>
               </button>
             </div>

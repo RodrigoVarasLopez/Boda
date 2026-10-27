@@ -411,43 +411,44 @@ export function formatDateES(dateStr?: string | null): string {
 }
 
 /**
- * Finds the scheduled final payment or latest due_date for a supplier
+ * Finds the next upcoming scheduled payment (or all scheduled payments sorted chronologically) for a supplier
  */
 export function getSupplierFinalPaymentInfo(
   supplierId: string,
   payments: BudgetPayment[]
 ): {
   scheduledPayment: BudgetPayment | null;
+  scheduledPayments: BudgetPayment[];
   dueDate: string | null;
   daysUntilDue: number | null;
 } {
   const supPayments = payments.filter((p) => p.supplier_id === supplierId);
-  // Look first for pending payments with a due_date (or notes mentioning Pago final)
+  // Look first for pending payments with a due_date sorted chronologically (earliest upcoming date first!)
   const pendingWithDue = supPayments
     .filter((p) => p.status === 'pending' && p.due_date)
-    .sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''));
+    .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
 
   if (pendingWithDue.length > 0) {
-    const finalCandidate =
-      pendingWithDue.find((p) => p.notes?.toLowerCase().includes('pago final')) ||
-      pendingWithDue[0];
-    const dueDate = finalCandidate.due_date ? finalCandidate.due_date.split('T')[0] : null;
+    const nextCandidate = pendingWithDue[0];
+    const dueDate = nextCandidate.due_date ? nextCandidate.due_date.split('T')[0] : null;
     return {
-      scheduledPayment: finalCandidate,
+      scheduledPayment: nextCandidate,
+      scheduledPayments: pendingWithDue,
       dueDate,
       daysUntilDue: calculateDaysUntil(dueDate),
     };
   }
 
-  // Fallback: check if any payment (even partial) recorded a due_date in the future for final payment
+  // Fallback: check if any payment (even partial) recorded a due_date in the future
   const anyWithDue = supPayments
     .filter((p) => p.due_date)
-    .sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''));
+    .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
 
   if (anyWithDue.length > 0) {
     const dueDate = anyWithDue[0].due_date ? anyWithDue[0].due_date.split('T')[0] : null;
     return {
       scheduledPayment: anyWithDue[0].status === 'pending' ? anyWithDue[0] : null,
+      scheduledPayments: anyWithDue.filter((p) => p.status === 'pending'),
       dueDate,
       daysUntilDue: calculateDaysUntil(dueDate),
     };
@@ -455,6 +456,7 @@ export function getSupplierFinalPaymentInfo(
 
   return {
     scheduledPayment: null,
+    scheduledPayments: [],
     dueDate: null,
     daysUntilDue: null,
   };
@@ -603,69 +605,89 @@ export function calculateBudgetMetrics(
       paymentStatus = 'pending';
     }
 
-    // Check Final Payment Due Date for active supplier
+    // Check Scheduled Payment Dates for active supplier (supports MULTIPLE payment dates per supplier)
     const finalPaymentInfo = selectedSupplier
       ? getSupplierFinalPaymentInfo(selectedSupplier.id, payments)
-      : { scheduledPayment: null, dueDate: null, daysUntilDue: null };
+      : { scheduledPayment: null, scheduledPayments: [], dueDate: null, daysUntilDue: null };
 
     const finalPaymentDueDate = pendingAmount > 0 ? finalPaymentInfo.dueDate : null;
     const daysUntilFinalPayment = pendingAmount > 0 ? finalPaymentInfo.daysUntilDue : null;
 
     if (selectedSupplier && pendingAmount > 0) {
-      let urgency: UpcomingFinalPaymentItem['urgency'] = 'unscheduled';
-      if (daysUntilFinalPayment !== null) {
-        if (daysUntilFinalPayment < 0) {
-          urgency = 'overdue';
-          alerts.unshift({
-            type: 'error',
-            message: `¡PAGO VENCIDO! El pago final de ${selectedSupplier.name} (${cat.name}) por ${formatCurrency(pendingAmount)} venció el ${formatDateES(finalPaymentDueDate)} (hace ${Math.abs(daysUntilFinalPayment)} días).`,
-            categoryId: cat.id,
-            supplierId: selectedSupplier.id,
-            dueDate: finalPaymentDueDate,
-          });
-        } else if (daysUntilFinalPayment === 0) {
-          urgency = 'overdue';
-          alerts.unshift({
-            type: 'error',
-            message: `¡VENCE HOY! Hoy es la fecha límite del pago final a ${selectedSupplier.name} (${cat.name}): ${formatCurrency(pendingAmount)}.`,
-            categoryId: cat.id,
-            supplierId: selectedSupplier.id,
-            dueDate: finalPaymentDueDate,
-          });
-        } else if (daysUntilFinalPayment <= 30) {
-          urgency = 'urgent';
-          alerts.unshift({
-            type: 'warning',
-            message: `Pago final próximo (en ${daysUntilFinalPayment} días): ${selectedSupplier.name} (${cat.name}) — Pendiente ${formatCurrency(pendingAmount)} (Límite: ${formatDateES(finalPaymentDueDate)}).`,
-            categoryId: cat.id,
-            supplierId: selectedSupplier.id,
-            dueDate: finalPaymentDueDate,
-          });
-        } else if (daysUntilFinalPayment <= 60) {
-          urgency = 'upcoming';
-          alerts.push({
-            type: 'info',
-            message: `Recordatorio de pago final (en ${daysUntilFinalPayment} días): ${selectedSupplier.name} (${cat.name}) — ${formatCurrency(pendingAmount)} el ${formatDateES(finalPaymentDueDate)}.`,
-            categoryId: cat.id,
-            supplierId: selectedSupplier.id,
-            dueDate: finalPaymentDueDate,
-          });
-        } else {
-          urgency = 'scheduled';
-        }
-      }
+      if (finalPaymentInfo.scheduledPayments.length > 0) {
+        // Add an upcoming payment card and alert for EVERY scheduled payment date of this supplier
+        for (const schedPay of finalPaymentInfo.scheduledPayments) {
+          const schedDate = schedPay.due_date ? schedPay.due_date.split('T')[0] : null;
+          const schedDays = calculateDaysUntil(schedDate);
+          const schedAmount = Number(schedPay.amount) > 0 ? Number(schedPay.amount) : pendingAmount;
+          const label = schedPay.notes || 'Plazo de pago';
 
-      upcomingFinalPayments.push({
-        category: cat,
-        supplier: selectedSupplier,
-        effectivePrice,
-        paidAmount,
-        pendingAmount,
-        dueDate: finalPaymentDueDate,
-        daysUntilDue: daysUntilFinalPayment,
-        urgency,
-        scheduledPayment: finalPaymentInfo.scheduledPayment,
-      });
+          let urgency: UpcomingFinalPaymentItem['urgency'] = 'scheduled';
+          if (schedDays !== null) {
+            if (schedDays < 0) {
+              urgency = 'overdue';
+              alerts.unshift({
+                type: 'error',
+                message: `¡PAGO VENCIDO! "${label}" de ${selectedSupplier.name} (${cat.name}) por ${formatCurrency(schedAmount)} venció el ${formatDateES(schedDate)} (hace ${Math.abs(schedDays)} días).`,
+                categoryId: cat.id,
+                supplierId: selectedSupplier.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays === 0) {
+              urgency = 'overdue';
+              alerts.unshift({
+                type: 'error',
+                message: `¡VENCE HOY! Hoy vence "${label}" de ${selectedSupplier.name} (${cat.name}): ${formatCurrency(schedAmount)}.`,
+                categoryId: cat.id,
+                supplierId: selectedSupplier.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays <= 30) {
+              urgency = 'urgent';
+              alerts.unshift({
+                type: 'warning',
+                message: `Próximo vencimiento (en ${schedDays} días): "${label}" de ${selectedSupplier.name} (${cat.name}) — ${formatCurrency(schedAmount)} (${formatDateES(schedDate)}).`,
+                categoryId: cat.id,
+                supplierId: selectedSupplier.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays <= 60) {
+              urgency = 'upcoming';
+              alerts.push({
+                type: 'info',
+                message: `Recordatorio de pago (en ${schedDays} días): "${label}" de ${selectedSupplier.name} (${cat.name}) — ${formatCurrency(schedAmount)} el ${formatDateES(schedDate)}.`,
+                categoryId: cat.id,
+                supplierId: selectedSupplier.id,
+                dueDate: schedDate,
+              });
+            }
+          }
+
+          upcomingFinalPayments.push({
+            category: cat,
+            supplier: selectedSupplier,
+            effectivePrice,
+            paidAmount,
+            pendingAmount: schedAmount,
+            dueDate: schedDate,
+            daysUntilDue: schedDays,
+            urgency,
+            scheduledPayment: schedPay,
+          });
+        }
+      } else {
+        upcomingFinalPayments.push({
+          category: cat,
+          supplier: selectedSupplier,
+          effectivePrice,
+          paidAmount,
+          pendingAmount,
+          dueDate: null,
+          daysUntilDue: null,
+          urgency: 'unscheduled',
+          scheduledPayment: null,
+        });
+      }
     }
 
     // Alerts generation for missing suppliers or price overruns
@@ -785,70 +807,91 @@ export function calculateBudgetMetrics(
     const finalDueDate = banquetPending > 0 ? finalInfo.dueDate : null;
     const daysUntilDue = banquetPending > 0 ? finalInfo.daysUntilDue : null;
 
-    if (banquetPending > 0 && (finalDueDate || banquetPaid > 0)) {
-      let urgency: UpcomingFinalPaymentItem['urgency'] = 'unscheduled';
-      if (daysUntilDue !== null) {
-        if (daysUntilDue < 0) {
-          urgency = 'overdue';
-          alerts.unshift({
-            type: 'error',
-            message: `¡PAGO VENCIDO! El pago final de ${banquetSupWithPrice.name} (Banquete) por ${formatCurrency(banquetPending)} venció el ${formatDateES(finalDueDate)} (hace ${Math.abs(daysUntilDue)} días).`,
-            categoryId: BANQUET_CATEGORY_ID,
-            supplierId: banquetSupWithPrice.id,
-            dueDate: finalDueDate,
-          });
-        } else if (daysUntilDue === 0) {
-          urgency = 'overdue';
-          alerts.unshift({
-            type: 'error',
-            message: `¡VENCE HOY! Hoy es la fecha límite del pago final a ${banquetSupWithPrice.name} (Banquete): ${formatCurrency(banquetPending)}.`,
-            categoryId: BANQUET_CATEGORY_ID,
-            supplierId: banquetSupWithPrice.id,
-            dueDate: finalDueDate,
-          });
-        } else if (daysUntilDue <= 30) {
-          urgency = 'urgent';
-          alerts.unshift({
-            type: 'warning',
-            message: `Pago final próximo (en ${daysUntilDue} días): ${banquetSupWithPrice.name} (Banquete) — Pendiente ${formatCurrency(banquetPending)} (Límite: ${formatDateES(finalDueDate)}).`,
-            categoryId: BANQUET_CATEGORY_ID,
-            supplierId: banquetSupWithPrice.id,
-            dueDate: finalDueDate,
-          });
-        } else if (daysUntilDue <= 60) {
-          urgency = 'upcoming';
-          alerts.push({
-            type: 'info',
-            message: `Recordatorio de pago final (en ${daysUntilDue} días): ${banquetSupWithPrice.name} (Banquete) — ${formatCurrency(banquetPending)} el ${formatDateES(finalDueDate)}.`,
-            categoryId: BANQUET_CATEGORY_ID,
-            supplierId: banquetSupWithPrice.id,
-            dueDate: finalDueDate,
-          });
-        } else {
-          urgency = 'scheduled';
-        }
-      }
+    const banquetCatObj: BudgetCategory = {
+      id: BANQUET_CATEGORY_ID,
+      wedding_id: WEDDING_UUID,
+      name: 'Banquete & Catering',
+      description: 'Banquete nupcial y gastos asociados',
+      budget_type: 'per_guest',
+      icon: 'UtensilsCrossed',
+      sort_order: 12,
+      is_active: false,
+    };
 
-      upcomingFinalPayments.push({
-        category: {
-          id: BANQUET_CATEGORY_ID,
-          wedding_id: WEDDING_UUID,
-          name: 'Banquete & Catering',
-          description: 'Banquete nupcial y gastos asociados',
-          budget_type: 'per_guest',
-          icon: 'UtensilsCrossed',
-          sort_order: 12,
-          is_active: false,
-        },
-        supplier: banquetSupWithPrice,
-        effectivePrice: banquetEffective,
-        paidAmount: banquetPaid,
-        pendingAmount: banquetPending,
-        dueDate: finalDueDate,
-        daysUntilDue,
-        urgency,
-        scheduledPayment: finalInfo.scheduledPayment,
-      });
+    if (banquetPending > 0) {
+      if (finalInfo.scheduledPayments.length > 0) {
+        for (const schedPay of finalInfo.scheduledPayments) {
+          const schedDate = schedPay.due_date ? schedPay.due_date.split('T')[0] : null;
+          const schedDays = calculateDaysUntil(schedDate);
+          const schedAmount = Number(schedPay.amount) > 0 ? Number(schedPay.amount) : banquetPending;
+          const label = schedPay.notes || 'Plazo de pago Banquete';
+
+          let urgency: UpcomingFinalPaymentItem['urgency'] = 'scheduled';
+          if (schedDays !== null) {
+            if (schedDays < 0) {
+              urgency = 'overdue';
+              alerts.unshift({
+                type: 'error',
+                message: `¡PAGO VENCIDO! "${label}" de ${banquetSupWithPrice.name} (Banquete) por ${formatCurrency(schedAmount)} venció el ${formatDateES(schedDate)} (hace ${Math.abs(schedDays)} días).`,
+                categoryId: BANQUET_CATEGORY_ID,
+                supplierId: banquetSupWithPrice.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays === 0) {
+              urgency = 'overdue';
+              alerts.unshift({
+                type: 'error',
+                message: `¡VENCE HOY! Hoy vence "${label}" de ${banquetSupWithPrice.name} (Banquete): ${formatCurrency(schedAmount)}.`,
+                categoryId: BANQUET_CATEGORY_ID,
+                supplierId: banquetSupWithPrice.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays <= 30) {
+              urgency = 'urgent';
+              alerts.unshift({
+                type: 'warning',
+                message: `Próximo vencimiento (en ${schedDays} días): "${label}" de ${banquetSupWithPrice.name} (Banquete) — ${formatCurrency(schedAmount)} (${formatDateES(schedDate)}).`,
+                categoryId: BANQUET_CATEGORY_ID,
+                supplierId: banquetSupWithPrice.id,
+                dueDate: schedDate,
+              });
+            } else if (schedDays <= 60) {
+              urgency = 'upcoming';
+              alerts.push({
+                type: 'info',
+                message: `Recordatorio de pago (en ${schedDays} días): "${label}" de ${banquetSupWithPrice.name} (Banquete) — ${formatCurrency(schedAmount)} el ${formatDateES(schedDate)}.`,
+                categoryId: BANQUET_CATEGORY_ID,
+                supplierId: banquetSupWithPrice.id,
+                dueDate: schedDate,
+              });
+            }
+          }
+
+          upcomingFinalPayments.push({
+            category: banquetCatObj,
+            supplier: banquetSupWithPrice,
+            effectivePrice: banquetEffective,
+            paidAmount: banquetPaid,
+            pendingAmount: schedAmount,
+            dueDate: schedDate,
+            daysUntilDue: schedDays,
+            urgency,
+            scheduledPayment: schedPay,
+          });
+        }
+      } else if (banquetPaid > 0) {
+        upcomingFinalPayments.push({
+          category: banquetCatObj,
+          supplier: banquetSupWithPrice,
+          effectivePrice: banquetEffective,
+          paidAmount: banquetPaid,
+          pendingAmount: banquetPending,
+          dueDate: null,
+          daysUntilDue: null,
+          urgency: 'unscheduled',
+          scheduledPayment: null,
+        });
+      }
     }
 
     banquetMetric = {

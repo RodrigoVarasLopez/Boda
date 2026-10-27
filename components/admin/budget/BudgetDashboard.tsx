@@ -190,12 +190,12 @@ export const BudgetDashboard: React.FC<BudgetDashboardProps> = ({
           {/* Scheduled Final Payments Grid */}
           {scheduledItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {scheduledItems.map((item) => {
+              {scheduledItems.map((item, idx) => {
                 const isOverdue = item.urgency === 'overdue';
                 const isUrgent = item.urgency === 'urgent';
                 return (
                   <div
-                    key={item.supplier.id}
+                    key={item.scheduledPayment?.id || `${item.supplier.id}-${item.dueDate}-${idx}`}
                     className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
                       isOverdue
                         ? 'bg-rose-50/60 border-rose-300'
@@ -213,6 +213,11 @@ export const BudgetDashboard: React.FC<BudgetDashboardProps> = ({
                           <h4 className="text-sm font-bold text-text-primary">
                             {item.supplier.name}
                           </h4>
+                          {item.scheduledPayment?.notes && (
+                            <span className="text-[11px] font-semibold text-amber-800 block mt-0.5">
+                              📌 {item.scheduledPayment.notes}
+                            </span>
+                          )}
                         </div>
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
@@ -233,7 +238,7 @@ export const BudgetDashboard: React.FC<BudgetDashboardProps> = ({
 
                       <div className="flex items-baseline justify-between pt-1">
                         <span className="text-xs text-text-secondary">
-                          Fecha límite:{' '}
+                          Fecha de pago:{' '}
                           <strong className="text-text-primary">
                             {formatDateES(item.dueDate)}
                           </strong>

@@ -117,7 +117,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     effectivePrice > 0 ? Math.min(100, Math.round((paidAmount / effectivePrice) * 100)) : 0;
 
   const settledPayments = categoryPayments.filter((p) => isPaymentSettled(p));
-  const pendingScheduledPayments = categoryPayments.filter((p) => !isPaymentSettled(p));
+  const pendingScheduledPayments = categoryPayments
+    .filter((p) => !isPaymentSettled(p))
+    .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31'));
 
   // Star rating renderer
   const renderStars = (rating?: number | null) => {
@@ -277,7 +279,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                           <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
                         )}
                         <span className="truncate font-medium">
-                          Pago final: <strong>{formatDateES(finalPaymentDueDate)}</strong>
+                          {pendingScheduledPayments.length > 1 ? 'Próximo pago:' : 'Fecha pago:'}{' '}
+                          <strong>{formatDateES(finalPaymentDueDate)}</strong>
+                          {pendingScheduledPayments.length > 1 && (
+                            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-200/70 text-amber-950 text-[9px] font-bold">
+                              +{pendingScheduledPayments.length - 1} más
+                            </span>
+                          )}
                         </span>
                       </div>
                       <span className="font-bold shrink-0">
@@ -297,7 +305,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                       className="w-full py-1.5 px-2.5 rounded-lg border border-dashed border-amber-400/80 bg-amber-50/40 hover:bg-amber-50 text-amber-900 text-[10px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Bell className="w-3 h-3 text-amber-600" />
-                      <span>+ Fijar fecha límite de pago final</span>
+                      <span>+ Añadir fechas de pago / plazos</span>
                     </button>
                   )}
                 </div>
@@ -353,8 +361,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                         <span className="font-mono font-semibold text-amber-900">
                           {formatCurrency(Number(pay.amount))}
                         </span>
+                        {pay.due_date && (
+                          <span className="font-semibold text-amber-950 shrink-0">
+                            ({formatDateES(pay.due_date)})
+                          </span>
+                        )}
                         <span className="text-amber-800 truncate">
-                          · {pay.notes || 'Pendiente'}
+                          · {pay.notes || 'Plazo programado'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
@@ -377,6 +390,16 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                         >
                           <Edit2 className="w-2.5 h-2.5" />
                         </button>
+                        {onDeletePayment && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePayment(pay.id)}
+                            title="Eliminar plazo programado"
+                            className="text-text-muted hover:text-rose-600 p-0.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
