@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ShareButton } from './ShareButton';
+import { useSaveTheDateConfig } from '@/lib/save-the-date-store';
 
 function downloadAllDayIcs() {
   const icsLines = [
@@ -49,6 +50,11 @@ const GOOGLE_CALENDAR_ALL_DAY_URL =
   encodeURIComponent('Villamuriel de Cerrato, Palencia, España');
 
 export function FinalSection() {
+  const { config } = useSaveTheDateConfig();
+  const finalPortrait = config.images?.final_portrait || '/save-the-date/final-portrait.jpg';
+  const finalWide = config.images?.final_wide || '/save-the-date/final-wide.jpg';
+  const [name1, name2] = (config.couple_names || 'Rodrigo & Stephanie').split('&').map((s) => s.trim());
+
   const sectionRef = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [calendarAdded, setCalendarAdded] = useState(false);
@@ -108,8 +114,8 @@ export function FinalSection() {
           <div className="lg:col-span-6 space-y-6">
             <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#292825] shadow-2xl">
               <Image
-                src="/save-the-date/final-portrait.jpg"
-                alt="Retrato de Rodrigo y Stephanie sonriendo juntos bajo la luz dorada del atardecer"
+                src={finalPortrait}
+                alt={`Retrato de ${config.couple_names}`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className={`object-cover object-[50%_24%] transition-transform duration-[2600ms] ease-out ${
@@ -121,8 +127,8 @@ export function FinalSection() {
             {/* Secondary Cinematic Wide Frame on Desktop */}
             <div className="hidden sm:block relative aspect-[16/10] w-full overflow-hidden bg-[#292825] shadow-xl">
               <Image
-                src="/save-the-date/final-wide.jpg"
-                alt="Rodrigo y Stephanie besándose en el barco frente al mar"
+                src={finalWide}
+                alt={`${config.couple_names} celebrando`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className={`object-cover object-[50%_38%] transition-transform duration-[2800ms] delay-200 ease-out ${
@@ -141,11 +147,11 @@ export function FinalSection() {
 
             {/* RODRIGO & STEPHANIE */}
             <h2 className="font-serif uppercase font-normal text-4xl xs:text-5xl sm:text-6xl lg:text-[4.25rem] tracking-[0.14em] text-[#FAF8F5] leading-[1.06]">
-              <span className="block">Rodrigo</span>
+              <span className="block">{name1 || 'Rodrigo'}</span>
               <span className="block font-serif italic font-light text-2xl sm:text-3xl text-[#E6DDCF] my-1.5 tracking-normal">
                 &amp;
               </span>
-              <span className="block">Stephanie</span>
+              <span className="block">{name2 || 'Stephanie'}</span>
             </h2>
 
             {/* Hairline */}
@@ -156,12 +162,12 @@ export function FinalSection() {
 
             {/* 28 · 08 · 2027 */}
             <p className="font-serif text-2xl sm:text-3xl tracking-[0.28em] text-[#FAF8F5] font-light">
-              28 · 08 · 2027
+              {config.wedding_date_display || '28 · 08 · 2027'}
             </p>
 
             {/* VILLAMURIEL DE CERRATO · PALENCIA */}
             <p className="mt-2.5 text-xs sm:text-sm uppercase tracking-[0.32em] text-[#E6DDCF]/85 font-sans font-light">
-              Villamuriel de Cerrato · Palencia
+              {config.wedding_location || 'Villamuriel de Cerrato · Palencia'}
             </p>
 
             {/* Narrative Closing */}
@@ -225,10 +231,10 @@ export function FinalSection() {
         {/* Minimalist Colophon Footer */}
         <footer className="mt-24 sm:mt-32 pt-8 border-t border-[#FAF8F5]/15 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="font-serif text-sm tracking-[0.28em] uppercase text-[#E6DDCF]/80">
-            Rodrigo &amp; Stephanie
+            {config.couple_names || 'Rodrigo & Stephanie'}
           </p>
           <p className="text-[10px] uppercase tracking-[0.32em] text-[#E6DDCF]/60 font-sans">
-            28 · 08 · 2027 · Villamuriel de Cerrato, Palencia
+            {config.wedding_date_display || '28 · 08 · 2027'} · {config.wedding_location || 'Villamuriel de Cerrato, Palencia'}
           </p>
         </footer>
       </div>

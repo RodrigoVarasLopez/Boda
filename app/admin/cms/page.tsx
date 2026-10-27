@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCMSData } from '@/lib/cms-store';
 import { useWeddingData } from '@/lib/guest-store';
 import { CMSBlock } from '@/lib/types';
+import { SaveTheDateCMSEditor } from '@/components/admin/SaveTheDateCMSEditor';
 import {
   FileText,
   Eye,
@@ -103,6 +104,7 @@ export default function AdminCMSPage() {
 
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>('block-hero');
   const [savedToast, setSavedToast] = useState(false);
+  const [cmsTab, setCmsTab] = useState<'invitation' | 'save-the-date'>('invitation');
 
   const sampleToken = groups[0]?.token || 'token-familia-varas-lopez-ange-1';
 
@@ -249,38 +251,95 @@ export default function AdminCMSPage() {
         </div>
       )}
 
-      {/* Save the Date Direct Access Banner */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-bg-card to-amber-100/30 dark:from-amber-950/20 dark:via-bg-card dark:to-amber-900/10 border border-amber-200/70 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-soft">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-              <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              Landing Especial
+      {/* Two CMS Modules Selector Tabs */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-2 rounded-3xl bg-bg-card border border-border-subtle shadow-card">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCmsTab('invitation')}
+            className={`py-3 px-5 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-2.5 transition-all cursor-pointer ${
+              cmsTab === 'invitation'
+                ? 'bg-primary text-primary-text shadow-soft'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>1. La Invitación Web</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
+                cmsTab === 'invitation' ? 'bg-white/20 text-primary-text' : 'bg-bg-secondary text-text-muted'
+              }`}
+            >
+              9 Bloques
             </span>
-            <span className="text-xs font-mono text-text-muted">Ruta: /save-the-date</span>
-          </div>
-          <h2 className="font-serif font-bold text-text-primary text-base sm:text-lg">
-            Save the Date Interactivo de Rodrigo &amp; Stephanie
-          </h2>
-          <p className="text-xs text-text-secondary">
-            Página de anuncio y reserva de fecha con cuenta atrás a tiempo real, sincronización con calendario de los invitados, audio ambiental y localización.
-          </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCmsTab('save-the-date')}
+            className={`py-3 px-5 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-2.5 transition-all cursor-pointer ${
+              cmsTab === 'save-the-date'
+                ? 'bg-amber-600 text-white shadow-soft'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>2. El Save the Date</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
+                cmsTab === 'save-the-date'
+                  ? 'bg-white/25 text-white'
+                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+              }`}
+            >
+              Fotos &amp; WhatsApp
+            </span>
+          </button>
         </div>
-        <Link
-          href="/save-the-date"
-          target="_blank"
-          className="shrink-0 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-soft transition-colors"
-        >
-          <span>Abrir Save the Date</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </Link>
+
+        <div className="text-[11px] text-text-muted px-3 text-right hidden lg:block">
+          {cmsTab === 'invitation'
+            ? 'Gestionando la invitación digital completa con RSVP y programa'
+            : 'Gestionando las fotos del Save the Date y texto predefinido para WhatsApp'}
+        </div>
       </div>
 
-      {/* Sections Accordion List */}
-      <div className="space-y-4">
-        {sortedBlocks.map((block, index) => {
-          const isExpanded = expandedBlockId === block.id;
-          const meta = BLOCK_TYPE_LABELS[block.type] || {
+      {/* RENDER VIEW ACCORDING TO ACTIVE TAB */}
+      {cmsTab === 'save-the-date' ? (
+        <SaveTheDateCMSEditor />
+      ) : (
+        <>
+          {/* Save the Date Notice Card inside Invitation tab */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-bg-card to-amber-100/30 dark:from-amber-950/20 dark:via-bg-card dark:to-amber-900/10 border border-amber-200/70 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-soft">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                  <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  Experiencia Previa
+                </span>
+                <span className="text-xs font-mono text-text-muted">Save the Date</span>
+              </div>
+              <h2 className="font-serif font-bold text-text-primary text-base sm:text-lg">
+                ¿Quieres personalizar las fotos del Save the Date o el texto de WhatsApp?
+              </h2>
+              <p className="text-xs text-text-secondary">
+                Haz clic en la pestaña superior &ldquo;2. El Save the Date&rdquo; para cambiar cualquiera de sus 11 fotografías y configurar el mensaje prediseñado para compartir por WhatsApp.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCmsTab('save-the-date')}
+              className="shrink-0 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-soft transition-colors cursor-pointer"
+            >
+              <span>Ir a Editor Save the Date →</span>
+            </button>
+          </div>
+
+          {/* Sections Accordion List */}
+          <div className="space-y-4">
+            {sortedBlocks.map((block, index) => {
+              const isExpanded = expandedBlockId === block.id;
+              const meta = BLOCK_TYPE_LABELS[block.type] || {
             label: block.title,
             badge: block.type,
             description: 'Sección personalizable de la invitación',
@@ -1605,6 +1664,8 @@ export default function AdminCMSPage() {
           );
         })}
       </div>
+      </>
+      )}
     </div>
   );
 }

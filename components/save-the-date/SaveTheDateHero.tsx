@@ -2,13 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useSaveTheDateConfig } from '@/lib/save-the-date-store';
 
 interface SaveTheDateHeroProps {
   onDiscoverClick?: () => void;
 }
 
 export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
+  const { config } = useSaveTheDateConfig();
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const heroMobile = config.images?.hero_mobile || '/save-the-date/hero-mobile.jpg';
+  const heroDesktop = config.images?.hero_desktop || '/save-the-date/hero-desktop.jpg';
+  const [name1, name2] = (config.couple_names || 'Rodrigo & Stephanie').split('&').map((s) => s.trim());
 
   useEffect(() => {
     const timer = requestAnimationFrame(() => {
@@ -39,8 +45,8 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
         {/* Mobile & Portrait Tablet Photograph */}
         <div className="block lg:hidden relative w-full h-full">
           <Image
-            src="/save-the-date/hero-mobile.jpg"
-            alt="Rodrigo y Stephanie sonriendo juntos en cubierta durante su compromiso al atardecer"
+            src={heroMobile}
+            alt={`${config.couple_names} en cubierta durante su compromiso al atardecer`}
             fill
             priority
             sizes="100vw"
@@ -54,8 +60,8 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
         {/* Desktop & Wide Viewport Photograph */}
         <div className="hidden lg:block relative w-full h-full">
           <Image
-            src="/save-the-date/hero-desktop.jpg"
-            alt="Rodrigo y Stephanie al atardecer frente al mar"
+            src={heroDesktop}
+            alt={`${config.couple_names} al atardecer frente al mar`}
             fill
             priority
             sizes="100vw"
@@ -92,7 +98,7 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
           className="hidden sm:inline-block h-[1px] flex-1 max-w-[120px] mx-6 bg-[#FAF8F5]/25"
         />
         <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.32em] text-[#FAF8F5]/85 font-sans font-light">
-          28 · 08 · 2027
+          {config.wedding_date_display || '28 · 08 · 2027'}
         </span>
       </header>
 
@@ -117,13 +123,13 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
           }`}
         >
           <span className="block text-[2.5rem] xs:text-[2.85rem] sm:text-6xl md:text-7xl lg:text-[5.25rem]">
-            Rodrigo
+            {name1 || 'Rodrigo'}
           </span>
           <span className="block font-serif italic font-light text-2xl sm:text-3xl md:text-4xl text-[#E6DDCF] my-1 sm:my-1.5 tracking-normal">
             &amp;
           </span>
           <span className="block text-[2.5rem] xs:text-[2.85rem] sm:text-6xl md:text-7xl lg:text-[5.25rem]">
-            Stephanie
+            {name2 || 'Stephanie'}
           </span>
         </h1>
 
@@ -141,7 +147,7 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
             isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          28 · 08 · 2027
+          {config.wedding_date_display || '28 · 08 · 2027'}
         </p>
 
         {/* Step 4: VILLAMURIEL DE CERRATO · PALENCIA */}
@@ -150,7 +156,7 @@ export function SaveTheDateHero({ onDiscoverClick }: SaveTheDateHeroProps) {
             isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          Villamuriel de Cerrato · Palencia
+          {config.wedding_location || 'Villamuriel de Cerrato · Palencia'}
         </p>
 
         {/* Step 5: CTA DESCUBRIR → */}

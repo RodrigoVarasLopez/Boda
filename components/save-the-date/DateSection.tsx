@@ -4,8 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { AugustCalendar } from './AugustCalendar';
 import { Countdown } from './Countdown';
+import { useSaveTheDateConfig } from '@/lib/save-the-date-store';
 
 export function DateSection() {
+  const { config } = useSaveTheDateConfig();
+  const dateHorizon = config.images?.date_horizon || '/save-the-date/date-horizon.jpg';
   const sectionRef = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -118,8 +121,8 @@ export function DateSection() {
           }`}
         >
           <Image
-            src="/save-the-date/date-horizon.jpg"
-            alt="Rodrigo y Stephanie contemplando el horizonte juntos"
+            src={dateHorizon}
+            alt={`${config.couple_names} contemplando el horizonte juntos`}
             fill
             sizes="(max-width: 1024px) 100vw, 1152px"
             className="object-cover object-[50%_46%]"

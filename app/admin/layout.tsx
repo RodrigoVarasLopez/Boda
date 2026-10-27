@@ -18,14 +18,18 @@ import {
   UserCheck,
   Receipt,
   LogOut,
-  Sparkles
+  Sparkles,
+  Briefcase
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
+import { WeddingSwitcher } from '@/components/admin/WeddingSwitcher';
+import { useWeddingPlanner } from '@/lib/weddings-store';
 import { INITIAL_WEDDING } from '@/lib/mock-data';
 import { useWeddingData } from '@/lib/guest-store';
 import { createClient } from '@/lib/supabase/client';
 
 const NAV_ITEMS = [
+  { href: '/admin/weddings', label: 'Mis Bodas (Planner)', icon: Briefcase },
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
   { href: '/admin/guests', label: 'Invitados', icon: Users },
@@ -43,6 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const { groups } = useWeddingData();
+  const { activeWedding } = useWeddingPlanner();
 
   React.useEffect(() => {
     if (pathname === '/admin/login') return;
@@ -100,12 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <span className="font-serif text-xl sm:text-2xl font-normal text-text-primary tracking-tight">
-              {INITIAL_WEDDING.couple_names}
-            </span>
-            <span className="hidden sm:inline text-[10px] font-mono tracking-widest uppercase text-text-accent px-2 py-0.5 rounded-md bg-bg-secondary border border-border-subtle">
-              Admin OS
-            </span>
+            <WeddingSwitcher />
           </div>
         </div>
 
@@ -172,7 +172,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <Link
-            href={`/w/${INITIAL_WEDDING.slug}`}
+            href={`/w/${activeWedding.slug}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-primary text-primary-text text-xs font-medium hover:bg-primary-hover shadow-soft transition-colors"
             title="Abrir web pública de boda"

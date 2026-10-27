@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useSaveTheDateConfig } from '@/lib/save-the-date-store';
 
 function useRevealOnScroll<T extends HTMLElement>(threshold = 0.18) {
   const ref = useRef<T | null>(null);
@@ -34,6 +35,15 @@ function useRevealOnScroll<T extends HTMLElement>(threshold = 0.18) {
 }
 
 export function StorySection() {
+  const { config } = useSaveTheDateConfig();
+  const images = config.images;
+  const s1Portrait = images?.story_1_portrait || '/save-the-date/story-1-portrait.jpg';
+  const s1Wide = images?.story_1_wide || '/save-the-date/story-1-wide.jpg';
+  const s2Detail = images?.story_2_detail || '/save-the-date/story-2-detail.jpg';
+  const s2Portrait = images?.story_2_portrait || '/save-the-date/story-2-portrait.jpg';
+  const s3Portrait = images?.story_3_portrait || '/save-the-date/story-3-portrait.jpg';
+  const s3Candid = images?.story_3_candid || '/save-the-date/story-3-candid.jpg';
+
   const beat1 = useRevealOnScroll<HTMLDivElement>(0.15);
   const beat2 = useRevealOnScroll<HTMLDivElement>(0.15);
   const beat3 = useRevealOnScroll<HTMLDivElement>(0.15);
@@ -66,8 +76,8 @@ export function StorySection() {
           <div className="lg:col-span-6 relative">
             <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#EFE8DB] shadow-editorial">
               <Image
-                src="/save-the-date/story-1-portrait.jpg"
-                alt="Rodrigo mirando a Stephanie con cariño en la proa del barco"
+                src={s1Portrait}
+                alt={`${config.couple_names} en la proa`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className={`object-cover object-[50%_28%] transition-transform duration-[2200ms] ease-out ${
@@ -91,8 +101,8 @@ export function StorySection() {
 
             <div className="relative aspect-[3/2] w-full lg:w-[92%] lg:ml-auto overflow-hidden bg-[#EFE8DB] shadow-soft">
               <Image
-                src="/save-the-date/story-1-wide.jpg"
-                alt="Rodrigo y Stephanie riendo juntos y mirándose con complicidad"
+                src={s1Wide}
+                alt={`${config.couple_names} riendo juntos con complicidad`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 45vw"
                 className={`object-cover object-[50%_35%] transition-transform duration-[2400ms] delay-150 ease-out ${
@@ -124,8 +134,8 @@ export function StorySection() {
 
             <div className="relative aspect-[4/5] w-4/5 sm:w-3/4 mx-auto lg:mx-0 overflow-hidden bg-[#EFE8DB] shadow-soft">
               <Image
-                src="/save-the-date/story-2-detail.jpg"
-                alt="Detalle de las manos de Rodrigo y Stephanie con el anillo de compromiso frente al mar"
+                src={s2Detail}
+                alt={`Detalle y compromiso de ${config.couple_names}`}
                 fill
                 sizes="(max-width: 1024px) 75vw, 35vw"
                 className={`object-cover object-center transition-transform duration-[2400ms] delay-150 ease-out ${
@@ -139,8 +149,8 @@ export function StorySection() {
           <div className="lg:col-span-7 order-1 lg:order-2">
             <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden bg-[#EFE8DB] shadow-editorial">
               <Image
-                src="/save-the-date/story-2-portrait.jpg"
-                alt="Rodrigo y Stephanie besándose al atardecer con dos copas de champán"
+                src={s2Portrait}
+                alt={`${config.couple_names} al atardecer`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 58vw"
                 className={`object-cover object-[50%_32%] transition-transform duration-[2200ms] ease-out ${
@@ -162,8 +172,8 @@ export function StorySection() {
             <div className="lg:col-span-7">
               <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full overflow-hidden bg-[#EFE8DB] shadow-editorial">
                 <Image
-                  src="/save-the-date/story-3-portrait.jpg"
-                  alt="Rodrigo y Stephanie brindando con champán durante la hora dorada"
+                  src={s3Portrait}
+                  alt={`${config.couple_names} durante la hora dorada`}
                   fill
                   sizes="(max-width: 1024px) 100vw, 58vw"
                   className={`object-cover object-[50%_26%] transition-transform duration-[2200ms] ease-out ${
@@ -176,8 +186,8 @@ export function StorySection() {
             <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left space-y-8 lg:space-y-10 lg:pl-4">
               <div className="hidden lg:block relative aspect-[4/5] w-3/4 overflow-hidden bg-[#EFE8DB] shadow-soft">
                 <Image
-                  src="/save-the-date/story-3-candid.jpg"
-                  alt="Rodrigo y Stephanie sirviendo champán juntos con una sonrisa"
+                  src={s3Candid}
+                  alt={`${config.couple_names} juntos con una sonrisa`}
                   fill
                   sizes="30vw"
                   className={`object-cover object-[50%_30%] transition-transform duration-[2400ms] delay-150 ease-out ${
@@ -195,7 +205,7 @@ export function StorySection() {
                   Y ahora queremos celebrarlo contigo.
                 </p>
                 <p className="mt-5 text-[11px] uppercase tracking-[0.34em] text-[#7E7971] font-sans">
-                  Rodrigo &amp; Stephanie
+                  {config.couple_names || 'Rodrigo & Stephanie'}
                 </p>
               </div>
             </div>

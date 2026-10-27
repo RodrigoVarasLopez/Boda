@@ -1,4 +1,29 @@
 export type ThemeType = 'editorial' | 'mediterranean' | 'cinematic';
+export type WeddingStatus = 'draft' | 'planning' | 'confirmed' | 'archived';
+
+export interface SaveTheDateImages {
+  hero_mobile: string;
+  hero_desktop: string;
+  story_1_portrait: string;
+  story_1_wide: string;
+  story_2_detail: string;
+  story_2_portrait: string;
+  story_3_portrait: string;
+  story_3_candid: string;
+  date_horizon: string;
+  final_portrait: string;
+  final_wide: string;
+}
+
+export interface SaveTheDateConfig {
+  couple_names: string;
+  wedding_date: string;
+  wedding_date_display: string;
+  wedding_location: string;
+  whatsapp_message: string;
+  audio_url?: string;
+  images: SaveTheDateImages;
+}
 
 export interface Wedding {
   id: string;
@@ -13,12 +38,17 @@ export interface Wedding {
   rsvp_deadline: string;
   hero_message: string;
   welcome_quote: string;
+  status?: WeddingStatus;
+  planner_name?: string;
+  guest_target_count?: number;
+  budget_target?: number;
   iban_details?: {
     account_holder: string;
     iban: string;
     bank_name: string;
     bic_swift?: string;
   };
+  save_the_date?: SaveTheDateConfig;
 }
 
 export type InvitationStatus = 'draft' | 'sent' | 'opened' | 'responded' | 'revoked';

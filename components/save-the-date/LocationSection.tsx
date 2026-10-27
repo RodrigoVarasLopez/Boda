@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useSaveTheDateConfig } from '@/lib/save-the-date-store';
 
 export function LocationSection() {
+  const { config } = useSaveTheDateConfig();
+  const [city, region] = (config.wedding_location || 'Villamuriel de Cerrato · Palencia')
+    .split('·')
+    .map((s) => s.trim());
   const sectionRef = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -75,12 +80,14 @@ export function LocationSection() {
 
         {/* Primary Location Heading */}
         <h2 className="font-serif uppercase font-normal text-3xl xs:text-4xl sm:text-5xl lg:text-6xl tracking-[0.14em] sm:tracking-[0.18em] text-[#1C1B19] leading-[1.15]">
-          Villamuriel de Cerrato
+          {city || 'Villamuriel de Cerrato'}
         </h2>
 
-        <p className="mt-3 sm:mt-4 font-serif uppercase text-xl sm:text-2xl lg:text-3xl tracking-[0.32em] text-[#4D4943] font-light">
-          Palencia
-        </p>
+        {region && (
+          <p className="mt-3 sm:mt-4 font-serif uppercase text-xl sm:text-2xl lg:text-3xl tracking-[0.32em] text-[#4D4943] font-light">
+            {region}
+          </p>
+        )}
 
         {/* Hairline Divider */}
         <div
@@ -90,7 +97,7 @@ export function LocationSection() {
 
         {/* Date Echo */}
         <p className="font-serif text-lg sm:text-xl tracking-[0.28em] text-[#1C1B19]">
-          28 · 08 · 2027
+          {config.wedding_date_display || '28 · 08 · 2027'}
         </p>
 
         {/* Minimalist Map Actions */}

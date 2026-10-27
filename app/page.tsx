@@ -93,6 +93,23 @@ export default function RootHomePage() {
               <ArrowRight className="w-5 h-5 text-text-accent group-hover:translate-x-1 transition-transform shrink-0 ml-3" />
             </Link>
 
+            {/* Wedding Planner Multi-Boda Portal */}
+            <Link
+              href="/admin/weddings"
+              className="p-4 rounded-2xl bg-gradient-to-r from-purple-900/10 via-bg-card to-indigo-900/10 border border-purple-400/40 hover:border-purple-500 flex items-center justify-between group transition-all"
+            >
+              <div className="space-y-0.5">
+                <span className="font-semibold text-text-primary block text-sm flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  Panel Wedding Planner Multi-Boda (/admin/weddings)
+                </span>
+                <span className="text-xs text-text-muted block text-left">
+                  Capa superior de gestión de múltiples bodas de diferentes parejas de clientes
+                </span>
+              </div>
+              <ArrowRight className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform shrink-0 ml-3" />
+            </Link>
+
             {/* Admin SaaS Operating System */}
             <Link
               href="/admin"
