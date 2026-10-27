@@ -3,6 +3,7 @@ import {
   BudgetSupplier,
   BudgetPayment,
   BudgetMenuConfig,
+  BanquetExpenseItem,
   BudgetType,
   SupplierStatus,
   PaymentStatus,
@@ -172,7 +173,81 @@ export const DEFAULT_MENU_CONFIG: BudgetMenuConfig = {
   child_count_override: null,
   use_manual_counts: false,
   notes: 'Menú degustación con maridaje de autor en Bodega Concejo.',
+  extra_expenses: [],
 };
+
+const BANQUET_EXTRAS_MARKER = '<!--BANQUET_EXTRAS:';
+const BANQUET_EXTRAS_END = '-->';
+
+/**
+ * Serializes human-readable notes and structured extra_expenses into a single string
+ * so Supabase `budget_menu_config.notes` persists extra expenses without needing schema changes.
+ */
+export function serializeMenuNotesWithExtras(
+  notes?: string | null,
+  extraExpenses?: BanquetExpenseItem[] | null
+): string | null {
+  const cleanNotes = (notes || '').split(BANQUET_EXTRAS_MARKER)[0].trim();
+  const extras = Array.isArray(extraExpenses) ? extraExpenses : [];
+  if (extras.length === 0) {
+    return cleanNotes || null;
+  }
+  const encoded = `${BANQUET_EXTRAS_MARKER}${JSON.stringify(extras)}${BANQUET_EXTRAS_END}`;
+  return cleanNotes ? `${cleanNotes}\n${encoded}` : encoded;
+}
+
+/**
+ * Extracts clean notes and extra_expenses from a raw notes string or existing extra_expenses array.
+ */
+export function parseMenuNotesAndExtras(
+  rawNotes?: string | null,
+  existingExtras?: BanquetExpenseItem[] | null
+): { cleanNotes: string | null; extraExpenses: BanquetExpenseItem[] } {
+  const raw = rawNotes || '';
+  const markerIdx = raw.indexOf(BANQUET_EXTRAS_MARKER);
+  let parsedExtras: BanquetExpenseItem[] = [];
+
+  if (markerIdx !== -1) {
+    const startJson = markerIdx + BANQUET_EXTRAS_MARKER.length;
+    const endIdx = raw.indexOf(BANQUET_EXTRAS_END, startJson);
+    const jsonPart = endIdx !== -1 ? raw.slice(startJson, endIdx) : raw.slice(startJson);
+    try {
+      const arr = JSON.parse(jsonPart);
+      if (Array.isArray(arr)) {
+        parsedExtras = arr;
+      }
+    } catch {
+      // Ignore malformed JSON
+    }
+  }
+
+  const cleanNotes = (markerIdx !== -1 ? raw.slice(0, markerIdx) : raw).trim() || null;
+  const finalExtras =
+    Array.isArray(existingExtras) && existingExtras.length > 0
+      ? existingExtras
+      : parsedExtras;
+
+  return { cleanNotes, extraExpenses: finalExtras };
+}
+
+/**
+ * Calculates the total cost of a single BanquetExpenseItem
+ */
+export function calculateBanquetExpenseItemTotal(
+  item: BanquetExpenseItem,
+  adultCount: number,
+  childCount: number
+): number {
+  const unitAmount = Number(item.amount) || 0;
+  if (item.type === 'per_adult') {
+    return Math.max(0, adultCount) * unitAmount;
+  }
+  if (item.type === 'per_guest') {
+    return Math.max(0, adultCount + childCount) * unitAmount;
+  }
+  const qty = item.quantity != null && Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+  return unitAmount * qty;
+}
 
 // Initial Suppliers: Empty by default to respect "No crear fixtures financieros",
 // but allows comparing whenever suppliers are added.
@@ -222,7 +297,7 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Menu Total Calculation
+ * Menu Total Calculation (includes base adult/child menus + extra banquet expenses)
  */
 export function calculateMenuTotal(
   menuConfig: BudgetMenuConfig,
@@ -233,6 +308,8 @@ export function calculateMenuTotal(
   childCount: number;
   adultTotal: number;
   childTotal: number;
+  extrasTotal: number;
+  extraExpenses: BanquetExpenseItem[];
   total: number;
 } {
   const adultCount = menuConfig.use_manual_counts
@@ -248,13 +325,22 @@ export function calculateMenuTotal(
 
   const adultTotal = Math.max(0, adultCount) * adultPrice;
   const childTotal = Math.max(0, childCount) * childPrice;
-  const total = adultTotal + childTotal;
+
+  const { extraExpenses } = parseMenuNotesAndExtras(menuConfig.notes, menuConfig.extra_expenses);
+  const extrasTotal = extraExpenses.reduce(
+    (sum, item) => sum + calculateBanquetExpenseItemTotal(item, adultCount, childCount),
+    0
+  );
+
+  const total = adultTotal + childTotal + extrasTotal;
 
   return {
     adultCount,
     childCount,
     adultTotal,
     childTotal,
+    extrasTotal,
+    extraExpenses,
     total,
   };
 }
@@ -373,6 +459,8 @@ export interface BudgetMetrics {
     childCount: number;
     adultTotal: number;
     childTotal: number;
+    extrasTotal: number;
+    extraExpenses: BanquetExpenseItem[];
     total: number;
   };
   categoryBreakdown: Array<{
@@ -705,12 +793,23 @@ export function setStoredBudgetPayments(payments: BudgetPayment[]) {
 }
 
 export function getStoredBudgetMenuConfig(): BudgetMenuConfig {
-  if (typeof window === 'undefined') return DEFAULT_MENU_CONFIG;
+  if (typeof window === 'undefined') return inMemoryMenuConfig || DEFAULT_MENU_CONFIG;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_BUDGET_MENU);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.adult_price === 'number') return parsed;
+      if (parsed && typeof parsed.adult_price === 'number') {
+        const { cleanNotes, extraExpenses } = parseMenuNotesAndExtras(
+          parsed.notes,
+          parsed.extra_expenses
+        );
+        return {
+          ...DEFAULT_MENU_CONFIG,
+          ...parsed,
+          notes: cleanNotes,
+          extra_expenses: extraExpenses,
+        };
+      }
     }
   } catch (e) {
     console.warn('Error reading stored menu config:', e);
@@ -719,10 +818,21 @@ export function getStoredBudgetMenuConfig(): BudgetMenuConfig {
 }
 
 export function setStoredBudgetMenuConfig(config: BudgetMenuConfig) {
-  inMemoryMenuConfig = config;
+  const existing = typeof window !== 'undefined' ? getStoredBudgetMenuConfig() : inMemoryMenuConfig;
+  const { cleanNotes, extraExpenses } = parseMenuNotesAndExtras(
+    config.notes,
+    config.extra_expenses !== undefined ? config.extra_expenses : existing?.extra_expenses
+  );
+  const normalized: BudgetMenuConfig = {
+    ...DEFAULT_MENU_CONFIG,
+    ...config,
+    notes: cleanNotes,
+    extra_expenses: extraExpenses,
+  };
+  inMemoryMenuConfig = normalized;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY_BUDGET_MENU, JSON.stringify(config));
+      localStorage.setItem(STORAGE_KEY_BUDGET_MENU, JSON.stringify(normalized));
     } catch (e) {
       console.warn('Error saving stored menu config:', e);
     }

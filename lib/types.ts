@@ -254,6 +254,17 @@ export interface BudgetPayment {
   updated_at?: string;
 }
 
+export type BanquetExpenseType = 'fixed' | 'per_guest' | 'per_adult';
+
+export interface BanquetExpenseItem {
+  id: string;
+  concept: string;
+  type: BanquetExpenseType;
+  amount: number;
+  quantity?: number;
+  notes?: string | null;
+}
+
 export interface BudgetMenuConfig {
   id: string;
   wedding_id: string;
@@ -264,6 +275,7 @@ export interface BudgetMenuConfig {
   child_count_override?: number | null;
   use_manual_counts: boolean;
   notes?: string | null;
+  extra_expenses?: BanquetExpenseItem[];
   created_at?: string;
   updated_at?: string;
 }

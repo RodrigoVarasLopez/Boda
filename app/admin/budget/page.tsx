@@ -343,15 +343,61 @@ export default function AdminBudgetPage() {
       />
 
       {/* 2. Menu Cost Dynamic Calculator */}
-      <MenuCostCalculator
-        menuConfig={menuConfig}
-        attendingAdults={attendingAdults}
-        attendingChildren={attendingChildren}
-        onUpdateMenuConfig={async (data) => {
-          await updateMenuConfig(data);
-          showToast('Cálculo de menú actualizado');
-        }}
-      />
+      {(() => {
+        const menuCat = categories.find(
+          (c) =>
+            c.name.toLowerCase().includes('menú') ||
+            c.name.toLowerCase().includes('menu') ||
+            c.name.toLowerCase().includes('banquete') ||
+            c.budget_type === 'per_guest'
+        );
+        const menuMetric = menuCat ? categoryMetricsMap[menuCat.id] : null;
+
+        const handleOpenBanquetPayments = async () => {
+          if (!menuCat) return;
+          const catSuppliers = suppliers.filter((s) => s.category_id === menuCat.id);
+          const existingSup =
+            catSuppliers.find((s) => s.is_selected) || catSuppliers[0] || null;
+
+          if (existingSup) {
+            setPaymentModalSupplier(existingSup);
+            setPaymentToEdit(null);
+            setIsPaymentModalOpen(true);
+          } else {
+            const created = await createSupplier({
+              category_id: menuCat.id,
+              name: 'Bodega Concejo · Banquete',
+              estimated_price: metrics.menuSummary.total,
+              quoted_price: metrics.menuSummary.total,
+              final_price: metrics.menuSummary.total,
+              status: 'selected',
+              is_selected: true,
+              comments: 'Banquete nupcial y gastos asociados',
+            });
+            if (created) {
+              setPaymentModalSupplier(created);
+              setPaymentToEdit(null);
+              setIsPaymentModalOpen(true);
+            }
+          }
+        };
+
+        return (
+          <MenuCostCalculator
+            menuConfig={menuConfig}
+            attendingAdults={attendingAdults}
+            attendingChildren={attendingChildren}
+            menuSupplier={menuMetric?.selectedSupplier}
+            paidAmount={menuMetric?.paidAmount || 0}
+            pendingAmount={menuMetric?.pendingAmount || 0}
+            onOpenBanquetPayments={handleOpenBanquetPayments}
+            onUpdateMenuConfig={async (data) => {
+              await updateMenuConfig(data);
+              showToast('Presupuesto del banquete actualizado');
+            }}
+          />
+        );
+      })()}
 
       {/* 3. Categories & Suppliers Section */}
       <div className="space-y-5">
@@ -674,7 +720,10 @@ export default function AdminBudgetPage() {
           supplier={paymentModalSupplier}
           supplierPayments={payments.filter((p) => p.supplier_id === paymentModalSupplier.id)}
           paymentToEdit={paymentToEdit}
-          contractedTotal={getEffectiveSupplierPrice(paymentModalSupplier)}
+          contractedTotal={
+            categoryMetricsMap[paymentModalSupplier.category_id]?.effectivePrice ||
+            getEffectiveSupplierPrice(paymentModalSupplier)
+          }
           alreadyPaidAmount={payments
             .filter((p) => p.supplier_id === paymentModalSupplier.id && isPaymentSettled(p))
             .reduce((acc, p) => acc + Number(p.amount), 0)}

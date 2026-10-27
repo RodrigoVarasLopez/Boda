@@ -43,6 +43,8 @@ import {
   setStoredBudgetPayments,
   getStoredBudgetMenuConfig,
   setStoredBudgetMenuConfig,
+  serializeMenuNotesWithExtras,
+  parseMenuNotesAndExtras,
   WEDDING_UUID,
   INITIAL_BUDGET_CATEGORIES,
   normalizeCategoryId,
@@ -1435,6 +1437,18 @@ export async function getBudgetDataAction() {
         if (insertedMenu) menuConfig = insertedMenu;
       }
 
+      if (menuConfig) {
+        const { cleanNotes, extraExpenses } = parseMenuNotesAndExtras(
+          menuConfig.notes,
+          menuConfig.extra_expenses
+        );
+        menuConfig = {
+          ...menuConfig,
+          notes: cleanNotes,
+          extra_expenses: extraExpenses,
+        };
+      }
+
       return {
         success: true,
         source: 'supabase',
@@ -1910,6 +1924,12 @@ export async function deletePaymentAction(paymentId: string) {
  */
 export async function updateMenuConfigAction(rawInput: unknown) {
   const validated = BudgetMenuConfigUpdateSchema.parse(rawInput);
+  const stored = getStoredBudgetMenuConfig();
+  const nextExtras =
+    validated.extra_expenses !== undefined
+      ? validated.extra_expenses
+      : stored.extra_expenses || [];
+  const serializedNotes = serializeMenuNotesWithExtras(validated.notes, nextExtras);
 
   if (isSupabaseConfigured()) {
     try {
@@ -1924,7 +1944,7 @@ export async function updateMenuConfigAction(rawInput: unknown) {
           child_count_override: validated.child_count_override,
           use_manual_counts: validated.use_manual_counts,
           supplier_id: validated.supplier_id,
-          notes: validated.notes,
+          notes: serializedNotes,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'wedding_id' }
@@ -1940,10 +1960,10 @@ export async function updateMenuConfigAction(rawInput: unknown) {
     }
   }
 
-  const stored = getStoredBudgetMenuConfig();
   setStoredBudgetMenuConfig({
     ...stored,
     ...validated,
+    extra_expenses: nextExtras,
     updated_at: new Date().toISOString(),
   });
 

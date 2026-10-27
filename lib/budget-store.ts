@@ -6,6 +6,7 @@ import {
   BudgetSupplier,
   BudgetPayment,
   BudgetMenuConfig,
+  BanquetExpenseItem,
 } from './types';
 import {
   getStoredBudgetCategories,
@@ -600,27 +601,41 @@ export function useBudgetStore() {
 
   // 4. Menu Configuration
   const updateMenuConfig = async (data: {
-    adult_price: number;
-    child_price: number;
+    adult_price?: number;
+    child_price?: number;
     adult_count_override?: number | null;
     child_count_override?: number | null;
-    use_manual_counts: boolean;
+    use_manual_counts?: boolean;
     supplier_id?: string | null;
     notes?: string | null;
+    extra_expenses?: BanquetExpenseItem[];
   }) => {
     const currentMenu = getStoredBudgetMenuConfig();
     const nextConfig: BudgetMenuConfig = {
       ...currentMenu,
       ...data,
-      adult_price: Number(data.adult_price),
-      child_price: Number(data.child_price),
+      adult_price: data.adult_price !== undefined ? Number(data.adult_price) : currentMenu.adult_price,
+      child_price: data.child_price !== undefined ? Number(data.child_price) : currentMenu.child_price,
+      use_manual_counts:
+        data.use_manual_counts !== undefined ? data.use_manual_counts : currentMenu.use_manual_counts,
+      extra_expenses:
+        data.extra_expenses !== undefined ? data.extra_expenses : currentMenu.extra_expenses || [],
       updated_at: new Date().toISOString(),
     };
 
     setStoredBudgetMenuConfig(nextConfig);
 
     try {
-      await updateMenuConfigAction(data);
+      await updateMenuConfigAction({
+        adult_price: nextConfig.adult_price,
+        child_price: nextConfig.child_price,
+        adult_count_override: nextConfig.adult_count_override,
+        child_count_override: nextConfig.child_count_override,
+        use_manual_counts: nextConfig.use_manual_counts,
+        supplier_id: nextConfig.supplier_id,
+        notes: nextConfig.notes,
+        extra_expenses: nextConfig.extra_expenses,
+      });
     } catch (e) {
       console.warn('Backend menu config notice:', e);
     }

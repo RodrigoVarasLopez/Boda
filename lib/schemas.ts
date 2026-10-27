@@ -176,6 +176,15 @@ export const BudgetPaymentUpdateSchema = z.object({
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
+export const BanquetExpenseItemSchema = z.object({
+  id: z.string().min(1),
+  concept: z.string().trim().min(1, 'El concepto del gasto es obligatorio'),
+  type: z.enum(['fixed', 'per_guest', 'per_adult']).default('fixed'),
+  amount: z.coerce.number().min(0, 'El importe no puede ser negativo'),
+  quantity: z.coerce.number().min(1).optional(),
+  notes: z.string().trim().max(500).optional().nullable(),
+});
+
 export const BudgetMenuConfigUpdateSchema = z.object({
   adult_price: z.coerce.number().min(0, 'El precio de adulto no puede ser negativo'),
   child_price: z.coerce.number().min(0, 'El precio de niño no puede ser negativo'),
@@ -183,7 +192,8 @@ export const BudgetMenuConfigUpdateSchema = z.object({
   child_count_override: z.coerce.number().int().min(0).optional().nullable(),
   use_manual_counts: z.boolean().default(false),
   supplier_id: z.string().optional().nullable(),
-  notes: z.string().trim().max(1000).optional().nullable(),
+  notes: z.string().trim().max(10000).optional().nullable(),
+  extra_expenses: z.array(BanquetExpenseItemSchema).optional(),
 });
 
 export const GuestTypeUpdateSchema = z.object({
