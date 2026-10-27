@@ -149,8 +149,21 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
     }
   };
 
+  const editingScheduledAmount =
+    paymentToEdit && !isPaymentSettled(paymentToEdit) ? Number(paymentToEdit.amount) : 0;
+  const effectiveUnscheduledRemaining = Math.max(
+    0,
+    unscheduledRemaining + editingScheduledAmount
+  );
+
   const handleQuickRemaining = () => {
-    setAmount(remainingTotal.toFixed(2));
+    const targetRemaining =
+      status === 'pending' || totalScheduledAmount > 0
+        ? effectiveUnscheduledRemaining > 0
+          ? effectiveUnscheduledRemaining
+          : remainingTotal
+        : remainingTotal;
+    setAmount(targetRemaining.toFixed(2));
     if (status !== 'pending') {
       setStatus('paid');
       if (!paidAt) setPaidAt(new Date().toISOString().split('T')[0]);
@@ -289,7 +302,11 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
         <div className="overflow-y-auto p-5 sm:p-6 space-y-6 flex-1">
           {/* 1. Contract Info Banner + Progress Bar */}
           <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div
+              className={`grid gap-2 text-center ${
+                totalScheduledAmount > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+              }`}
+            >
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
                   Contratado
@@ -306,12 +323,26 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   {formatCurrency(alreadyPaidAmount)}
                 </p>
               </div>
+              {totalScheduledAmount > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-amber-800 font-semibold">
+                    En Fechas Prog.
+                  </p>
+                  <p className="text-sm sm:text-base font-bold font-mono text-amber-700 mt-0.5">
+                    {formatCurrency(totalScheduledAmount)}
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-                  Pendiente
+                  {totalScheduledAmount > 0 ? 'Resto sin fecha' : 'Pendiente'}
                 </p>
                 <p className="text-sm sm:text-base font-bold font-mono text-amber-700 mt-0.5">
-                  {formatCurrency(Math.max(0, contractedTotal - alreadyPaidAmount))}
+                  {formatCurrency(
+                    totalScheduledAmount > 0
+                      ? unscheduledRemaining
+                      : Math.max(0, contractedTotal - alreadyPaidAmount)
+                  )}
                 </p>
               </div>
             </div>
@@ -488,7 +519,13 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   <input
                     type="date"
                     value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      setScheduleDate(nextDate);
+                      if (nextDate && !scheduleAmount && unscheduledRemaining > 0) {
+                        setScheduleAmount(unscheduledRemaining.toFixed(2));
+                      }
+                    }}
                     className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-text-primary focus:outline-none focus:border-amber-600"
                   />
                 </div>
@@ -678,14 +715,22 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   >
                     50%
                   </button>
-                  {remainingTotal > 0 && (
+                  {(effectiveUnscheduledRemaining > 0 || remainingTotal > 0) && (
                     <button
                       type="button"
                       onClick={handleQuickRemaining}
                       className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors cursor-pointer"
-                      title="Resto pendiente completo"
+                      title="Resto pendiente descontando pagos y fechas ya programadas"
                     >
-                      Resto ({formatCurrency(remainingTotal)})
+                      Resto (
+                      {formatCurrency(
+                        status === 'pending' || totalScheduledAmount > 0
+                          ? effectiveUnscheduledRemaining > 0
+                            ? effectiveUnscheduledRemaining
+                            : remainingTotal
+                          : remainingTotal
+                      )}
+                      )
                     </button>
                   )}
                 </div>
@@ -754,6 +799,9 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   type="button"
                   onClick={() => {
                     setStatus('pending');
+                    if (!amount && effectiveUnscheduledRemaining > 0) {
+                      setAmount(effectiveUnscheduledRemaining.toFixed(2));
+                    }
                   }}
                   className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-left transition-all flex items-center gap-2 cursor-pointer ${
                     status === 'pending'

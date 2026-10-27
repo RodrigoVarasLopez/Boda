@@ -468,34 +468,46 @@ export function useBudgetStore() {
       console.warn('Backend payment create notice:', e);
     }
 
-    // If this payment was settled ('paid' or 'partial') and there is a single generic 'Pago final' remainder, auto-adjust it
-    if (isPaymentSettled(newPayment)) {
-      const sup = getStoredBudgetSuppliers().find((s) => s.id === normalizedSupplierId);
-      if (sup) {
-        const effPrice = getEffectiveSupplierPrice(sup);
-        const allSupPayments = getStoredBudgetPayments().filter(
-          (p) => p.supplier_id === normalizedSupplierId
-        );
-        const totalSettled = allSupPayments
-          .filter((p) => isPaymentSettled(p))
-          .reduce((sum, p) => sum + Number(p.amount), 0);
-        const remaining = Math.max(0, effPrice - totalSettled);
+    // Auto-adjust remaining final scheduled payment if adding a new payment/installment exceeds the supplier's total
+    const sup = getStoredBudgetSuppliers().find((s) => s.id === normalizedSupplierId);
+    const effPrice =
+      normalizedSupplierId === BANQUET_SUPPLIER_ID
+        ? metrics.banquetMetric.effectivePrice
+        : sup
+        ? getEffectiveSupplierPrice(sup)
+        : 0;
 
-        const pendingList = allSupPayments.filter(
-          (p) => p.status === 'pending' && p.id !== newPayment.id
-        );
-        // Only auto-adjust if there is exactly ONE generic 'Pago final' item (never overwrite multi-date schedules!)
-        if (
-          pendingList.length === 1 &&
-          (pendingList[0].notes || '').trim().toLowerCase() === 'pago final'
-        ) {
-          const scheduledFinal = pendingList[0];
-          if (remaining <= 0) {
-            await deletePayment(scheduledFinal.id);
-          } else if (Math.abs(scheduledFinal.amount - remaining) > 0.01) {
+    if (effPrice > 0) {
+      const allSupPayments = getStoredBudgetPayments().filter(
+        (p) =>
+          p.supplier_id === normalizedSupplierId ||
+          (normalizedSupplierId === BANQUET_SUPPLIER_ID &&
+            p.supplier_id === LEGACY_BANQUET_SUPPLIER_ID)
+      );
+      const totalSettled = allSupPayments
+        .filter((p) => isPaymentSettled(p))
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+      const otherPendingList = allSupPayments
+        .filter((p) => !isPaymentSettled(p) && p.id !== newPayment.id)
+        .sort((a, b) => (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31'));
+
+      if (otherPendingList.length > 0) {
+        const totalPendingIncludingNew = allSupPayments
+          .filter((p) => !isPaymentSettled(p))
+          .reduce((sum, p) => sum + Number(p.amount), 0);
+        const totalCommitted = totalSettled + totalPendingIncludingNew;
+        const excess = totalCommitted - effPrice;
+
+        if (excess > 0.01) {
+          // Deduct excess from the latest scheduled payment (the final installment)
+          const latestScheduled = otherPendingList[otherPendingList.length - 1];
+          const adjustedAmount = Math.max(0, Number(latestScheduled.amount) - excess);
+          if (adjustedAmount <= 0.01) {
+            await deletePayment(latestScheduled.id);
+          } else {
             await updatePayment({
-              id: scheduledFinal.id,
-              amount: remaining,
+              id: latestScheduled.id,
+              amount: Number(adjustedAmount.toFixed(2)),
             });
           }
         }
