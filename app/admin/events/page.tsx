@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { INITIAL_EVENTS } from '@/lib/mock-data';
 import { Event, GuestGroup } from '@/lib/types';
 import {
@@ -77,13 +78,47 @@ export default function AdminEventsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => alert('Función para crear nuevo evento')}
-          className="py-2.5 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center gap-2 hover:bg-primary-hover shadow-soft transition-colors cursor-pointer"
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/timing"
+            className="py-2.5 px-4 rounded-xl border border-primary/40 bg-primary/10 text-primary font-semibold text-xs flex items-center gap-2 hover:bg-primary/20 transition-colors"
+          >
+            <Clock className="w-4 h-4" />
+            <span>Timing Personalizado &amp; Cobertura</span>
+          </Link>
+
+          <button
+            onClick={() => alert('Función para crear nuevo evento')}
+            className="py-2.5 px-4 rounded-xl bg-primary text-primary-text font-medium text-xs flex items-center gap-2 hover:bg-primary-hover shadow-soft transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nuevo Evento</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Featured Timing Banner */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-bg-card border border-primary/30 shadow-card flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1.5 max-w-3xl">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-primary font-semibold flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Herramienta de Trabajo Operativa</span>
+          </span>
+          <h2 className="font-serif text-xl sm:text-2xl text-text-primary">
+            Elaboración de vuestro timing personalizado
+          </h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Prepararemos un cronograma detallado de toda la jornada, desde los preparativos acordados hasta los momentos finales de nuestra cobertura. No será simplemente un listado de horarios: será nuestra herramienta de trabajo para saber qué tiene que suceder en cada momento, qué profesionales intervienen, qué necesitamos tener preparado y cómo evitar retrasos innecesarios.
+          </p>
+        </div>
+
+        <Link
+          href="/admin/timing"
+          className="px-4 py-2.5 rounded-xl bg-primary text-primary-text hover:bg-primary-hover text-xs font-semibold inline-flex items-center gap-2 shrink-0 shadow-soft transition-colors w-fit"
         >
-          <Plus className="w-4 h-4" />
-          <span>Nuevo Evento</span>
-        </button>
+          <Clock className="w-4 h-4" />
+          <span>Abrir Timing Personalizado →</span>
+        </Link>
       </div>
 
       {/* Events List */}

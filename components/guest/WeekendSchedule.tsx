@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Event, GuestGroup, CMSBlock } from '@/lib/types';
 import { Clock, MapPin, Calendar, Sparkles, Navigation } from 'lucide-react';
 import { generateGoogleCalendarUrl, downloadICSFile } from '@/lib/utils';
+import { PersonalizedTimingSection } from './PersonalizedTimingSection';
+import { CreativeProjectSection } from './CreativeProjectSection';
 
 interface WeekendScheduleProps {
   events: Event[];
@@ -251,6 +253,16 @@ export const WeekendSchedule: React.FC<WeekendScheduleProps> = ({
           </div>
         </div>
       )}
+
+      {/* ========================================================
+          ELABORACIÓN DE VUESTRO TIMING PERSONALIZADO (CRONOGRAMA)
+         ======================================================== */}
+      <PersonalizedTimingSection />
+
+      {/* ========================================================
+          PRESENTACIÓN DE VUESTRO PROYECTO CREATIVO (DOSSIER DIGITAL)
+         ======================================================== */}
+      <CreativeProjectSection />
 
       {/* Calendar Action Modal */}
       {activeCalendarModal && (

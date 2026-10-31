@@ -246,6 +246,28 @@ export default function AdminOverviewPage() {
               </Link>
 
               <Link
+                href="/admin/timing"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-between text-xs text-primary transition-colors group"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <Clock className="w-4 h-4 text-primary" />
+                  Elaboración de vuestro timing personalizado
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-primary group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
+              <Link
+                href="/admin/creative-project"
+                className="w-full py-2.5 px-3.5 rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-300/60 flex items-center justify-between text-xs text-amber-900 transition-colors group"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  Presentación de vuestro proyecto creativo
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-amber-700 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
+              <Link
                 href="/admin/events"
                 className="w-full py-2.5 px-3.5 rounded-xl bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle flex items-center justify-between text-xs text-text-primary transition-colors group"
               >

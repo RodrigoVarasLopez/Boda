@@ -19,7 +19,9 @@ import {
   Receipt,
   LogOut,
   Sparkles,
-  Briefcase
+  Briefcase,
+  Clock,
+  Palette
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { WeddingSwitcher } from '@/components/admin/WeddingSwitcher';
@@ -32,6 +34,8 @@ const NAV_ITEMS = [
   { href: '/admin/weddings', label: 'Mis Bodas (Planner)', icon: Briefcase },
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
+  { href: '/admin/timing', label: 'Timing & Cobertura', icon: Clock },
+  { href: '/admin/creative-project', label: 'Proyecto Creativo', icon: Palette },
   { href: '/admin/guests', label: 'Invitados', icon: Users },
   { href: '/admin/rsvp', label: 'RSVP', icon: ClipboardCheck },
   { href: '/admin/events', label: 'Eventos', icon: CalendarDays },

@@ -348,4 +348,111 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid: 'Pagado',
 };
 
+// ==========================================
+// PERSONALIZED TIMING & RUN-OF-SHOW MODULE
+// ==========================================
+
+export type TimingDay = 'friday' | 'saturday';
+
+export type TimingPhase =
+  | 'preboda'
+  | 'preparativos_novio'
+  | 'preparativos_novia'
+  | 'traslados_llegadas'
+  | 'ceremonia'
+  | 'salida_reportaje'
+  | 'coctel'
+  | 'banquete_entregas'
+  | 'baile_fiesta';
+
+export type TimingStatus = 'pending' | 'ready' | 'in_progress' | 'completed';
+
+export type ProfessionalRole =
+  | 'foto_video'
+  | 'wedding_planner'
+  | 'maquillaje_peluqueria'
+  | 'floristeria'
+  | 'musica_ceremonia'
+  | 'oficiante'
+  | 'transporte'
+  | 'catering_finca'
+  | 'dj_sonido'
+  | 'pirotecnia_efectos'
+  | 'otro';
+
+export interface TimingProfessional {
+  id: string;
+  role: ProfessionalRole;
+  name: string;
+  action: string;
+  contact_phone?: string;
+}
+
+export interface TimingChecklistItem {
+  id: string;
+  task: string;
+  responsible: string;
+  completed: boolean;
+}
+
+export interface TimingMilestone {
+  id: string;
+  wedding_id: string;
+  day: TimingDay;
+  phase: TimingPhase;
+  start_time: string; // HH:mm
+  end_time: string;   // HH:mm
+  buffer_minutes: number;
+  title: string;
+  location: string;
+  status: TimingStatus;
+  is_critical_moment: boolean;
+  // 1. Qué tiene que suceder en cada momento
+  what_happens: string;
+  coverage_notes?: string;
+  // 2. Qué profesionales intervienen
+  professionals: TimingProfessional[];
+  // 3. Qué necesitamos tener preparado
+  checklist: TimingChecklistItem[];
+  // 4. Cómo evitar retrasos innecesarios
+  anti_delay_protocol: string;
+  common_risks?: string;
+  lead_coordinator?: string;
+  sort_order: number;
+}
+
+export const TIMING_PHASE_LABELS: Record<TimingPhase, string> = {
+  preboda: 'Preboda & Bienvenida',
+  preparativos_novio: 'Preparativos del Novio',
+  preparativos_novia: 'Preparativos de la Novia',
+  traslados_llegadas: 'Traslados & Llegadas',
+  ceremonia: 'Ceremonia Religiosa',
+  salida_reportaje: 'Salida, Familiares & Reportaje',
+  coctel: 'Cóctel de Bienvenida',
+  banquete_entregas: 'Banquete, Momentos & Entregas',
+  baile_fiesta: 'Baile Nupcial, Fiesta & Fin de Cobertura',
+};
+
+export const TIMING_STATUS_LABELS: Record<TimingStatus, string> = {
+  pending: 'En preparación',
+  ready: 'Todo listo',
+  in_progress: 'En curso',
+  completed: 'Completado',
+};
+
+export const PROFESSIONAL_ROLE_LABELS: Record<ProfessionalRole, string> = {
+  foto_video: 'Fotografía & Vídeo',
+  wedding_planner: 'Coordinación / Wedding Planner',
+  maquillaje_peluqueria: 'Maquillaje & Peluquería',
+  floristeria: 'Floristería & Decoración',
+  musica_ceremonia: 'Música Ceremonia / Coro',
+  oficiante: 'Sacerdote / Oficiante',
+  transporte: 'Autobuses & Vehículos',
+  catering_finca: 'Maître & Catering (Bodega)',
+  dj_sonido: 'DJ, Sonido & Iluminación',
+  pirotecnia_efectos: 'Pirotecnia & Efectos Especiales',
+  otro: 'Otro Profesional',
+};
+
+
 
