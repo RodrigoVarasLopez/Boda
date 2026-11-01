@@ -169,6 +169,10 @@ export const CreativeProjectSection: React.FC = () => {
                           src={sp.image_url}
                           alt={sp.title}
                           fill
+                          unoptimized={
+                            sp.image_url.startsWith('data:') ||
+                            sp.image_url.startsWith('http')
+                          }
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, 350px"
                         />
