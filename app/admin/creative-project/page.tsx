@@ -956,15 +956,9 @@ export default function AdminCreativeProjectPage() {
                             backgroundColor: sw.hex,
                             width: `${pct}%`,
                           }}
-                          className="h-full transition-all duration-300 relative group flex items-center justify-center overflow-hidden border-r border-black/10 last:border-r-0"
-                          title={`${sw.name}: ${pct}% (${sw.hex})`}
-                        >
-                          {pct >= 8 && (
-                            <span className="px-1.5 py-0.5 rounded bg-black/45 text-white font-mono text-[10px] font-bold backdrop-blur-2xs">
-                              {pct}%
-                            </span>
-                          )}
-                        </div>
+                          className="h-full transition-all duration-300 relative group border-r border-black/5 last:border-r-0"
+                          title={`${sw.name} (${sw.hex})`}
+                        />
                       );
                     })}
                     {remainingPct > 0 && (
@@ -977,9 +971,7 @@ export default function AdminCreativeProjectPage() {
                         style={{ width: `${remainingPct}%` }}
                         className="h-full bg-repeating-linear border-l border-dashed border-border-strong flex items-center justify-center text-[10px] font-mono text-text-muted hover:text-primary transition-all cursor-pointer"
                         title="Haz clic para repartir este porcentaje libre entre los colores"
-                      >
-                        {remainingPct >= 10 ? `${remainingPct}% libre` : ''}
-                      </button>
+                      />
                     )}
                   </div>
                   <p className="text-[10px] text-text-muted">

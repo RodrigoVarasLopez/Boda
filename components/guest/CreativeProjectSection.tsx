@@ -124,15 +124,9 @@ export const CreativeProjectSection: React.FC = () => {
                 <div
                   key={col.id}
                   style={{ backgroundColor: col.hex, width: `${pct}%` }}
-                  className="h-full transition-all duration-300 flex items-center justify-center overflow-hidden border-r border-black/10 last:border-r-0"
-                  title={`${col.name}: ${pct}%`}
-                >
-                  {pct >= 8 && (
-                    <span className="px-1.5 py-0.5 rounded bg-black/45 text-white font-mono text-[9px] font-bold">
-                      {pct}%
-                    </span>
-                  )}
-                </div>
+                  className="h-full transition-all duration-300 border-r border-black/5 last:border-r-0"
+                  title={`${col.name} (${col.hex})`}
+                />
               );
             })}
           </div>
@@ -147,12 +141,8 @@ export const CreativeProjectSection: React.FC = () => {
                 >
                   <div
                     style={{ backgroundColor: col.hex }}
-                    className="w-9 h-9 rounded-xl border border-border-strong shrink-0 shadow-2xs flex items-center justify-center"
-                  >
-                    <span className="bg-black/50 text-white font-mono text-[9px] font-bold px-1 rounded">
-                      {pct}%
-                    </span>
-                  </div>
+                    className="w-9 h-9 rounded-xl border border-border-strong shrink-0 shadow-2xs"
+                  />
                   <div className="min-w-0">
                     <p className="text-xs font-serif font-medium text-text-primary truncate">
                       {col.name}
