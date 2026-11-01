@@ -6,7 +6,9 @@ import { useTimingStore } from '@/lib/timing-store';
 import {
   TIMING_PHASE_LABELS,
   PROFESSIONAL_ROLE_LABELS,
+  TimingDay,
 } from '@/lib/types';
+import { VerticalEventTimeline } from '@/components/admin/timing/VerticalEventTimeline';
 import {
   Clock,
   Sparkles,
@@ -22,11 +24,14 @@ import {
 } from 'lucide-react';
 
 export const PersonalizedTimingSection: React.FC = () => {
-  const { milestones, metrics } = useTimingStore();
+  const { milestones, metrics, setCurrentEventMilestone } = useTimingStore();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<'saturday' | 'friday'>('saturday');
+  const [selectedDay, setSelectedDay] = useState<'all' | TimingDay>('saturday');
 
-  const visibleMilestones = milestones.filter((m) => m.day === selectedDay);
+  const visibleMilestones =
+    selectedDay === 'all'
+      ? milestones
+      : milestones.filter((m) => m.day === selectedDay);
 
   return (
     <div className="pt-6">
@@ -130,6 +135,32 @@ export const PersonalizedTimingSection: React.FC = () => {
           </div>
         </div>
 
+        {/* VERTICAL TIMELINE SUMMARY BY SELECTED DAY WITH CIRCLES & CURRENT EVENT POINT */}
+        <div className="pt-2">
+          <VerticalEventTimeline
+            milestones={milestones}
+            selectedDay={selectedDay}
+            onSelectDay={(day) => setSelectedDay(day)}
+            counts={{
+              saturday: metrics.saturdayCount,
+              friday: metrics.fridayCount,
+              total: metrics.totalMilestones,
+            }}
+            onSelectCurrentMilestone={(id) => {
+              setCurrentEventMilestone(id);
+            }}
+            onJumpToMilestone={(id) => {
+              setIsExpanded(true);
+              setTimeout(() => {
+                const el = document.getElementById(`guest-milestone-card-${id}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 120);
+            }}
+          />
+        </div>
+
         {/* Expandable Interactive Run-of-Show Explorer */}
         {isExpanded && (
           <div className="pt-6 border-t border-border-subtle space-y-5 animate-fade-in">
@@ -157,6 +188,17 @@ export const PersonalizedTimingSection: React.FC = () => {
                 >
                   Viernes · Preboda ({metrics.fridayCount} bloque)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    selectedDay === 'all'
+                      ? 'bg-primary text-primary-text shadow-xs'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Todo ({metrics.totalMilestones})
+                </button>
               </div>
 
               <span className="text-xs text-text-muted">
@@ -168,7 +210,8 @@ export const PersonalizedTimingSection: React.FC = () => {
               {visibleMilestones.map((m) => (
                 <div
                   key={m.id}
-                  className="p-5 rounded-2xl bg-bg-secondary/25 border border-border-subtle space-y-4"
+                  id={`guest-milestone-card-${m.id}`}
+                  className="p-5 rounded-2xl bg-bg-secondary/25 border border-border-subtle space-y-4 scroll-mt-24"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border-subtle/70 pb-3">
                     <div className="space-y-1">

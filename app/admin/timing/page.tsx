@@ -18,6 +18,7 @@ import {
   shiftTimeStr,
 } from '@/lib/timing-data';
 import { TimingMilestoneModal } from '@/components/admin/timing/TimingMilestoneModal';
+import { VerticalEventTimeline } from '@/components/admin/timing/VerticalEventTimeline';
 import {
   Clock,
   Plus,
@@ -58,6 +59,7 @@ export default function AdminTimingPage() {
     deleteMilestone,
     duplicateMilestone,
     updateMilestoneStatus,
+    setCurrentEventMilestone,
     toggleChecklistItem,
     addChecklistItem,
     removeChecklistItem,
@@ -498,7 +500,33 @@ export default function AdminTimingPage() {
         </div>
       </div>
 
-      {/* 3. FILTER & VIEW TOOLBAR */}
+      {/* 3. VERTICAL EVENT TIMELINE SUMMARY (BY SELECTED DAY WITH CIRCLES & CURRENT POINT) */}
+      <VerticalEventTimeline
+        milestones={milestones}
+        selectedDay={dayFilter}
+        onSelectDay={(day) => setDayFilter(day)}
+        simulatedShiftMinutes={simulatedShiftMinutes}
+        counts={{
+          saturday: metrics.saturdayCount,
+          friday: metrics.fridayCount,
+          total: metrics.totalMilestones,
+        }}
+        onSelectCurrentMilestone={(id) => {
+          setCurrentEventMilestone(id);
+          const target = milestones.find((item) => item.id === id);
+          if (target) {
+            showToast(`Punto actual del evento situado en: "${target.title}"`);
+          }
+        }}
+        onJumpToMilestone={(id) => {
+          const el = document.getElementById(`milestone-card-${id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }}
+      />
+
+      {/* 4. FILTER & VIEW TOOLBAR */}
       <div className="p-4 sm:p-5 rounded-3xl bg-bg-card border border-border-subtle shadow-card space-y-4 print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Day selector */}
@@ -715,7 +743,8 @@ export default function AdminTimingPage() {
               return (
                 <div
                   key={m.id}
-                  className="p-4 sm:p-5 hover:bg-bg-secondary/25 transition-colors grid grid-cols-1 lg:grid-cols-12 gap-4 items-start"
+                  id={`milestone-card-${m.id}`}
+                  className="p-4 sm:p-5 hover:bg-bg-secondary/25 transition-colors grid grid-cols-1 lg:grid-cols-12 gap-4 items-start scroll-mt-24"
                 >
                   <div className="lg:col-span-2 space-y-1">
                     <span className="inline-block px-2 py-0.5 rounded-md bg-bg-secondary text-[10px] font-mono uppercase font-semibold text-text-secondary">
@@ -809,8 +838,11 @@ export default function AdminTimingPage() {
             return (
               <div
                 key={m.id}
-                className={`rounded-3xl bg-bg-card border transition-all shadow-card overflow-hidden ${
-                  m.is_critical_moment
+                id={`milestone-card-${m.id}`}
+                className={`rounded-3xl bg-bg-card border transition-all shadow-card overflow-hidden scroll-mt-24 ${
+                  m.status === 'in_progress'
+                    ? 'border-primary ring-2 ring-primary/25'
+                    : m.is_critical_moment
                     ? 'border-amber-300/90 ring-1 ring-amber-200/50'
                     : 'border-border-subtle'
                 }`}

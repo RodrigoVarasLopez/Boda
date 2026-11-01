@@ -138,6 +138,46 @@ export function useTimingStore() {
     setStoredTimingMilestones(updated);
   }, []);
 
+  // Sets the active milestone ("en qué punto nos encontramos del evento") for its day:
+  // earlier milestones on the same day become 'completed', the target becomes 'in_progress',
+  // and subsequent milestones on the same day become 'ready'.
+  const setCurrentEventMilestone = useCallback((id: string) => {
+    const current = getStoredTimingMilestones();
+    const target = current.find((m) => m.id === id);
+    if (!target) return;
+
+    const sameDaySorted = [...current]
+      .filter((m) => m.day === target.day)
+      .sort((a, b) => {
+        const diff =
+          parseOperationalMinutes(a.start_time) - parseOperationalMinutes(b.start_time);
+        if (diff !== 0) return diff;
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      });
+
+    const targetIdx = sameDaySorted.findIndex((m) => m.id === id);
+    if (targetIdx === -1) return;
+
+    const statusById = new Map<string, TimingStatus>();
+    sameDaySorted.forEach((m, idx) => {
+      if (idx < targetIdx) {
+        statusById.set(m.id, 'completed');
+      } else if (idx === targetIdx) {
+        statusById.set(m.id, 'in_progress');
+      } else {
+        statusById.set(m.id, 'ready');
+      }
+    });
+
+    const updated = current.map((m) => {
+      const nextStatus = statusById.get(m.id);
+      return nextStatus ? { ...m, status: nextStatus } : m;
+    });
+
+    setMilestones(updated);
+    setStoredTimingMilestones(updated);
+  }, []);
+
   const toggleChecklistItem = useCallback((milestoneId: string, itemId: string) => {
     const current = getStoredTimingMilestones();
     const updated = current.map((m) => {
@@ -284,6 +324,7 @@ export function useTimingStore() {
     deleteMilestone,
     duplicateMilestone,
     updateMilestoneStatus,
+    setCurrentEventMilestone,
     toggleChecklistItem,
     addChecklistItem,
     removeChecklistItem,
