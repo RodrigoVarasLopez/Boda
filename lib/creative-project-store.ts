@@ -17,6 +17,10 @@ import {
   INITIAL_CREATIVE_DOSSIER,
   CREATIVE_PROJECT_UPDATE_EVENT,
   STORAGE_KEY_CREATIVE_PROJECT,
+  enforceMax100Palette,
+  extractPercentageFromRole,
+  formatRoleWithPercentage,
+  getSwatchPercentage,
 } from './creative-project-data';
 import {
   getStoredBudgetCategories,
@@ -305,17 +309,30 @@ export function useCreativeProjectStore() {
     [saveDossier]
   );
 
-  // 3. Color Palette CRUD
+  // 3. Color Palette CRUD (with automatic max 100% enforcement)
   const addColorSwatch = useCallback(
     (swatch: Omit<CreativeColorSwatch, 'id'>) => {
       const current = getStoredCreativeDossier();
+      const newId = `col-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const requestedPct = getSwatchPercentage(
+        { ...swatch, id: newId },
+        10
+      );
       const newSwatch: CreativeColorSwatch = {
         ...swatch,
-        id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        id: newId,
+        percentage: requestedPct,
+        role: formatRoleWithPercentage(swatch.role, requestedPct),
       };
+      const nextPalette = enforceMax100Palette(
+        [...current.color_palette, newSwatch],
+        newId,
+        requestedPct,
+        false
+      );
       saveDossier({
         ...current,
-        color_palette: [...current.color_palette, newSwatch],
+        color_palette: nextPalette,
       });
     },
     [saveDossier]
@@ -324,11 +341,35 @@ export function useCreativeProjectStore() {
   const updateColorSwatch = useCallback(
     (id: string, patch: Partial<CreativeColorSwatch>) => {
       const current = getStoredCreativeDossier();
+      let explicitPct: number | undefined = undefined;
+
+      if (typeof patch.percentage === 'number' && !isNaN(patch.percentage)) {
+        explicitPct = Math.max(0, Math.min(100, Math.round(patch.percentage)));
+      } else if (typeof patch.role === 'string') {
+        const parsedFromRole = extractPercentageFromRole(patch.role);
+        if (parsedFromRole !== null) {
+          explicitPct = parsedFromRole;
+        }
+      }
+
+      const rawUpdated = current.color_palette.map((col) => {
+        if (col.id !== id) return col;
+        const merged = { ...col, ...patch };
+        if (explicitPct !== undefined) {
+          merged.percentage = explicitPct;
+          merged.role = formatRoleWithPercentage(merged.role, explicitPct);
+        }
+        return merged;
+      });
+
+      const nextPalette =
+        explicitPct !== undefined
+          ? enforceMax100Palette(rawUpdated, id, explicitPct, false)
+          : rawUpdated;
+
       saveDossier({
         ...current,
-        color_palette: current.color_palette.map((col) =>
-          col.id === id ? { ...col, ...patch } : col
-        ),
+        color_palette: nextPalette,
       });
     },
     [saveDossier]
@@ -337,13 +378,29 @@ export function useCreativeProjectStore() {
   const deleteColorSwatch = useCallback(
     (id: string) => {
       const current = getStoredCreativeDossier();
+      const filtered = current.color_palette.filter((col) => col.id !== id);
+      const nextPalette = enforceMax100Palette(filtered, undefined, undefined, true);
       saveDossier({
         ...current,
-        color_palette: current.color_palette.filter((col) => col.id !== id),
+        color_palette: nextPalette,
       });
     },
     [saveDossier]
   );
+
+  const balanceColorPaletteTo100 = useCallback(() => {
+    const current = getStoredCreativeDossier();
+    const nextPalette = enforceMax100Palette(
+      current.color_palette,
+      undefined,
+      undefined,
+      true
+    );
+    saveDossier({
+      ...current,
+      color_palette: nextPalette,
+    });
+  }, [saveDossier]);
 
   const applyColorPalettePreset = useCallback(
     (presetId: string) => {
@@ -352,7 +409,12 @@ export function useCreativeProjectStore() {
       const current = getStoredCreativeDossier();
       saveDossier({
         ...current,
-        color_palette: preset.swatches.map((s) => ({ ...s })),
+        color_palette: enforceMax100Palette(
+          preset.swatches.map((s) => ({ ...s })),
+          undefined,
+          undefined,
+          true
+        ),
       });
     },
     [saveDossier]
@@ -690,6 +752,7 @@ export function useCreativeProjectStore() {
     addColorSwatch,
     updateColorSwatch,
     deleteColorSwatch,
+    balanceColorPaletteTo100,
     applyColorPalettePreset,
     updateMaterialsAndFlorals,
     updateSpaceProposalStatus,

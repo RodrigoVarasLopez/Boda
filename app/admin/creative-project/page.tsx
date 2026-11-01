@@ -17,6 +17,7 @@ import {
   CreativeLayoutSchema,
   CreativeStationeryItem,
   CreativeBudgetPriorityItem,
+  getSwatchPercentage,
 } from '@/lib/creative-project-data';
 import { formatCurrency } from '@/lib/budget-data';
 import { ImagePickerField } from '@/components/admin/creative/ImagePickerField';
@@ -70,6 +71,7 @@ export default function AdminCreativeProjectPage() {
     addColorSwatch,
     updateColorSwatch,
     deleteColorSwatch,
+    balanceColorPaletteTo100,
     applyColorPalettePreset,
     updateMaterialsAndFlorals,
     updateSpaceProposalStatus,
@@ -904,24 +906,88 @@ export default function AdminCreativeProjectPage() {
             </div>
 
             {/* Visual Harmony Proportion Strip */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted block">
-                Equilibrio Visual de la Paleta en Vivo:
-              </span>
-              <div className="h-8 w-full rounded-2xl overflow-hidden flex border border-border-strong shadow-xs">
-                {dossier.color_palette.map((sw, i) => (
-                  <div
-                    key={sw.id}
-                    style={{
-                      backgroundColor: sw.hex,
-                      flex: i === 0 ? 3 : i === 1 ? 2 : 1.2,
-                    }}
-                    className="h-full transition-all duration-300 relative group"
-                    title={`${sw.name} (${sw.hex})`}
-                  />
-                ))}
-              </div>
-            </div>
+            {(() => {
+              const totalPct = dossier.color_palette.reduce(
+                (acc, sw) => acc + getSwatchPercentage(sw),
+                0
+              );
+              const remainingPct = Math.max(0, 100 - totalPct);
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted block">
+                      Equilibrio Visual de la Paleta en Vivo:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                          totalPct === 100
+                            ? 'bg-brand-olive/15 text-brand-olive'
+                            : 'bg-amber-100 text-amber-900'
+                        }`}
+                      >
+                        Total: {totalPct}% / 100%
+                      </span>
+                      {remainingPct > 0 && studioEditMode && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            balanceColorPaletteTo100();
+                            showToast('✓ Porcentajes ajustados automáticamente al 100%');
+                          }}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary text-primary-text hover:bg-primary-hover cursor-pointer"
+                          title="Repartir proporcionalmente el porcentaje restante hasta completar el 100%"
+                        >
+                          Completar al 100%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="h-10 w-full rounded-2xl overflow-hidden flex border border-border-strong shadow-xs bg-bg-secondary/40">
+                    {dossier.color_palette.map((sw) => {
+                      const pct = getSwatchPercentage(sw);
+                      if (pct <= 0) return null;
+                      return (
+                        <div
+                          key={sw.id}
+                          style={{
+                            backgroundColor: sw.hex,
+                            width: `${pct}%`,
+                          }}
+                          className="h-full transition-all duration-300 relative group flex items-center justify-center overflow-hidden border-r border-black/10 last:border-r-0"
+                          title={`${sw.name}: ${pct}% (${sw.hex})`}
+                        >
+                          {pct >= 8 && (
+                            <span className="px-1.5 py-0.5 rounded bg-black/45 text-white font-mono text-[10px] font-bold backdrop-blur-2xs">
+                              {pct}%
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {remainingPct > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          balanceColorPaletteTo100();
+                          showToast('✓ Porcentajes ajustados automáticamente al 100%');
+                        }}
+                        style={{ width: `${remainingPct}%` }}
+                        className="h-full bg-repeating-linear border-l border-dashed border-border-strong flex items-center justify-center text-[10px] font-mono text-text-muted hover:text-primary transition-all cursor-pointer"
+                        title="Haz clic para repartir este porcentaje libre entre los colores"
+                      >
+                        {remainingPct >= 10 ? `${remainingPct}% libre` : ''}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-text-muted">
+                    Si subes el porcentaje de un color por encima del disponible, el resto de colores se reajustan automáticamente para no superar nunca el 100%.
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* 1-Click Preset Palettes Selector for Wedding Planner */}
             {studioEditMode && (
@@ -1035,104 +1101,145 @@ export default function AdminCreativeProjectPage() {
 
             {/* Editable Swatch Cards */}
             <div className="space-y-3">
-              {dossier.color_palette.map((swatch) => (
-                <div
-                  key={swatch.id}
-                  className="p-3.5 rounded-2xl bg-bg-secondary/35 border border-border-subtle flex items-start gap-3.5"
-                >
-                  <label
-                    className="relative cursor-pointer shrink-0 group"
-                    title="Haz clic para abrir el selector de color"
+              {dossier.color_palette.map((swatch) => {
+                const swatchPct = getSwatchPercentage(swatch);
+                return (
+                  <div
+                    key={swatch.id}
+                    className="p-3.5 rounded-2xl bg-bg-secondary/35 border border-border-subtle flex items-start gap-3.5"
                   >
-                    <div
-                      style={{ backgroundColor: swatch.hex }}
-                      className="w-14 h-14 rounded-2xl border border-border-strong shadow-xs flex items-center justify-center"
+                    <label
+                      className="relative cursor-pointer shrink-0 group"
+                      title="Haz clic para abrir el selector de color"
                     >
-                      {studioEditMode && (
-                        <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded transition-opacity">
-                          Cambiar
+                      <div
+                        style={{ backgroundColor: swatch.hex }}
+                        className="w-14 h-14 rounded-2xl border border-border-strong shadow-xs flex flex-col items-center justify-center"
+                      >
+                        <span className="bg-black/55 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded">
+                          {swatchPct}%
                         </span>
+                      </div>
+                      <input
+                        type="color"
+                        value={swatch.hex}
+                        onChange={(e) =>
+                          updateColorSwatch(swatch.id, {
+                            hex: e.target.value.toUpperCase(),
+                          })
+                        }
+                        className="sr-only"
+                      />
+                    </label>
+
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {studioEditMode ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={swatch.name}
+                              onChange={(e) =>
+                                updateColorSwatch(swatch.id, { name: e.target.value })
+                              }
+                              className="flex-1 px-2 py-1 rounded-lg bg-bg-card border border-border-subtle font-serif text-sm font-medium text-text-primary"
+                            />
+                            <input
+                              type="text"
+                              value={swatch.hex}
+                              onChange={(e) =>
+                                updateColorSwatch(swatch.id, { hex: e.target.value })
+                              }
+                              className="w-20 px-2 py-1 rounded-lg bg-bg-card border border-border-subtle font-mono text-[11px] text-center text-text-secondary"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => deleteColorSwatch(swatch.id)}
+                              className="p-1 text-text-muted hover:text-rose-600 cursor-pointer"
+                              title="Eliminar color"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Interactive Percentage Slider + Number Input + Role Input */}
+                          <div className="p-2 rounded-xl bg-bg-card border border-border-subtle space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono uppercase text-primary font-semibold">
+                                Peso en la paleta (máx. 100% total)
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={swatchPct}
+                                  onChange={(e) => {
+                                    const val = Math.max(
+                                      0,
+                                      Math.min(100, Number(e.target.value) || 0)
+                                    );
+                                    updateColorSwatch(swatch.id, { percentage: val });
+                                  }}
+                                  className="w-14 px-1.5 py-0.5 rounded bg-bg-secondary/60 border border-border-subtle font-mono text-xs font-bold text-center text-primary"
+                                />
+                                <span className="text-xs font-mono font-bold text-primary">%</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={swatchPct}
+                              onChange={(e) =>
+                                updateColorSwatch(swatch.id, {
+                                  percentage: Number(e.target.value),
+                                })
+                              }
+                              className="w-full accent-primary cursor-pointer h-1.5"
+                            />
+                            <input
+                              type="text"
+                              value={swatch.role}
+                              onChange={(e) =>
+                                updateColorSwatch(swatch.id, { role: e.target.value })
+                              }
+                              placeholder="Rol (ej. Base Principal (45%))"
+                              className="w-full px-2 py-1 rounded bg-bg-secondary/35 border border-border-subtle text-[11px] font-mono text-text-primary"
+                            />
+                          </div>
+
+                          <input
+                            type="text"
+                            value={swatch.usage}
+                            onChange={(e) =>
+                              updateColorSwatch(swatch.id, { usage: e.target.value })
+                            }
+                            className="w-full px-2 py-1 rounded-lg bg-bg-card border border-border-subtle text-xs text-text-secondary"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-2">
+                            <h4 className="font-serif text-base font-medium text-text-primary">
+                              {swatch.name}
+                            </h4>
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-bg-card border border-border-subtle text-text-secondary">
+                              {swatch.hex} · {swatchPct}%
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-semibold block">
+                            {swatch.role}
+                          </span>
+                          <p className="text-xs text-text-secondary leading-snug">
+                            {swatch.usage}
+                          </p>
+                        </>
                       )}
                     </div>
-                    <input
-                      type="color"
-                      value={swatch.hex}
-                      onChange={(e) =>
-                        updateColorSwatch(swatch.id, {
-                          hex: e.target.value.toUpperCase(),
-                        })
-                      }
-                      className="sr-only"
-                    />
-                  </label>
-
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    {studioEditMode ? (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={swatch.name}
-                            onChange={(e) =>
-                              updateColorSwatch(swatch.id, { name: e.target.value })
-                            }
-                            className="flex-1 px-2 py-1 rounded-lg bg-bg-card border border-border-subtle font-serif text-sm font-medium text-text-primary"
-                          />
-                          <input
-                            type="text"
-                            value={swatch.hex}
-                            onChange={(e) =>
-                              updateColorSwatch(swatch.id, { hex: e.target.value })
-                            }
-                            className="w-20 px-2 py-1 rounded-lg bg-bg-card border border-border-subtle font-mono text-[11px] text-center text-text-secondary"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => deleteColorSwatch(swatch.id)}
-                            className="p-1 text-text-muted hover:text-rose-600 cursor-pointer"
-                            title="Eliminar color"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <input
-                          type="text"
-                          value={swatch.role}
-                          onChange={(e) =>
-                            updateColorSwatch(swatch.id, { role: e.target.value })
-                          }
-                          className="w-full px-2 py-1 rounded-lg bg-bg-card border border-border-subtle text-[11px] font-mono text-primary"
-                        />
-                        <input
-                          type="text"
-                          value={swatch.usage}
-                          onChange={(e) =>
-                            updateColorSwatch(swatch.id, { usage: e.target.value })
-                          }
-                          className="w-full px-2 py-1 rounded-lg bg-bg-card border border-border-subtle text-xs text-text-secondary"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="font-serif text-base font-medium text-text-primary">
-                            {swatch.name}
-                          </h4>
-                          <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-bg-card border border-border-subtle text-text-secondary">
-                            {swatch.hex}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-semibold block">
-                          {swatch.role}
-                        </span>
-                        <p className="text-xs text-text-secondary leading-snug">
-                          {swatch.usage}
-                        </p>
-                      </>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

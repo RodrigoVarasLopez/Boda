@@ -15,7 +15,133 @@ export interface CreativeColorSwatch {
   name: string;
   hex: string;
   role: string; // e.g., 'Base Luminosa (45%)', 'Botánico Principal (25%)'
+  percentage?: number; // 0 to 100
   usage: string;
+}
+
+export function extractPercentageFromRole(role: string): number | null {
+  if (!role) return null;
+  const matchPct = role.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (matchPct) {
+    const val = Math.round(parseFloat(matchPct[1].replace(',', '.')));
+    if (!isNaN(val)) return Math.max(0, Math.min(100, val));
+  }
+  return null;
+}
+
+export function getSwatchPercentage(swatch: CreativeColorSwatch, fallback = 20): number {
+  if (typeof swatch.percentage === 'number' && !isNaN(swatch.percentage)) {
+    return Math.max(0, Math.min(100, Math.round(swatch.percentage)));
+  }
+  const fromRole = extractPercentageFromRole(swatch.role);
+  if (fromRole !== null) return fromRole;
+  return fallback;
+}
+
+export function formatRoleWithPercentage(roleStr: string, pct: number): string {
+  const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+  const trimmed = (roleStr || '').trim();
+  if (!trimmed) return `Proporción (${clamped}%)`;
+  if (/\(\s*\d+(?:[.,]\d+)?\s*%?\s*\)/.test(trimmed)) {
+    return trimmed.replace(/\(\s*\d+(?:[.,]\d+)?\s*%?\s*\)/, `(${clamped}%)`);
+  }
+  if (/\d+(?:[.,]\d+)?\s*%/.test(trimmed)) {
+    return trimmed.replace(/\d+(?:[.,]\d+)?\s*%/, `${clamped}%`);
+  }
+  return `${trimmed} (${clamped}%)`;
+}
+
+/**
+ * Ensures every swatch has a numeric `percentage` synced with `role`,
+ * and guarantees the sum of percentages NEVER exceeds 100%.
+ * If `activeId` is provided, `activeId` keeps its requested percentage (clamped 0..100)
+ * and the remaining swatches are proportionally reduced whenever the total would exceed 100%
+ * (or scaled to 100% if `forceExact100` is true).
+ */
+export function enforceMax100Palette(
+  swatches: CreativeColorSwatch[],
+  activeId?: string,
+  explicitPct?: number,
+  forceExact100: boolean = false
+): CreativeColorSwatch[] {
+  if (!swatches || swatches.length === 0) return [];
+
+  const defaultShare = Math.floor(100 / swatches.length);
+  const items = swatches.map((sw) => {
+    const pct =
+      sw.id === activeId && typeof explicitPct === 'number'
+        ? Math.max(0, Math.min(100, Math.round(explicitPct)))
+        : getSwatchPercentage(sw, defaultShare);
+    return {
+      ...sw,
+      percentage: pct,
+    };
+  });
+
+  const total = items.reduce((acc, s) => acc + (s.percentage ?? 0), 0);
+
+  if (total > 100 || (forceExact100 && total !== 100)) {
+    if (activeId && items.length > 1) {
+      const activeItem = items.find((s) => s.id === activeId);
+      const activeVal = activeItem ? activeItem.percentage ?? 0 : 0;
+      const allowedOthers = Math.max(0, 100 - activeVal);
+      const others = items.filter((s) => s.id !== activeId);
+      const othersSum = others.reduce((acc, s) => acc + (s.percentage ?? 0), 0);
+
+      let remainingToDistribute = allowedOthers;
+      const updatedOthers: Record<string, number> = {};
+
+      others.forEach((o, idx) => {
+        if (idx === others.length - 1) {
+          updatedOthers[o.id] = Math.max(0, remainingToDistribute);
+        } else {
+          const share =
+            othersSum > 0
+              ? Math.round(((o.percentage ?? 0) / othersSum) * allowedOthers)
+              : Math.floor(allowedOthers / others.length);
+          const bounded = Math.max(0, Math.min(remainingToDistribute, share));
+          updatedOthers[o.id] = bounded;
+          remainingToDistribute -= bounded;
+        }
+      });
+
+      return items.map((s) => {
+        const finalPct = s.id === activeId ? activeVal : updatedOthers[s.id] ?? 0;
+        return {
+          ...s,
+          percentage: finalPct,
+          role: formatRoleWithPercentage(s.role, finalPct),
+        };
+      });
+    } else {
+      // Scale all items to sum to 100
+      let remaining = 100;
+      return items.map((s, idx) => {
+        let finalPct = 0;
+        if (idx === items.length - 1) {
+          finalPct = Math.max(0, remaining);
+        } else {
+          finalPct =
+            total > 0
+              ? Math.round(((s.percentage ?? 0) / total) * 100)
+              : Math.floor(100 / items.length);
+          finalPct = Math.max(0, Math.min(remaining, finalPct));
+          remaining -= finalPct;
+        }
+        return {
+          ...s,
+          percentage: finalPct,
+          role: formatRoleWithPercentage(s.role, finalPct),
+        };
+      });
+    }
+  }
+
+  return items.map((s) => ({
+    ...s,
+    percentage: s.percentage ?? 0,
+    role: formatRoleWithPercentage(s.role, s.percentage ?? 0),
+  }));
 }
 
 export interface CreativeMoodboardItem {
@@ -250,6 +376,7 @@ export const INITIAL_CREATIVE_DOSSIER: CreativeProjectDossier = {
       name: 'Piedra Caliza & Marfil',
       hex: '#F6F3EC',
       role: 'Base Principal (45%)',
+      percentage: 45,
       usage: 'Mantelería de lino, papel algodón de papelería, rosas de jardín y velas.',
     },
     {
@@ -257,6 +384,7 @@ export const INITIAL_CREATIVE_DOSSIER: CreativeProjectDossier = {
       name: 'Verde Olivo Silvestre',
       hex: '#5D6B52',
       role: 'Secundario Botánico (25%)',
+      percentage: 25,
       usage: 'Follaje estructural (olivo y eucalipto), cintas de seda, lacres y detalles gráficos.',
     },
     {
@@ -264,6 +392,7 @@ export const INITIAL_CREATIVE_DOSSIER: CreativeProjectDossier = {
       name: 'Arena Espiga & Roble',
       hex: '#D2C0A5',
       role: 'Neutro Cálido (15%)',
+      percentage: 15,
       usage: 'Bajoplatos de fibra/madera, barricas, mobiliario de cóctel y espigas secas.',
     },
     {
@@ -271,6 +400,7 @@ export const INITIAL_CREATIVE_DOSSIER: CreativeProjectDossier = {
       name: 'Burdeos Reserva Suave',
       hex: '#7A383E',
       role: 'Acento Enológico (10%)',
+      percentage: 10,
       usage: 'Toques florales puntuales de final de verano, copas/vino y detalles del Seating Plan.',
     },
     {
@@ -278,6 +408,7 @@ export const INITIAL_CREATIVE_DOSSIER: CreativeProjectDossier = {
       name: 'Carbón Tinta Editorial',
       hex: '#23201D',
       role: 'Tipografía & Contraste (5%)',
+      percentage: 5,
       usage: 'Caligrafía e impresión tipográfica de minutas, meseros y señalética.',
     },
   ],
@@ -775,10 +906,12 @@ export function getStoredCreativeDossier(): CreativeProjectDossier {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.id && parsed.concept) {
-        return {
+        const merged: CreativeProjectDossier = {
           ...INITIAL_CREATIVE_DOSSIER,
           ...parsed,
         };
+        merged.color_palette = enforceMax100Palette(merged.color_palette);
+        return merged;
       }
     }
   } catch (e) {

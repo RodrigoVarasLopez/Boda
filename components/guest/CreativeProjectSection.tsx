@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCreativeProjectStore } from '@/lib/creative-project-store';
+import { getSwatchPercentage } from '@/lib/creative-project-data';
 import {
   Palette,
   Sparkles,
@@ -114,26 +115,56 @@ export const CreativeProjectSection: React.FC = () => {
         </div>
 
         {/* Color Palette Strip Preview */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
-          {dossier.color_palette.map((col) => (
-            <div
-              key={col.id}
-              className="p-3 rounded-2xl bg-bg-secondary/30 border border-border-subtle flex items-center gap-3"
-            >
-              <div
-                style={{ backgroundColor: col.hex }}
-                className="w-9 h-9 rounded-xl border border-border-strong shrink-0 shadow-2xs"
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-serif font-medium text-text-primary truncate">
-                  {col.name}
-                </p>
-                <span className="text-[10px] font-mono text-text-muted block">
-                  {col.hex} · {col.role.split('(')[0]}
-                </span>
-              </div>
-            </div>
-          ))}
+        <div className="space-y-3 pt-1">
+          <div className="h-6 w-full rounded-xl overflow-hidden flex border border-border-strong shadow-2xs bg-bg-secondary/40">
+            {dossier.color_palette.map((col) => {
+              const pct = getSwatchPercentage(col);
+              if (pct <= 0) return null;
+              return (
+                <div
+                  key={col.id}
+                  style={{ backgroundColor: col.hex, width: `${pct}%` }}
+                  className="h-full transition-all duration-300 flex items-center justify-center overflow-hidden border-r border-black/10 last:border-r-0"
+                  title={`${col.name}: ${pct}%`}
+                >
+                  {pct >= 8 && (
+                    <span className="px-1.5 py-0.5 rounded bg-black/45 text-white font-mono text-[9px] font-bold">
+                      {pct}%
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {dossier.color_palette.map((col) => {
+              const pct = getSwatchPercentage(col);
+              return (
+                <div
+                  key={col.id}
+                  className="p-3 rounded-2xl bg-bg-secondary/30 border border-border-subtle flex items-center gap-3"
+                >
+                  <div
+                    style={{ backgroundColor: col.hex }}
+                    className="w-9 h-9 rounded-xl border border-border-strong shrink-0 shadow-2xs flex items-center justify-center"
+                  >
+                    <span className="bg-black/50 text-white font-mono text-[9px] font-bold px-1 rounded">
+                      {pct}%
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-serif font-medium text-text-primary truncate">
+                      {col.name}
+                    </p>
+                    <span className="text-[10px] font-mono text-text-muted block">
+                      {col.hex} · {pct}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Expandable Interactive Dossier Preview */}
