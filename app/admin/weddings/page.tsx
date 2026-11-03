@@ -42,7 +42,15 @@ import {
   Search,
   CheckCircle2,
   Layers,
+  FileSignature,
+  Clock,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useContractsStore } from '@/lib/contracts-store';
+import { CreateContractModal } from '@/components/contracts/CreateContractModal';
+import { EditContractModal } from '@/components/contracts/EditContractModal';
+import { LegalCertificateModal } from '@/components/contracts/LegalCertificateModal';
+import { Contract } from '@/lib/contracts-data';
 
 export default function WeddingPlannerPage() {
   const router = useRouter();
@@ -67,9 +75,21 @@ export default function WeddingPlannerPage() {
   const [modalDefaultOrgId, setModalDefaultOrgId] = useState<string>(DEFAULT_PLATFORM_ORG_ID);
   const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'planning'>('all');
-  const [activeMainTab, setActiveMainTab] = useState<'planner_area' | 'guest_area' | 'users_roles'>(
+  const [activeMainTab, setActiveMainTab] = useState<'planner_area' | 'contracts_area' | 'guest_area' | 'users_roles'>(
     'planner_area'
   );
+
+  const {
+    contracts,
+    createContract,
+    updateContract,
+    deleteContract,
+    duplicateContract,
+  } = useContractsStore();
+  const [showCreateContractModal, setShowCreateContractModal] = useState(false);
+  const [selectedContractForEdit, setSelectedContractForEdit] = useState<Contract | null>(null);
+  const [selectedContractForCert, setSelectedContractForCert] = useState<Contract | null>(null);
+  const [copiedContractId, setCopiedContractId] = useState<string | null>(null);
 
   // Modal: Dar Acceso a Wedding Planners a una Boda B2C / B2B desde "Mis Bodas"
   const [accessModalWeddingId, setAccessModalWeddingId] = useState<string | null>(null);
@@ -547,7 +567,7 @@ export default function WeddingPlannerPage() {
           2) ÁREA 2: ÁREA DE INVITADOS (WEB, SAVE THE DATE Y TOKENS VIP)
           3) ÁREA 3: USUARIOS Y PERMISOS (ADMIN / PLANNER / USUARIO BÁSICO)
       ===================================================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           type="button"
           onClick={() => setActiveMainTab('planner_area')}
@@ -571,10 +591,41 @@ export default function WeddingPlannerPage() {
               ÁREA 1 · BACKOFFICE
             </span>
             <span className="font-serif text-base sm:text-lg font-bold block">
-              Área Wedding Planner &amp; Parejas
+              Área Wedding Planner
             </span>
             <span className="text-[11px] opacity-80 block">
-              Cartera de bodas, presupuesto, CRM y eventos
+              Cartera de bodas, presupuesto y CRM
+            </span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('contracts_area')}
+          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3.5 ${
+            activeMainTab === 'contracts_area'
+              ? 'bg-primary text-primary-text border-primary shadow-card'
+              : 'bg-bg-card border-border-subtle hover:border-border-strong text-text-primary'
+          }`}
+        >
+          <div
+            className={`p-3 rounded-xl ${
+              activeMainTab === 'contracts_area'
+                ? 'bg-white/15 text-white'
+                : 'bg-emerald-500/15 text-emerald-700'
+            }`}
+          >
+            <FileSignature className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-wider opacity-80 block font-bold">
+              ÁREA 2 · LEGAL eIDAS
+            </span>
+            <span className="font-serif text-base sm:text-lg font-bold block">
+              Contratos &amp; Firmas
+            </span>
+            <span className="text-[11px] opacity-80 block">
+              Creación, firma electrónica y reservas
             </span>
           </div>
         </button>
@@ -599,13 +650,13 @@ export default function WeddingPlannerPage() {
           </div>
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider opacity-80 block font-bold">
-              ÁREA 2 · FRONTOFFICE PÚBLICO
+              ÁREA 3 · FRONTOFFICE
             </span>
             <span className="font-serif text-base sm:text-lg font-bold block">
-              Área de Invitados ({activeWedding.couple_names})
+              Área de Invitados
             </span>
             <span className="text-[11px] opacity-80 block">
-              Invitaciones VIP por token, Web y Save the Date
+              Invitaciones VIP, Web y STD
             </span>
           </div>
         </button>
@@ -623,20 +674,20 @@ export default function WeddingPlannerPage() {
             className={`p-3 rounded-xl ${
               activeMainTab === 'users_roles'
                 ? 'bg-white/15 text-white'
-                : 'bg-emerald-500/15 text-emerald-700'
+                : 'bg-indigo-500/15 text-indigo-700'
             }`}
           >
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider opacity-80 block font-bold">
-              ARQUITECTURA RBAC · 3 ROLES
+              ÁREA 4 · RBAC
             </span>
             <span className="font-serif text-base sm:text-lg font-bold block">
               Usuarios &amp; Permisos ({users.length})
             </span>
             <span className="text-[11px] opacity-80 block">
-              Administración, Wedding Planner y Usuario Básico
+              Roles y asignación de bodas
             </span>
           </div>
         </button>
@@ -854,7 +905,7 @@ export default function WeddingPlannerPage() {
                     <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted block font-semibold">
                       Accesos directos de Gestión (Planner / Pareja):
                     </span>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleSelectWeddingAndGo(w.id, '/admin/budget')}
@@ -862,6 +913,14 @@ export default function WeddingPlannerPage() {
                       >
                         <Receipt className="w-3.5 h-3.5 text-primary shrink-0" />
                         <span>Presupuesto</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectWeddingAndGo(w.id, '/admin/contracts')}
+                        className="py-1.5 px-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-[11px] font-semibold text-primary flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <FileSignature className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span>Contratos</span>
                       </button>
                       <button
                         type="button"
@@ -932,7 +991,196 @@ export default function WeddingPlannerPage() {
       )}
 
       {/* =====================================================================
-          CONTENIDO PESTAÑA 2: ÁREA DE INVITADOS (PÚBLICA, SAVE THE DATE Y TOKENS)
+          CONTENIDO PESTAÑA: ÁREA DE CONTRATOS & FIRMAS (eIDAS)
+      ===================================================================== */}
+      {activeMainTab === 'contracts_area' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Banner */}
+          <div className="p-6 rounded-3xl bg-bg-card border border-border-subtle shadow-card flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                <FileSignature className="w-3 h-3" />
+                <span>MÓDULO DE CONTRATACIÓN ELECTRÓNICA & eIDAS (UE 910/2014)</span>
+              </div>
+              <h2 className="font-serif text-2xl font-bold text-text-primary">
+                Contratos de Prestación de Servicios (Wedding Planners)
+              </h2>
+              <p className="text-xs text-text-secondary max-w-2xl">
+                Crea contratos blindados legalmente con 26 cláusulas especializadas, genera enlaces de firma electrónica simple con captura biométrica de trazo, huella criptográfica SHA-256 y control de cobro de reservas.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/admin/contracts"
+                className="py-2.5 px-4 rounded-xl border border-border-strong hover:bg-bg-secondary text-text-primary text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <span>Gestor Completo</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowCreateContractModal(true)}
+                className="py-2.5 px-4 rounded-xl bg-primary text-primary-text text-xs font-semibold hover:bg-primary-hover shadow-soft transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Crear Nuevo Contrato</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Metrics summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-xs space-y-1">
+              <span className="text-[11px] font-mono uppercase text-text-muted">Total Contratos</span>
+              <div className="text-2xl font-serif font-bold text-text-primary">{contracts.length}</div>
+              <p className="text-[11px] text-text-secondary">Expedientes registrados</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-xs space-y-1">
+              <span className="text-[11px] font-mono uppercase text-emerald-600">Firmados con Éxito</span>
+              <div className="text-2xl font-serif font-bold text-emerald-600">
+                {contracts.filter((c) => c.status === 'signed').length}
+              </div>
+              <p className="text-[11px] text-text-secondary">Plena eficacia jurídica</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-xs space-y-1">
+              <span className="text-[11px] font-mono uppercase text-amber-600">Pendientes de Firma</span>
+              <div className="text-2xl font-serif font-bold text-amber-600">
+                {contracts.filter((c) => c.status === 'sent' || c.status === 'opened').length}
+              </div>
+              <p className="text-[11px] text-text-secondary">Esperando aceptación de la pareja</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-bg-card border border-border-subtle shadow-xs space-y-1">
+              <span className="text-[11px] font-mono uppercase text-primary">Volumen Contratado</span>
+              <div className="text-2xl font-serif font-bold text-primary">
+                {contracts.reduce((acc, c) => acc + (Number(c.total_amount) || 0), 0).toLocaleString('es-ES', { minimumFractionDigits: 0 })} €
+              </div>
+              <p className="text-[11px] text-text-secondary">Honorarios totales en cartera</p>
+            </div>
+          </div>
+
+          {/* List of Contracts */}
+          <div className="space-y-4">
+            {contracts.map((c) => {
+              const isSigned = c.status === 'signed';
+              const signUrl = typeof window !== 'undefined'
+                ? `${window.location.origin}/firmar/${c.signing_token}?f=${c.signer_token}`
+                : `/firmar/${c.signing_token}?f=${c.signer_token}`;
+
+              return (
+                <div
+                  key={c.id}
+                  className="p-5 rounded-3xl bg-bg-card border border-border-subtle shadow-card hover:border-border-strong transition-all space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {c.code}
+                      </span>
+                      <h3 className="font-serif text-lg font-bold text-text-primary">
+                        {c.title}
+                      </h3>
+                    </div>
+
+                    <div>
+                      {isSigned ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-300">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          Firmado (eIDAS)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold border border-amber-300">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pendiente de Firma
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-bg-primary/50 border border-border-subtle text-xs">
+                    <div>
+                      <span className="text-text-muted block text-[11px]">Wedding Planner:</span>
+                      <strong className="text-text-primary font-semibold">{c.provider.business_name}</strong>
+                      <span className="text-[11px] text-text-secondary block">{c.provider.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-text-muted block text-[11px]">Pareja:</span>
+                      <strong className="text-text-primary font-semibold">{c.clients.map((cli) => cli.name).join(' & ')}</strong>
+                      <span className="text-[11px] text-text-secondary block font-mono">{c.primary_signer.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-text-muted block text-[11px]">Honorarios & Reserva:</span>
+                      <strong className="text-primary font-bold font-serif text-sm">
+                        {c.total_amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      </strong>
+                      <span className="text-[11px] text-text-secondary block">
+                        Reserva 30%: {c.bank_details.deposit_amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border-subtle">
+                    <div className="flex items-center gap-2 flex-1 max-w-md">
+                      <span className="text-[11px] font-mono text-text-muted shrink-0">Enlace de firma:</span>
+                      <input
+                        type="text"
+                        readOnly
+                        value={signUrl}
+                        className="w-full text-[11px] font-mono py-1 px-2 rounded-lg border border-border-subtle bg-bg-primary text-text-secondary select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(signUrl);
+                          setCopiedContractId(c.id);
+                          setTimeout(() => setCopiedContractId(null), 2000);
+                        }}
+                        className="py-1 px-2.5 rounded-lg bg-primary text-primary-text text-[11px] font-semibold hover:bg-primary-hover transition-colors shrink-0 cursor-pointer"
+                      >
+                        {copiedContractId === c.id ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedContractForEdit(c)}
+                        className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-colors cursor-pointer"
+                        title="Adaptar servicios, honorarios y cláusulas"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <span>Adaptar Servicios</span>
+                      </button>
+
+                      <Link
+                        href={`/firmar/${c.signing_token}?f=${c.signer_token}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-border-strong text-xs font-medium text-text-primary hover:bg-bg-secondary transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Abrir para Firmar</span>
+                      </Link>
+
+                      {isSigned && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedContractForCert(c)}
+                          className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Certificado eIDAS</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          CONTENIDO PESTAÑA 3: ÁREA DE INVITADOS (PÚBLICA, SAVE THE DATE Y TOKENS)
       ===================================================================== */}
       {activeMainTab === 'guest_area' && (
         <div className="space-y-6 animate-fade-in">
@@ -1936,6 +2184,32 @@ export default function WeddingPlannerPage() {
           </div>
         </div>
       )}
+
+      {/* Modal: Crear Nuevo Contrato desde Mis Bodas */}
+      <CreateContractModal
+        isOpen={showCreateContractModal}
+        onClose={() => setShowCreateContractModal(false)}
+        onCreate={(contractData) => {
+          return createContract(contractData);
+        }}
+      />
+
+      {/* Modal: Ver Certificado eIDAS */}
+      <LegalCertificateModal
+        isOpen={!!selectedContractForCert}
+        onClose={() => setSelectedContractForCert(null)}
+        contract={selectedContractForCert}
+      />
+
+      {/* Modal: Editar y Adaptar Contrato a Servicios del WP */}
+      <EditContractModal
+        isOpen={!!selectedContractForEdit}
+        onClose={() => setSelectedContractForEdit(null)}
+        contract={selectedContractForEdit}
+        onSave={(id, updates) => {
+          updateContract(id, updates);
+        }}
+      />
     </div>
   );
 }

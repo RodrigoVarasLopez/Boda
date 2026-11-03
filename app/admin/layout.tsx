@@ -21,7 +21,8 @@ import {
   Sparkles,
   Briefcase,
   Clock,
-  Palette
+  Palette,
+  FileSignature
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/admin/ThemeSelector';
 import { WeddingSwitcher } from '@/components/admin/WeddingSwitcher';
@@ -32,6 +33,7 @@ import { createClient } from '@/lib/supabase/client';
 
 const NAV_ITEMS = [
   { href: '/admin/weddings', label: 'Mis Bodas (Planner)', icon: Briefcase },
+  { href: '/admin/contracts', label: 'Contratos', icon: FileSignature },
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/budget', label: 'Presupuesto', icon: Receipt },
   { href: '/admin/timing', label: 'Timing & Cobertura', icon: Clock },
