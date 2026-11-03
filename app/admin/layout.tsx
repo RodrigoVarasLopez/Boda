@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { href: '/admin/cms', label: 'Web & CMS', icon: PanelsTopLeft },
   { href: '/admin/guestbook', label: 'Firmas', icon: BookOpen },
   { href: '/admin/media', label: 'Memorias', icon: ImageIcon },
-  { href: '/admin/settings', label: 'Ajustes', icon: Settings2 },
+  { href: '/admin/settings', label: 'Ajustes & Cuenta', icon: Settings2 },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -236,10 +236,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="lg:hidden">STD</span>
           </Link>
 
-          {/* Active User Badge */}
-          <div
-            className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-bg-secondary/60 border border-border-subtle text-[11px] text-text-secondary"
-            title={userEmail || 'Sesión activa'}
+          {/* Active User Badge with link to Account Settings */}
+          <Link
+            href="/admin/settings?tab=profile"
+            className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-bg-secondary/60 hover:bg-bg-secondary border border-border-subtle text-[11px] text-text-secondary transition-colors"
+            title={`${userEmail || 'Sesión activa'} · Gestionar mi cuenta y perfil fiscal`}
           >
             <div className="w-6 h-6 rounded-full bg-brand-cream border border-border-strong flex items-center justify-center font-serif text-[10px] font-medium text-text-primary shadow-xs">
               {roleBadgeShort}
@@ -247,7 +248,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="max-w-[130px] truncate font-medium text-text-primary">
               {userLabel}
             </span>
-          </div>
+          </Link>
 
           <button
             onClick={handleLogout}

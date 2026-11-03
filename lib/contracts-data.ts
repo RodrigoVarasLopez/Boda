@@ -1,3 +1,5 @@
+import { getStoredPlannerProfile, PlannerProfile } from './planner-profile-store';
+
 // Types, default clauses, and initial contract data for Wedding Planner contracts
 
 export type ContractStatus = 'draft' | 'sent' | 'opened' | 'partially_signed' | 'signed' | 'cancelled';
@@ -155,8 +157,40 @@ export interface Contract {
   signature_proof?: ContractSignatureEvidence;
 }
 
-export const STORAGE_KEY_CONTRACTS = 'boda_planner_contracts_v1';
+export const STORAGE_KEY_CONTRACTS = 'boda_planner_contracts_v3';
 export const CONTRACTS_UPDATE_EVENT = 'boda_contracts_updated';
+
+export function applyProfileToContract(c: Contract, profile: PlannerProfile): Contract {
+  return {
+    ...c,
+    provider: {
+      name: profile.legal_name || '',
+      dni: profile.nif_cif || '',
+      business_name: profile.business_name || '',
+      address: profile.address || '',
+      role_label: profile.business_name ? `${profile.business_name} o EL/LA PROFESIONAL` : 'EL/LA PROFESIONAL',
+      phone: profile.phone || '',
+      email: profile.email || '',
+      slogan: profile.slogan || '',
+    },
+    bank_details: {
+      ...c.bank_details,
+      account_holder: profile.account_holder || profile.legal_name || '',
+      bank_name: profile.bank_name || '',
+      iban: profile.iban || '',
+    },
+    mileage_rate: profile.mileage_rate || c.mileage_rate || 0.4,
+    mileage_origin: profile.mileage_origin || c.mileage_origin || '',
+  };
+}
+
+export function applyProfileToContractIfEmpty(c: Contract, profile: PlannerProfile): Contract {
+  const isProviderEmpty = !c.provider?.name && !c.provider?.business_name && !c.provider?.dni;
+  if (isProviderEmpty && (profile.legal_name || profile.business_name || profile.nif_cif)) {
+    return applyProfileToContract(c, profile);
+  }
+  return c;
+}
 
 // 26 Comprehensive Legal Clauses based on standard Spanish Wedding Planning Law (eIDAS & Ley 6/2020)
 export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
@@ -165,7 +199,7 @@ export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
     number: 1,
     title: 'OBJETO DEL CONTRATO',
     content:
-      'El objeto del presente contrato es la prestación por RITMOS de los servicios profesionales de Wedding Planning y diseño creativo contratados por LA PAREJA para su boda del 28 de agosto de 2027.\n\nLos importes indicados son precios finales de los servicios contratados, con los impuestos legalmente aplicables incluidos.\n\nEl precio especial del Diseño Creativo Integral supone una reducción de 100 € respecto a su tarifa habitual de 395 €, concedida como atención comercial por la contratación conjunta de los servicios de Wedding Planning.\n\nLos desplazamientos y cualquier servicio adicional no están incluidos en este importe y se regularán mediante los correspondientes anexos o presupuestos aceptados por escrito.',
+      'El objeto del presente contrato es la prestación por EL/LA PROFESIONAL de los servicios profesionales de Wedding Planning y diseño creativo contratados por LA PAREJA para la celebración de su boda.\n\nLos importes indicados son precios finales de los servicios contratados, con los impuestos legalmente aplicables incluidos.\n\nLos desplazamientos y cualquier servicio adicional no contemplados expresamente en este contrato se regularán mediante los correspondientes anexos o presupuestos aceptados por escrito.',
   },
   {
     id: 'cl-2',
@@ -178,25 +212,25 @@ export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
         number: '2.1',
         title: 'Preparación previa',
         content:
-          'El servicio de coordinación comenzará entre dos y tres semanas antes de la boda. Durante este periodo, RITMOS realizará las siguientes funciones:\n• Reunión final de organización con LA PAREJA.\n• Recopilación de información sobre los proveedores contratados.\n• Contacto con los profesionales implicados para confirmar horarios, necesidades técnicas, accesos y responsabilidades.\n• Elaboración de un timing personalizado de la jornada.\n• Organización de la secuencia de la ceremonia religiosa, respetando las indicaciones de la parroquia.\n• Planificación de las transiciones entre los diferentes espacios.\n• Organización de horarios e intervenciones de los proveedores.\n• Revisión de los momentos especiales, actuaciones y sorpresas.\n• Preparación de las indicaciones organizativas que resulten necesarias.\n\nDurante esta etapa, RITMOS actuará como interlocutora organizativa de los proveedores en las cuestiones relacionadas con la coordinación contratada.',
+          'El servicio de coordinación comenzará entre dos y tres semanas antes de la boda. Durante este periodo, el equipo profesional realizará las siguientes funciones:\n• Reunión final de organización con LA PAREJA.\n• Recopilación de información sobre los proveedores contratados.\n• Contacto con los profesionales implicados para confirmar horarios, necesidades técnicas, accesos y responsabilidades.\n• Elaboración de un timing personalizado de la jornada.\n• Organización de la secuencia de la ceremonia religiosa o civil, respetando las indicaciones del espacio.\n• Planificación de las transiciones entre los diferentes espacios.\n• Organización de horarios e intervenciones de los proveedores.\n• Revisión de los momentos especiales, actuaciones y sorpresas.\n• Preparación de las indicaciones organizativas que resulten necesarias.\n\nDurante esta etapa, el equipo organizador actuará como interlocutor de los proveedores en las cuestiones relacionadas con la coordinación contratada.',
       },
       {
         number: '2.2',
         title: 'Coordinación de momentos especiales',
         content:
-          'El servicio incluirá la coordinación de los momentos especiales comunicados por LA PAREJA e incorporados al timing definitivo. Entre ellos:\n• Grabación temática en casa del novio: Coordinación con el videógrafo de los horarios y necesidades organizativas. No incluye creación de guion, dirección artística ni producción.\n• Fotografías al atardecer: Coordinación con el equipo de fotografía y vídeo para integrar la sesión en el timing.\n• Música y actuaciones: Organización de horarios y transiciones de los profesionales musicales.\n• Experiencias y sorpresas: Integración en el timing de fotomatón, cámaras analógicas, hora loca y sorpresas.\n• Banquete y celebración: Coordinación de momentos especiales, discursos, corte de tarta y baile.',
+          'El servicio incluirá la coordinación de los momentos especiales comunicados por LA PAREJA e incorporados al timing definitivo. Entre ellos:\n• Grabación temática o preparativos: Coordinación de horarios y necesidades organizativas.\n• Fotografías al atardecer: Coordinación con el equipo de fotografía y vídeo para integrar la sesión en el timing.\n• Música y actuaciones: Organización de horarios y transiciones de los profesionales musicales.\n• Experiencias y sorpresas: Integración en el timing de fotomatón, cámaras analógicas, hora loca y sorpresas.\n• Banquete y celebración: Coordinación de momentos especiales, discursos, corte de tarta y baile.',
       },
       {
         number: '2.3',
         title: 'Equipo y cobertura presencial',
         content:
-          'El servicio incluye dos profesionales de RITMOS, una wedding planner principal y una asistente. La cobertura máxima será de 12 horas presenciales durante el día de la boda. El horario concreto de inicio y finalización se acordará entre las partes y quedará reflejado en el timing definitivo. Las horas presenciales comenzarán con la llegada del equipo al primer espacio de trabajo acordado.',
+          'El servicio incluye la cobertura presencial por el equipo profesional acordado. La cobertura máxima presencial durante el día de la boda se refleja en este contrato. El horario concreto de inicio y finalización se acordará entre las partes y quedará reflejado en el timing definitivo. Las horas presenciales comenzarán con la llegada del equipo al primer espacio de trabajo acordado.',
       },
       {
         number: '2.4',
         title: 'Límites del servicio',
         content:
-          'La coordinación no incluye: montaje ni desmontaje de decoración, fabricación o instalación de elementos, transporte de materiales de otros proveedores, labores propias del personal de hostelería o animación, ni presencia fuera de las 12 horas acordadas.',
+          'La coordinación no incluye: montaje ni desmontaje de decoración, fabricación o instalación de elementos, transporte de materiales de otros proveedores, labores propias del personal de hostelería o animación, ni presencia fuera de las horas acordadas.',
       },
     ],
   },
@@ -211,7 +245,7 @@ export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
         number: '3.1',
         title: 'Organización de los preparativos',
         content:
-          'RITMOS realizará: reunión inicial de revisión, identificación de tareas pendientes, elaboración de calendario de preparativos, asesoramiento sobre decisiones organizativas, apoyo en momentos especiales, hasta dos reuniones de seguimiento adicionales y documento resumen de tareas.',
+          'El equipo profesional realizará: reunión inicial de revisión, identificación de tareas pendientes, elaboración de calendario de preparativos, asesoramiento sobre decisiones organizativas, apoyo en momentos especiales, reuniones de seguimiento acordadas y documento resumen de tareas.',
       },
       {
         number: '3.2',
@@ -317,21 +351,21 @@ export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
     number: 9,
     title: 'NATURALEZA DE LA RESERVA DE FECHA Y DATOS BANCARIOS',
     content:
-      'El primer pago de 465,00 € (30%) tiene la consideración de reserva de fecha y anticipo no reembolsable en la medida legalmente admisible, bloqueando en exclusiva la fecha en la agenda de RITMOS. Datos bancarios: Titular Sara Vara Lobón, BBVA, IBAN ES57 0182 2754 2202 0159 0988.',
+      'El primer pago tiene la consideración de reserva de fecha y anticipo no reembolsable en la medida legalmente admisible, bloqueando en exclusiva la fecha en la agenda del profesional. El abono se efectuará mediante transferencia bancaria a la cuenta estipulada por el profesional.',
   },
   {
     id: 'cl-10',
     number: 10,
     title: 'DESPLAZAMIENTOS Y GASTOS ADICIONALES',
     content:
-      'Los desplazamientos del equipo RITMOS se facturarán a razón de 0,40 € por kilómetro desde Benavente hasta los espacios del evento y su regreso, previa aceptación del anexo correspondiente.',
+      'Los desplazamientos del equipo profesional se facturarán según la tarifa estipulada por kilómetro desde la localidad de origen acordada hasta los espacios del evento y su regreso, previa aceptación del anexo correspondiente.',
   },
   {
     id: 'cl-11',
     number: 11,
-    title: 'MANUTENCIÓN OBLIGATORIA DEL EQUIPO RITMOS',
+    title: 'MANUTENCIÓN OBLIGATORIA DEL EQUIPO PROFESIONAL',
     content:
-      'Dado que la coordinación implica una jornada de hasta 12 horas, LA PAREJA garantizará manutención adecuada (menú de proveedores) y agua potable para las dos profesionales de RITMOS presentes.',
+      'Dado que la coordinación presencial abarca una jornada continuada, LA PAREJA garantizará manutención adecuada (menú de proveedores) y agua potable para las personas del equipo organizador presentes durante el servicio.',
   },
   {
     id: 'cl-12',
@@ -401,14 +435,14 @@ export const DEFAULT_CONTRACT_CLAUSES: ContractClause[] = [
     number: 21,
     title: 'PROTECCIÓN DE DATOS PERSONALES (RGPD)',
     content:
-      'Los datos personales facilitados serán tratados por Sara Vara Lobón para la ejecución contractual y cumplimiento legal. Podrán comunicarse a proveedores implicados. Ejercicio de derechos en: ritmos.eventsv@gmail.com.',
+      'Los datos personales facilitados serán tratados por EL/LA PROFESIONAL para la ejecución contractual y cumplimiento legal. Podrán comunicarse a proveedores implicados. Ejercicio de derechos en el correo electrónico oficial facilitado en este contrato.',
   },
   {
     id: 'cl-22',
     number: 22,
     title: 'IMÁGENES DEL EVENTO',
     content:
-      'RITMOS podrá solicitar autorización expresa e independiente para la difusión de fotografías del evento en portfolio o redes sociales con fines estrictamente profesionales.',
+      'EL/LA PROFESIONAL podrá solicitar autorización expresa e independiente para la difusión de fotografías del evento en portfolio o redes sociales con fines estrictamente profesionales.',
   },
   {
     id: 'cl-23',
@@ -457,14 +491,14 @@ export const INITIAL_CONTRACT_RODRIGO_STEPHANIE: Contract = {
   signer_token: '5838ac21-c398-4559-9f2b-3eb261072768',
 
   provider: {
-    name: 'Sara Vara Lobón',
-    dni: '45688606A',
-    business_name: 'RITMOS · Wedding & Event Studio',
-    address: 'Ronda Rancha, 1, Benavente (Zamora)',
-    role_label: 'RITMOS o LA PROFESIONAL',
-    phone: '634 162 084',
-    email: 'ritmos.eventsv@gmail.com',
-    slogan: 'Si puedes soñarlo, podemos conseguirlo.',
+    name: '',
+    dni: '',
+    business_name: '',
+    address: '',
+    role_label: 'EL/LA PROFESIONAL',
+    phone: '',
+    email: '',
+    slogan: '',
   },
 
   clients: [
@@ -523,7 +557,7 @@ export const INITIAL_CONTRACT_RODRIGO_STEPHANIE: Contract = {
   discount_notes:
     'El precio especial del Diseño Creativo Integral supone una reducción de 100 € respecto a su tarifa habitual de 395 €, concedida como atención comercial por la contratación conjunta de los servicios de Wedding Planning.',
   travel_expenses_notes:
-    'Los desplazamientos del equipo RITMOS se facturarán a razón de 0,40 € por kilómetro desde Benavente.',
+    'Los desplazamientos del equipo profesional se facturarán según la tarifa estipulada por kilómetro desde la localidad de origen.',
 
   payment_schedule: [
     {
@@ -553,15 +587,15 @@ export const INITIAL_CONTRACT_RODRIGO_STEPHANIE: Contract = {
   ],
 
   bank_details: {
-    account_holder: 'Sara Vara Lobón',
-    bank_name: 'BBVA',
-    iban: 'ES57 0182 2754 2202 0159 0988',
+    account_holder: '',
+    bank_name: '',
+    iban: '',
     concept: 'Reserva boda Rodrigo y Stephanie – 28/08/2027',
     deposit_amount: 465.0,
   },
 
   mileage_rate: 0.4,
-  mileage_origin: 'Benavente (Zamora)',
+  mileage_origin: '',
   coordination_hours: 12,
   team_members_count: 2,
 
@@ -607,10 +641,20 @@ export function getStoredContracts(): Contract[] {
   if (typeof window === 'undefined') return INITIAL_CONTRACTS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CONTRACTS);
-    if (!raw) return INITIAL_CONTRACTS;
+    const profile = getStoredPlannerProfile();
+    if (!raw) {
+      // First load: apply profile if planner has entered one in Account Settings, else it remains empty
+      return INITIAL_CONTRACTS.map((c) => applyProfileToContractIfEmpty(c, profile));
+    }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      return parsed.map((c: Contract) => {
+        // Sanitize legacy mock data if previously stored in localStorage
+        if (c.provider?.dni === '45688606A' || c.provider?.name?.includes('Sara Vara')) {
+          return applyProfileToContract(c, profile);
+        }
+        return applyProfileToContractIfEmpty(c, profile);
+      });
     }
   } catch (e) {
     console.error('Error reading contracts from localStorage:', e);

@@ -5,12 +5,19 @@ import {
   Contract,
   ContractStatus,
   ContractSignatureEvidence,
+  ContractProvider,
+  ContractBankDetails,
   getStoredContracts,
   setStoredContracts,
   CONTRACTS_UPDATE_EVENT,
   INITIAL_CONTRACTS,
   computeDocumentHash,
 } from './contracts-data';
+import {
+  getStoredPlannerProfile,
+  PlannerProfile,
+  PLANNER_PROFILE_UPDATE_EVENT,
+} from './planner-profile-store';
 import { useWeddingPlanner } from './weddings-store';
 
 export function useContractsStore() {
@@ -31,10 +38,12 @@ export function useContractsStore() {
     };
 
     window.addEventListener(CONTRACTS_UPDATE_EVENT, handleUpdate);
+    window.addEventListener(PLANNER_PROFILE_UPDATE_EVENT, handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
     return () => {
       window.removeEventListener(CONTRACTS_UPDATE_EVENT, handleUpdate);
+      window.removeEventListener(PLANNER_PROFILE_UPDATE_EVENT, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
   }, [reloadData]);
@@ -88,6 +97,28 @@ export function useContractsStore() {
       const signingToken = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `sign-${Date.now()}`;
       const signerToken = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`;
 
+      const profile = getStoredPlannerProfile();
+      const defaultProvider: ContractProvider = {
+        name: profile.legal_name || '',
+        dni: profile.nif_cif || '',
+        business_name: profile.business_name || '',
+        address: profile.address || '',
+        role_label: profile.business_name ? `${profile.business_name} o EL/LA PROFESIONAL` : 'EL/LA PROFESIONAL',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        slogan: profile.slogan || '',
+      };
+
+      const defaultBankDetails: ContractBankDetails = {
+        account_holder: profile.account_holder || profile.legal_name || '',
+        bank_name: profile.bank_name || '',
+        iban: profile.iban || '',
+        concept: `Reserva contratación ${code}`,
+        deposit_amount: newContractData.services?.[0]?.amount
+          ? Math.round(newContractData.services[0].amount * 0.3)
+          : 0,
+      };
+
       const createdContract: Contract = {
         id,
         code,
@@ -103,16 +134,7 @@ export function useContractsStore() {
         signing_token: signingToken,
         signer_token: signerToken,
 
-        provider: newContractData.provider || {
-          name: 'Sara Vara Lobón',
-          dni: '45688606A',
-          business_name: 'RITMOS · Wedding & Event Studio',
-          address: 'Ronda Rancha, 1, Benavente (Zamora)',
-          role_label: 'RITMOS o LA PROFESIONAL',
-          phone: '634 162 084',
-          email: 'ritmos.eventsv@gmail.com',
-          slogan: 'Si puedes soñarlo, podemos conseguirlo.',
-        },
+        provider: newContractData.provider || defaultProvider,
 
         clients: newContractData.clients || [
           {
@@ -177,16 +199,10 @@ export function useContractsStore() {
           },
         ],
 
-        bank_details: newContractData.bank_details || {
-          account_holder: 'Sara Vara Lobón',
-          bank_name: 'BBVA',
-          iban: 'ES57 0182 2754 2202 0159 0988',
-          concept: `Reserva boda ${code}`,
-          deposit_amount: 294,
-        },
+        bank_details: newContractData.bank_details || defaultBankDetails,
 
-        mileage_rate: newContractData.mileage_rate ?? 0.4,
-        mileage_origin: newContractData.mileage_origin || 'Benavente (Zamora)',
+        mileage_rate: newContractData.mileage_rate ?? profile.mileage_rate ?? 0.4,
+        mileage_origin: newContractData.mileage_origin || profile.mileage_origin || '',
         coordination_hours: newContractData.coordination_hours ?? 12,
         team_members_count: newContractData.team_members_count ?? 2,
 
@@ -436,6 +452,36 @@ export function useContractsStore() {
     [contracts]
   );
 
+  const applyProfileToAllContracts = useCallback((profileToApply: PlannerProfile) => {
+    setContracts((prev) => {
+      const next = prev.map((c) => ({
+        ...c,
+        provider: {
+          name: profileToApply.legal_name || '',
+          dni: profileToApply.nif_cif || '',
+          business_name: profileToApply.business_name || '',
+          address: profileToApply.address || '',
+          role_label: profileToApply.business_name
+            ? `${profileToApply.business_name} o EL/LA PROFESIONAL`
+            : 'EL/LA PROFESIONAL',
+          phone: profileToApply.phone || '',
+          email: profileToApply.email || '',
+          slogan: profileToApply.slogan || '',
+        },
+        bank_details: {
+          ...c.bank_details,
+          account_holder: profileToApply.account_holder || profileToApply.legal_name || '',
+          bank_name: profileToApply.bank_name || '',
+          iban: profileToApply.iban || '',
+        },
+        mileage_rate: profileToApply.mileage_rate || c.mileage_rate || 0.4,
+        mileage_origin: profileToApply.mileage_origin || c.mileage_origin || '',
+      }));
+      setStoredContracts(next);
+      return next;
+    });
+  }, []);
+
   return {
     contracts,
     activeWeddingContracts,
@@ -447,5 +493,6 @@ export function useContractsStore() {
     duplicateContract,
     signContract,
     markContractAsOpened,
+    applyProfileToAllContracts,
   };
 }

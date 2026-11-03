@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePlannerProfile } from '@/lib/planner-profile-store';
 import {
   Contract,
   ContractServiceItem,
@@ -37,6 +38,7 @@ export function EditContractModal({
   onSave,
 }: EditContractModalProps) {
   const [activeTab, setActiveTab] = useState<'planner' | 'couple' | 'services' | 'clauses'>('services');
+  const { profile, hasAnyData } = usePlannerProfile();
 
   // Form states
   const [title, setTitle] = useState('');
@@ -559,9 +561,31 @@ export function EditContractModal({
           {/* TAB: PLANNER */}
           {activeTab === 'planner' && (
             <div className="space-y-4">
-              <h4 className="font-serif text-base font-bold text-gray-900 dark:text-zinc-100">
-                Datos de la Wedding Planner o Agencia
-              </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-zinc-800 pb-3">
+                <h4 className="font-serif text-base font-bold text-gray-900 dark:text-zinc-100">
+                  Datos del Wedding Planner o Agencia
+                </h4>
+                {hasAnyData && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (profile.business_name) setBusinessName(profile.business_name);
+                      if (profile.legal_name) setProviderName(profile.legal_name);
+                      if (profile.nif_cif) setProviderDni(profile.nif_cif);
+                      if (profile.address) setProviderAddress(profile.address);
+                      if (profile.phone) setProviderPhone(profile.phone);
+                      if (profile.email) setProviderEmail(profile.email);
+                      if (profile.iban) setProviderIban(profile.iban);
+                      if (profile.bank_name) setProviderBank(profile.bank_name);
+                      if (profile.slogan) setProviderSlogan(profile.slogan);
+                    }}
+                    className="py-1 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer w-fit"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Cargar datos desde mi perfil de cuenta</span>
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-gray-700 dark:text-zinc-300">

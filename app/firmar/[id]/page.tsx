@@ -304,13 +304,13 @@ export default function SignContractPage({
             ref={documentContainerRef}
             className="flex-1 w-full bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200/90 dark:border-zinc-800 shadow-card p-6 sm:p-12 max-h-[calc(100vh-120px)] overflow-y-auto space-y-8 scroll-smooth print:max-h-none print:shadow-none print:border-none print:p-0"
           >
-            {/* Document Header (Matching Page 1 of PDF) */}
+            {/* Document Header */}
             <div className="pb-6 border-b-2 border-gray-900 dark:border-zinc-100 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-serif text-2xl sm:text-3xl font-black tracking-widest text-gray-900 dark:text-zinc-50">
-                  RITM<span className="text-rose-600">♥</span>S
+                <span className="font-serif text-xl sm:text-2xl font-black tracking-widest text-gray-900 dark:text-zinc-50 uppercase">
+                  {contract.provider.business_name || contract.provider.name || 'CONTRATO DE SERVICIOS'}
                 </span>
-                <span className="font-serif text-lg sm:text-2xl font-bold tracking-wider text-gray-900 dark:text-zinc-100 uppercase">
+                <span className="font-serif text-base sm:text-xl font-bold tracking-wider text-gray-900 dark:text-zinc-100 uppercase hidden sm:inline">
                   CONTRATO DE SERVICIOS
                 </span>
                 <span className="font-mono text-xs sm:text-sm font-bold text-gray-900 dark:text-zinc-100">
@@ -344,11 +344,26 @@ export default function SignContractPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-zinc-800/40 border border-gray-200 dark:border-zinc-800 text-xs">
                   <div className="space-y-1">
                     <span className="font-bold uppercase tracking-wider text-[11px] text-gray-500 block">PROFESIONAL</span>
-                    <strong className="text-sm font-serif block text-gray-900 dark:text-zinc-100">{contract.provider.business_name}</strong>
-                    <p className="text-gray-600 dark:text-zinc-400">NIF / CIF: {contract.provider.dni}</p>
-                    <p className="text-gray-600 dark:text-zinc-400">{contract.provider.address}</p>
-                    <p className="text-gray-600 dark:text-zinc-400">{contract.provider.email}</p>
-                    <p className="text-gray-600 dark:text-zinc-400">{contract.provider.phone}</p>
+                    <strong className="text-sm font-serif block text-gray-900 dark:text-zinc-100">
+                      {contract.provider.business_name || contract.provider.name || (
+                        <span className="text-gray-400 font-sans font-normal italic">[Pendiente de configurar en Ajustes]</span>
+                      )}
+                    </strong>
+                    {contract.provider.name && contract.provider.business_name && (
+                      <p className="text-gray-600 dark:text-zinc-400">Titular: {contract.provider.name}</p>
+                    )}
+                    <p className="text-gray-600 dark:text-zinc-400">
+                      NIF / CIF: {contract.provider.dni || <span className="text-gray-400 italic">[No especificado]</span>}
+                    </p>
+                    <p className="text-gray-600 dark:text-zinc-400">
+                      {contract.provider.address || <span className="text-gray-400 italic">[Domicilio no especificado]</span>}
+                    </p>
+                    <p className="text-gray-600 dark:text-zinc-400">
+                      {contract.provider.email || <span className="text-gray-400 italic">[Email no especificado]</span>}
+                    </p>
+                    {contract.provider.phone && (
+                      <p className="text-gray-600 dark:text-zinc-400">{contract.provider.phone}</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <span className="font-bold uppercase tracking-wider text-[11px] text-gray-500 block">CLIENTE</span>
@@ -388,9 +403,11 @@ export default function SignContractPage({
               <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-50">
                 {contract.document_title}
               </h2>
-              <span className="font-serif text-sm font-semibold tracking-wider text-primary block">
-                {contract.provider.business_name}
-              </span>
+              {contract.provider.business_name && (
+                <span className="font-serif text-sm font-semibold tracking-wider text-primary block">
+                  {contract.provider.business_name}
+                </span>
+              )}
             </div>
 
           {/* REUNIDOS */}
@@ -400,12 +417,27 @@ export default function SignContractPage({
             </h2>
             <div className="text-xs sm:text-sm leading-relaxed text-gray-700 dark:text-zinc-300 space-y-3">
               <p>
-                <strong>De una parte:</strong> Dña. {contract.provider.name}, con DNI{' '}
-                <span className="font-mono">{contract.provider.dni}</span>, actuando como
-                profesional autónoma bajo el nombre comercial{' '}
-                <strong>{contract.provider.business_name}</strong>, con domicilio profesional en{' '}
-                {contract.provider.address}, en adelante,{' '}
-                <strong>{contract.provider.role_label}</strong>.
+                <strong>De una parte:</strong>{' '}
+                {contract.provider.name || contract.provider.business_name ? (
+                  <>
+                    {contract.provider.name ? (
+                      <>D./Dña. <strong>{contract.provider.name}</strong>, con DNI/CIF{' '}</>
+                    ) : (
+                      <>La entidad <strong>{contract.provider.business_name}</strong>, con CIF{' '}</>
+                    )}
+                    <span className="font-mono">{contract.provider.dni || '[Pendiente]'}</span>
+                    {contract.provider.name && contract.provider.business_name ? (
+                      <>, actuando bajo el nombre comercial <strong>{contract.provider.business_name}</strong></>
+                    ) : null}
+                    , con domicilio profesional en{' '}
+                    {contract.provider.address || '[Domicilio pendiente de indicar]'}, en adelante,{' '}
+                    <strong>{contract.provider.role_label || 'EL/LA PROFESIONAL'}</strong>.
+                  </>
+                ) : (
+                  <span className="italic text-gray-400">
+                    [Datos profesionales pendientes de cumplimentar en perfil de cuenta]
+                  </span>
+                )}
               </p>
               <p>
                 <strong>Y de otra parte:</strong>{' '}
@@ -736,14 +768,19 @@ export default function SignContractPage({
 
             {/* Document Footer Signature Seal */}
             <div className="pt-8 border-t-2 border-dashed border-gray-200 dark:border-zinc-800 space-y-6">
-              <div className="text-center space-y-1">
-                <p className="font-serif italic text-base text-gray-900 dark:text-zinc-200 font-semibold">
-                  &ldquo;{contract.provider.slogan || 'Si puedes soñarlo, podemos conseguirlo.'}&rdquo;
-                </p>
-                <p className="text-xs text-gray-400">
-                  {contract.provider.business_name} · {contract.provider.name}
-                </p>
-              </div>
+              {(contract.provider.slogan || contract.provider.business_name || contract.provider.name) && (
+                <div className="text-center space-y-1">
+                  {contract.provider.slogan && (
+                    <p className="font-serif italic text-base text-gray-900 dark:text-zinc-200 font-semibold">
+                      &ldquo;{contract.provider.slogan}&rdquo;
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    {contract.provider.business_name}
+                    {contract.provider.name && contract.provider.business_name ? ` · ${contract.provider.name}` : contract.provider.name}
+                  </p>
+                </div>
+              )}
 
               {/* FIRMAS SECTION (Matching PDF Page 13) */}
               <div className="pt-8 border-t-2 border-gray-900 dark:border-zinc-100 space-y-6">

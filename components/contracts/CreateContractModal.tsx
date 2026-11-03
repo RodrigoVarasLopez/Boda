@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useWeddingPlanner } from '@/lib/weddings-store';
+import { usePlannerProfile } from '@/lib/planner-profile-store';
 import {
   Contract,
   ContractServiceItem,
@@ -37,6 +38,7 @@ export function CreateContractModal({
   onCreate,
 }: CreateContractModalProps) {
   const { weddings, activeWedding } = useWeddingPlanner();
+  const { profile, hasAnyData } = usePlannerProfile();
 
   // Wizard tab
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
@@ -45,15 +47,29 @@ export function CreateContractModal({
   const [selectedWeddingId, setSelectedWeddingId] = useState<string>(activeWedding.id);
   const [contractTitle, setContractTitle] = useState<string>('');
 
-  // Provider
-  const [providerBusinessName, setProviderBusinessName] = useState('RITMOS · Wedding & Event Studio');
-  const [providerName, setProviderName] = useState('Sara Vara Lobón');
-  const [providerDni, setProviderDni] = useState('45688606A');
-  const [providerAddress, setProviderAddress] = useState('Ronda Rancha, 1, Benavente (Zamora)');
-  const [providerPhone, setProviderPhone] = useState('634 162 084');
-  const [providerEmail, setProviderEmail] = useState('ritmos.eventsv@gmail.com');
-  const [providerIban, setProviderIban] = useState('ES57 0182 2754 2202 0159 0988');
-  const [providerBank, setProviderBank] = useState('BBVA');
+  // Provider: Defaults to active planner profile or empty if unconfigured
+  const [providerBusinessName, setProviderBusinessName] = useState(profile.business_name || '');
+  const [providerName, setProviderName] = useState(profile.legal_name || '');
+  const [providerDni, setProviderDni] = useState(profile.nif_cif || '');
+  const [providerAddress, setProviderAddress] = useState(profile.address || '');
+  const [providerPhone, setProviderPhone] = useState(profile.phone || '');
+  const [providerEmail, setProviderEmail] = useState(profile.email || '');
+  const [providerIban, setProviderIban] = useState(profile.iban || '');
+  const [providerBank, setProviderBank] = useState(profile.bank_name || '');
+
+  // Keep synced with profile when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setProviderBusinessName(profile.business_name || '');
+      setProviderName(profile.legal_name || '');
+      setProviderDni(profile.nif_cif || '');
+      setProviderAddress(profile.address || '');
+      setProviderPhone(profile.phone || '');
+      setProviderEmail(profile.email || '');
+      setProviderIban(profile.iban || '');
+      setProviderBank(profile.bank_name || '');
+    }
+  }, [isOpen, profile]);
 
   // Clients
   const [client1Name, setClient1Name] = useState(activeWedding.groom_name || 'Rodrigo Varas López');
@@ -385,12 +401,25 @@ export function CreateContractModal({
               {activeStep === 1 && (
                 <div className="space-y-4">
                   <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-1">
-                    <span className="font-semibold text-xs text-primary flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4" />
-                      Datos de la Wedding Planner o Agencia Profesional
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-primary flex items-center gap-1.5">
+                        <Building2 className="w-4 h-4" />
+                        Datos del Wedding Planner o Estudio Profesional
+                      </span>
+                      {hasAnyData ? (
+                        <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                          ✓ De tu cuenta
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                          Vacío (sin configurar)
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-600 dark:text-zinc-400">
-                      Identificación del profesional que prestará los servicios y cuenta receptora de honorarios.
+                      {hasAnyData
+                        ? 'Identificación legal y datos bancarios cargados desde tu gestión de cuenta.'
+                        : 'No has configurado tus datos en Ajustes de Cuenta. Puedes rellenarlos aquí o se crearán vacíos.'}
                     </p>
                   </div>
 

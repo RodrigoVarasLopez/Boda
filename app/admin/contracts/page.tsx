@@ -8,6 +8,7 @@ import { Contract, ContractStatus } from '@/lib/contracts-data';
 import { CreateContractModal } from '@/components/contracts/CreateContractModal';
 import { EditContractModal } from '@/components/contracts/EditContractModal';
 import { LegalCertificateModal } from '@/components/contracts/LegalCertificateModal';
+import { usePlannerProfile } from '@/lib/planner-profile-store';
 import {
   FileSignature,
   Plus,
@@ -45,6 +46,7 @@ export default function AdminContractsPage() {
   } = useContractsStore();
 
   const { activeWedding, weddings } = useWeddingPlanner();
+  const { profile, isComplete, hasAnyData } = usePlannerProfile();
 
   // Search & filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,6 +163,53 @@ export default function AdminContractsPage() {
           <span>Crear Nuevo Contrato</span>
         </button>
       </div>
+
+      {/* Account Fiscal Profile Banner */}
+      {!isComplete ? (
+        <div className="p-4 sm:p-5 rounded-3xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-bold block text-sm text-amber-900 dark:text-amber-200">
+                {hasAnyData
+                  ? 'Faltan datos fiscales en tu perfil de Wedding Planner'
+                  : 'No has configurado tus datos profesionales y fiscales'}
+              </span>
+              <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5">
+                {hasAnyData
+                  ? 'Completa tu NIF, domicilio e IBAN para que tus contratos se emitan con plena validez jurídica.'
+                  : 'Los contratos nuevos y enlaces públicos mostrarán los campos del profesional vacíos hasta que introduzcas tus datos en tu cuenta.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/settings?tab=profile"
+            className="py-2 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center gap-1.5 shrink-0 transition-colors shadow-xs"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Configurar en mi cuenta →</span>
+          </Link>
+        </div>
+      ) : (
+        <div className="p-3 sm:p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>
+              <strong>Emisor oficial de contratos:</strong> {profile.business_name || profile.legal_name}
+              {profile.nif_cif ? ` · NIF/CIF: ${profile.nif_cif}` : ''}
+              {profile.iban ? ` · IBAN: ${profile.iban.substring(0, 10)}...` : ''}
+            </span>
+          </div>
+          <Link
+            href="/admin/settings?tab=profile"
+            className="text-emerald-700 dark:text-emerald-300 font-semibold hover:underline text-[11px] shrink-0"
+          >
+            Editar datos fiscales de cuenta →
+          </Link>
+        </div>
+      )}
 
       {/* Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
