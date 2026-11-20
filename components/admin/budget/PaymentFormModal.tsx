@@ -9,6 +9,7 @@ import {
   formatDateES,
   calculateDaysUntil,
   getSupplierFinalPaymentInfo,
+  getPayerStyle,
 } from '@/lib/budget-data';
 import {
   X,
@@ -24,6 +25,8 @@ import {
   Bell,
   Check,
   Plus,
+  User,
+  UserPlus,
 } from 'lucide-react';
 
 interface PaymentFormModalProps {
@@ -33,6 +36,8 @@ interface PaymentFormModalProps {
   paymentToEdit?: BudgetPayment | null;
   contractedTotal: number;
   alreadyPaidAmount: number;
+  defaultMembers?: string[];
+  existingThirdParties?: string[];
   onClose: () => void;
   onSelectPaymentToEdit?: (payment: BudgetPayment | null) => void;
   onDeletePayment?: (paymentId: string) => Promise<void>;
@@ -45,6 +50,7 @@ interface PaymentFormModalProps {
     due_date?: string | null;
     paid_at?: string | null;
     status: PaymentStatus;
+    paid_by?: string | null;
     notes?: string | null;
     final_payment_date?: string | null;
   }) => Promise<void>;
@@ -57,6 +63,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   paymentToEdit,
   contractedTotal,
   alreadyPaidAmount,
+  defaultMembers = ['Stephanie Mendoza', 'Rodrigo'],
+  existingThirdParties = [],
   onClose,
   onSelectPaymentToEdit,
   onDeletePayment,
@@ -69,6 +77,10 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [paidAt, setPaidAt] = useState('');
   const [status, setStatus] = useState<PaymentStatus>('paid');
+  const [paidBy, setPaidBy] = useState('');
+  const [sessionThirdParties, setSessionThirdParties] = useState<string[]>([]);
+  const [isAddingThirdParty, setIsAddingThirdParty] = useState(false);
+  const [thirdPartyInput, setThirdPartyInput] = useState('');
   const [notes, setNotes] = useState('');
   const [finalPaymentDate, setFinalPaymentDate] = useState('');
   const [loading, setLoading] = useState(false);
@@ -109,15 +121,19 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       setDueDate(paymentToEdit.due_date ? paymentToEdit.due_date.split('T')[0] : '');
       setPaidAt(paymentToEdit.paid_at ? paymentToEdit.paid_at.split('T')[0] : '');
       setStatus(paymentToEdit.status);
+      setPaidBy(paymentToEdit.paid_by || '');
       setNotes(paymentToEdit.notes || '');
     } else {
       setAmount('');
       setDueDate('');
       setPaidAt(today);
       setStatus('paid');
+      setPaidBy('');
       setNotes('');
     }
 
+    setIsAddingThirdParty(false);
+    setThirdPartyInput('');
     setFinalPaymentDate('');
   }, [paymentToEdit, isOpen, supplier]);
 
@@ -222,6 +238,22 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
     setLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
+      const effectivePaidBy =
+        isAddingThirdParty && thirdPartyInput.trim()
+          ? thirdPartyInput.trim()
+          : paidBy.trim() || null;
+
+      if (effectivePaidBy && isAddingThirdParty && thirdPartyInput.trim()) {
+        const lower = effectivePaidBy.toLowerCase();
+        const alreadyKnown =
+          defaultMembers.some((m) => m.trim().toLowerCase() === lower) ||
+          existingThirdParties.some((tp) => tp.trim().toLowerCase() === lower) ||
+          sessionThirdParties.some((tp) => tp.trim().toLowerCase() === lower);
+        if (!alreadyKnown) {
+          setSessionThirdParties((prev) => [...prev, effectivePaidBy]);
+        }
+      }
+
       await onSubmit({
         id: paymentToEdit?.id,
         supplier_id: supplier.id,
@@ -232,6 +264,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             ? paidAt || today
             : null,
         status,
+        paid_by: effectivePaidBy,
         notes:
           notes.trim() ||
           (status === 'partial'
@@ -248,6 +281,9 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
         if (onSelectPaymentToEdit) onSelectPaymentToEdit(null);
         setAmount('');
         setDueDate('');
+        setPaidBy('');
+        setIsAddingThirdParty(false);
+        setThirdPartyInput('');
         setNotes('');
         setFinalPaymentDate('');
       }
@@ -629,6 +665,14 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                               Pendiente de pago
                             </span>
                           )}
+                          {pay.paid_by && (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getPayerStyle(pay.paid_by, defaultMembers).badge}`}
+                            >
+                              <User className="w-2.5 h-2.5" />
+                              {pay.paid_by}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-text-muted flex items-center gap-2 flex-wrap">
                           {pay.notes && <span className="font-medium text-text-secondary">{pay.notes}</span>}
@@ -866,6 +910,154 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* Payer Picker (¿Quién ha realizado el pago?) */}
+            {(() => {
+              const memberKeySet = new Set(defaultMembers.map((m) => m.trim().toLowerCase()));
+              const thirdPartyMap = new Map<string, string>();
+              for (const tp of [...existingThirdParties, ...sessionThirdParties]) {
+                const clean = tp.trim();
+                if (!clean) continue;
+                const key = clean.toLowerCase();
+                if (!memberKeySet.has(key) && !thirdPartyMap.has(key)) {
+                  thirdPartyMap.set(key, clean);
+                }
+              }
+              const currentTrimmed = paidBy.trim();
+              if (
+                currentTrimmed &&
+                !memberKeySet.has(currentTrimmed.toLowerCase()) &&
+                !thirdPartyMap.has(currentTrimmed.toLowerCase())
+              ) {
+                thirdPartyMap.set(currentTrimmed.toLowerCase(), currentTrimmed);
+              }
+              const availableThirdParties = Array.from(thirdPartyMap.values());
+
+              const handleConfirmThirdParty = () => {
+                const clean = thirdPartyInput.trim();
+                if (!clean) return;
+                const lower = clean.toLowerCase();
+                if (!memberKeySet.has(lower) && !thirdPartyMap.has(lower)) {
+                  setSessionThirdParties((prev) => [...prev, clean]);
+                }
+                setPaidBy(clean);
+                setThirdPartyInput('');
+                setIsAddingThirdParty(false);
+              };
+
+              return (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-text-secondary flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-primary" />
+                      <span>
+                        {status === 'pending'
+                          ? 'Responsable previsto (opcional)'
+                          : '¿Quién ha realizado el pago?'}
+                      </span>
+                    </label>
+                    {paidBy && (
+                      <button
+                        type="button"
+                        onClick={() => setPaidBy('')}
+                        className="text-[11px] text-text-muted hover:text-text-primary cursor-pointer"
+                      >
+                        Sin especificar
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {defaultMembers.map((member) => {
+                      const active =
+                        paidBy.trim().toLowerCase() === member.trim().toLowerCase();
+                      const style = getPayerStyle(member, defaultMembers);
+                      return (
+                        <button
+                          key={member}
+                          type="button"
+                          onClick={() => {
+                            setPaidBy(active ? '' : member);
+                            setIsAddingThirdParty(false);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            active
+                              ? `${style.badge} ring-2 ${style.ring}`
+                              : 'bg-bg-card border-border-subtle text-text-primary hover:border-border-strong'
+                          }`}
+                        >
+                          <User className="w-3 h-3" />
+                          <span>{member}</span>
+                        </button>
+                      );
+                    })}
+
+                    {availableThirdParties.map((tp) => {
+                      const active = paidBy.trim().toLowerCase() === tp.trim().toLowerCase();
+                      const style = getPayerStyle(tp, defaultMembers);
+                      return (
+                        <button
+                          key={tp}
+                          type="button"
+                          onClick={() => {
+                            setPaidBy(active ? '' : tp);
+                            setIsAddingThirdParty(false);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            active
+                              ? `${style.badge} ring-2 ${style.ring}`
+                              : 'bg-bg-card border-border-subtle text-text-primary hover:border-border-strong'
+                          }`}
+                        >
+                          <UserPlus className="w-3 h-3" />
+                          <span>{tp}</span>
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingThirdParty(!isAddingThirdParty)}
+                      className={`px-3 py-1.5 rounded-xl border border-dashed text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                        isAddingThirdParty
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border-strong text-text-secondary hover:text-text-primary hover:bg-bg-secondary/40'
+                      }`}
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      <span>+ Añadir tercero</span>
+                    </button>
+                  </div>
+
+                  {isAddingThirdParty && (
+                    <div className="flex items-center gap-2 pt-1 animate-fade-in">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Nombre del tercero (ej: Padres de Rodrigo, Madre de Stephanie...)"
+                        value={thirdPartyInput}
+                        onChange={(e) => setThirdPartyInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleConfirmThirdParty();
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 text-xs rounded-xl border border-primary/50 bg-bg-canvas text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleConfirmThirdParty}
+                        disabled={!thirdPartyInput.trim()}
+                        className="px-3 py-2 rounded-xl bg-primary text-white text-xs font-semibold disabled:opacity-40 cursor-pointer"
+                      >
+                        Añadir
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Actions */}
             <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-border-subtle flex-wrap">

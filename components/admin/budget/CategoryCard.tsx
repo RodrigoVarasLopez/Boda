@@ -11,6 +11,7 @@ import {
   formatCurrency,
   isPaymentSettled,
   formatDateES,
+  getPayerStyle,
 } from '@/lib/budget-data';
 import {
   Sparkles,
@@ -45,6 +46,7 @@ import {
   AlertTriangle,
   Bell,
   Check,
+  User,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -79,6 +81,7 @@ interface CategoryCardProps {
   pendingAmount: number;
   paymentStatus: 'none' | 'pending' | 'partial' | 'paid';
   categoryPayments?: BudgetPayment[];
+  defaultMembers?: string[];
   finalPaymentDueDate?: string | null;
   daysUntilFinalPayment?: number | null;
   onOpenComparator: (category: BudgetCategory) => void;
@@ -99,6 +102,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   pendingAmount,
   paymentStatus,
   categoryPayments = [],
+  defaultMembers = ['Stephanie Mendoza', 'Rodrigo'],
   finalPaymentDueDate = null,
   daysUntilFinalPayment = null,
   onOpenComparator,
@@ -317,16 +321,25 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                   {settledPayments.map((pay) => (
                     <div
                       key={pay.id}
-                      className="flex items-center justify-between text-[10px] bg-white/70 px-2 py-1 rounded-md border border-border-subtle/60"
+                      className="flex items-center justify-between text-[10px] bg-white/70 px-2 py-1 rounded-md border border-border-subtle/60 gap-1.5"
                     >
-                      <div className="flex items-center gap-1 min-w-0 truncate">
+                      <div className="flex items-center gap-1 min-w-0 flex-wrap">
                         <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                        <span className="font-mono font-semibold text-text-primary">
+                        <span className="font-mono font-semibold text-text-primary shrink-0">
                           {formatCurrency(Number(pay.amount))}
                         </span>
-                        <span className="text-text-muted truncate">
+                        <span className="text-text-muted truncate max-w-[130px]">
                           · {pay.notes || (pay.status === 'partial' ? 'Señal / Parcial' : 'Pagado')}
                         </span>
+                        {pay.paid_by && (
+                          <span
+                            title={`Pagado por ${pay.paid_by}`}
+                            className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded-full border shrink-0 max-w-[125px] ${getPayerStyle(pay.paid_by, defaultMembers).badge}`}
+                          >
+                            <User className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{pay.paid_by}</span>
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
                         <button
@@ -354,11 +367,11 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                   {pendingScheduledPayments.map((pay) => (
                     <div
                       key={pay.id}
-                      className="flex items-center justify-between text-[10px] bg-amber-50/60 px-2 py-1 rounded-md border border-amber-200/80"
+                      className="flex items-center justify-between text-[10px] bg-amber-50/60 px-2 py-1 rounded-md border border-amber-200/80 gap-1.5"
                     >
-                      <div className="flex items-center gap-1 min-w-0 truncate">
+                      <div className="flex items-center gap-1 min-w-0 flex-wrap">
                         <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
-                        <span className="font-mono font-semibold text-amber-900">
+                        <span className="font-mono font-semibold text-amber-900 shrink-0">
                           {formatCurrency(Number(pay.amount))}
                         </span>
                         {pay.due_date && (
@@ -366,9 +379,18 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                             ({formatDateES(pay.due_date)})
                           </span>
                         )}
-                        <span className="text-amber-800 truncate">
+                        <span className="text-amber-800 truncate max-w-[130px]">
                           · {pay.notes || 'Plazo programado'}
                         </span>
+                        {pay.paid_by && (
+                          <span
+                            title={`Responsable previsto: ${pay.paid_by}`}
+                            className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded-full border shrink-0 max-w-[125px] ${getPayerStyle(pay.paid_by, defaultMembers).badge}`}
+                          >
+                            <User className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{pay.paid_by}</span>
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
                         {onMarkPaymentPaid && (

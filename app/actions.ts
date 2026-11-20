@@ -52,6 +52,8 @@ import {
   setStoredBudgetMenuConfig,
   serializeMenuNotesWithExtras,
   parseMenuNotesAndExtras,
+  serializePaymentNotesWithPayer,
+  parsePaymentNotesAndPayer,
   WEDDING_UUID,
   BANQUET_CATEGORY_ID,
   BANQUET_SUPPLIER_ID,
@@ -1488,12 +1490,21 @@ export async function getBudgetDataAction() {
         };
       }
 
+      const normalizedPayments = (payments || []).map((p: any) => {
+        const { cleanNotes, paidBy } = parsePaymentNotesAndPayer(p.notes, p.paid_by);
+        return {
+          ...p,
+          notes: cleanNotes,
+          paid_by: paidBy,
+        };
+      });
+
       return {
         success: true,
         source: 'supabase',
         categories: (categories || getStoredBudgetCategories()).filter((c: any) => c.is_active !== false),
         suppliers: suppliers || [],
-        payments: payments || [],
+        payments: normalizedPayments,
         menuConfig: menuConfig || getStoredBudgetMenuConfig(),
       };
     } catch (err) {
@@ -1850,6 +1861,8 @@ export async function deleteSupplierAction(supplierId: string) {
 export async function createPaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentCreateSchema.parse(rawInput);
   const newId = validated.id && UUID_REGEX.test(validated.id) ? validated.id : crypto.randomUUID();
+  const cleanPaidBy = validated.paid_by ? validated.paid_by.trim() || null : null;
+  const cleanNotes = parsePaymentNotesAndPayer(validated.notes, null).cleanNotes;
   if (
     validated.supplier_id === 's0000000-0000-0000-0000-000000000015' ||
     !UUID_REGEX.test(validated.supplier_id)
@@ -1925,7 +1938,7 @@ export async function createPaymentAction(rawInput: unknown) {
         validated.supplier_id = targetSupplierId;
       }
 
-      const { error } = await adminClient.from('budget_payments').insert({
+      const insertPayload: Record<string, any> = {
         id: newId,
         wedding_id: weddingId,
         supplier_id: validated.supplier_id,
@@ -1933,8 +1946,24 @@ export async function createPaymentAction(rawInput: unknown) {
         due_date: validated.due_date || null,
         paid_at: validated.paid_at || null,
         status: validated.status,
-        notes: validated.notes || null,
-      });
+        paid_by: cleanPaidBy,
+        notes: cleanNotes,
+      };
+
+      let { error } = await adminClient.from('budget_payments').insert(insertPayload);
+
+      const isMissingPaidByCol =
+        error &&
+        (error.code === 'PGRST204' ||
+          error.code === '42703' ||
+          /paid_by/i.test(error.message || ''));
+
+      if (isMissingPaidByCol) {
+        delete insertPayload.paid_by;
+        insertPayload.notes = serializePaymentNotesWithPayer(cleanNotes, cleanPaidBy);
+        const retryRes = await adminClient.from('budget_payments').insert(insertPayload);
+        error = retryRes.error;
+      }
 
       if (error) {
         console.error('Supabase create payment error:', error);
@@ -1957,7 +1986,8 @@ export async function createPaymentAction(rawInput: unknown) {
       due_date: validated.due_date || null,
       paid_at: validated.paid_at || null,
       status: validated.status,
-      notes: validated.notes || null,
+      paid_by: cleanPaidBy,
+      notes: cleanNotes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -1972,15 +2002,81 @@ export async function createPaymentAction(rawInput: unknown) {
  */
 export async function updatePaymentAction(rawInput: unknown) {
   const validated = BudgetPaymentUpdateSchema.parse(rawInput);
+  const { id, ...rawUpdates } = validated;
+  const cleanIncomingPaidBy =
+    rawUpdates.paid_by !== undefined
+      ? rawUpdates.paid_by
+        ? rawUpdates.paid_by.trim() || null
+        : null
+      : undefined;
+  const cleanIncomingNotes =
+    rawUpdates.notes !== undefined
+      ? parsePaymentNotesAndPayer(rawUpdates.notes, null).cleanNotes
+      : undefined;
 
   if (isSupabaseConfigured()) {
     try {
       const adminClient = createAdminClient();
-      const { id, ...updates } = validated;
-      const { error } = await adminClient
+      const { data: existingRow } = await adminClient
         .from('budget_payments')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      const hasNativePaidByColumn = existingRow
+        ? Object.prototype.hasOwnProperty.call(existingRow, 'paid_by')
+        : true;
+
+      const dbUpdates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (rawUpdates.amount !== undefined) dbUpdates.amount = rawUpdates.amount;
+      if (rawUpdates.due_date !== undefined) dbUpdates.due_date = rawUpdates.due_date;
+      if (rawUpdates.paid_at !== undefined) dbUpdates.paid_at = rawUpdates.paid_at;
+      if (rawUpdates.status !== undefined) dbUpdates.status = rawUpdates.status;
+
+      let error: any = null;
+
+      if (hasNativePaidByColumn) {
+        if (cleanIncomingNotes !== undefined) dbUpdates.notes = cleanIncomingNotes;
+        if (cleanIncomingPaidBy !== undefined) dbUpdates.paid_by = cleanIncomingPaidBy;
+
+        const res = await adminClient.from('budget_payments').update(dbUpdates).eq('id', id);
+        error = res.error;
+
+        const isMissingPaidByCol =
+          error &&
+          (error.code === 'PGRST204' ||
+            error.code === '42703' ||
+            /paid_by/i.test(error.message || ''));
+
+        if (isMissingPaidByCol) {
+          const { cleanNotes: prevNotes, paidBy: prevPaidBy } = parsePaymentNotesAndPayer(
+            existingRow?.notes,
+            null
+          );
+          const mergedNotes = cleanIncomingNotes !== undefined ? cleanIncomingNotes : prevNotes;
+          const mergedPaidBy = cleanIncomingPaidBy !== undefined ? cleanIncomingPaidBy : prevPaidBy;
+          delete dbUpdates.paid_by;
+          if (cleanIncomingNotes !== undefined || cleanIncomingPaidBy !== undefined) {
+            dbUpdates.notes = serializePaymentNotesWithPayer(mergedNotes, mergedPaidBy);
+          }
+          const retryRes = await adminClient.from('budget_payments').update(dbUpdates).eq('id', id);
+          error = retryRes.error;
+        }
+      } else {
+        const { cleanNotes: prevNotes, paidBy: prevPaidBy } = parsePaymentNotesAndPayer(
+          existingRow?.notes,
+          null
+        );
+        const mergedNotes = cleanIncomingNotes !== undefined ? cleanIncomingNotes : prevNotes;
+        const mergedPaidBy = cleanIncomingPaidBy !== undefined ? cleanIncomingPaidBy : prevPaidBy;
+        if (cleanIncomingNotes !== undefined || cleanIncomingPaidBy !== undefined) {
+          dbUpdates.notes = serializePaymentNotesWithPayer(mergedNotes, mergedPaidBy);
+        }
+        const res = await adminClient.from('budget_payments').update(dbUpdates).eq('id', id);
+        error = res.error;
+      }
 
       if (error) {
         console.error('Supabase update payment error:', error);
@@ -1993,9 +2089,16 @@ export async function updatePaymentAction(rawInput: unknown) {
   }
 
   const stored = getStoredBudgetPayments();
-  const nextPayments = stored.map((p) =>
-    p.id === validated.id ? { ...p, ...validated, updated_at: new Date().toISOString() } : p
-  );
+  const nextPayments = stored.map((p) => {
+    if (p.id !== validated.id) return p;
+    return {
+      ...p,
+      ...validated,
+      ...(cleanIncomingNotes !== undefined ? { notes: cleanIncomingNotes } : {}),
+      ...(cleanIncomingPaidBy !== undefined ? { paid_by: cleanIncomingPaidBy } : {}),
+      updated_at: new Date().toISOString(),
+    };
+  });
   setStoredBudgetPayments(nextPayments);
 
   revalidatePath('/admin/budget');

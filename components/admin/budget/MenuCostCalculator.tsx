@@ -14,6 +14,7 @@ import {
   isPaymentSettled,
   calculateMenuTotal,
   calculateBanquetExpenseItemTotal,
+  getPayerStyle,
 } from '@/lib/budget-data';
 import {
   UtensilsCrossed,
@@ -31,6 +32,7 @@ import {
   Receipt,
   CreditCard,
   X,
+  User,
 } from 'lucide-react';
 
 interface MenuCostCalculatorProps {
@@ -41,6 +43,7 @@ interface MenuCostCalculatorProps {
   banquetPayments?: BudgetPayment[];
   paidAmount?: number;
   pendingAmount?: number;
+  defaultMembers?: string[];
   onOpenBanquetPayments?: () => void;
   onEditBanquetPayment?: (payment: BudgetPayment) => void;
   onMarkBanquetPaymentPaid?: (paymentId: string) => Promise<void>;
@@ -114,6 +117,7 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
   banquetPayments = [],
   paidAmount = 0,
   pendingAmount = 0,
+  defaultMembers = ['Stephanie Mendoza', 'Rodrigo'],
   onOpenBanquetPayments,
   onEditBanquetPayment,
   onMarkBanquetPaymentPaid,
@@ -837,6 +841,14 @@ export const MenuCostCalculator: React.FC<MenuCostCalculatorProps> = ({
                           ? 'Pagado'
                           : 'Pendiente'}
                       </span>
+                      {pay.paid_by && (
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getPayerStyle(pay.paid_by, defaultMembers).badge}`}
+                        >
+                          <User className="w-2.5 h-2.5" />
+                          <span>{pay.paid_by}</span>
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-text-muted">
                       {settled && pay.paid_at

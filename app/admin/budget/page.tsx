@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useBudgetStore } from '@/lib/budget-store';
+import { useWeddingPlanner } from '@/lib/weddings-store';
 import {
   BudgetCategory,
   BudgetSupplier,
@@ -14,8 +15,13 @@ import {
   getEffectiveSupplierPrice,
   isPaymentSettled,
   getSupplierFinalPaymentInfo,
+  getWeddingDefaultPayers,
+  getAllKnownPayers,
+  calculatePayerBreakdown,
+  formatCurrency,
   BANQUET_CATEGORY_ID,
   BANQUET_SUPPLIER_ID,
+  LEGACY_BANQUET_SUPPLIER_ID,
 } from '@/lib/budget-data';
 import { BudgetDashboard } from '@/components/admin/budget/BudgetDashboard';
 import { MenuCostCalculator } from '@/components/admin/budget/MenuCostCalculator';
@@ -24,6 +30,8 @@ import { CategoryFormModal } from '@/components/admin/budget/CategoryFormModal';
 import { SupplierFormModal } from '@/components/admin/budget/SupplierFormModal';
 import { SupplierComparatorDrawer } from '@/components/admin/budget/SupplierComparatorDrawer';
 import { PaymentFormModal } from '@/components/admin/budget/PaymentFormModal';
+import { PayerBreakdownModal } from '@/components/admin/budget/PayerBreakdownModal';
+import { MarkPaidPayerModal } from '@/components/admin/budget/MarkPaidPayerModal';
 import {
   Plus,
   Download,
@@ -31,6 +39,7 @@ import {
   Sparkles,
   CheckCircle2,
   Building,
+  Users,
 } from 'lucide-react';
 
 export default function AdminBudgetPage() {
@@ -57,6 +66,21 @@ export default function AdminBudgetPage() {
     setSupplierFinalPaymentDate,
     updateMenuConfig,
   } = useBudgetStore();
+  const { activeWedding } = useWeddingPlanner();
+
+  // Payer tracking & expense breakdown memos
+  const defaultMembers = useMemo(
+    () => getWeddingDefaultPayers(activeWedding),
+    [activeWedding]
+  );
+  const knownPayers = useMemo(
+    () => getAllKnownPayers(defaultMembers, payments),
+    [defaultMembers, payments]
+  );
+  const payerBreakdown = useMemo(
+    () => calculatePayerBreakdown(metrics, defaultMembers, suppliers),
+    [metrics, defaultMembers, suppliers]
+  );
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,12 +100,30 @@ export default function AdminBudgetPage() {
   const [paymentModalSupplier, setPaymentModalSupplier] = useState<BudgetSupplier | null>(null);
   const [paymentToEdit, setPaymentToEdit] = useState<BudgetPayment | null>(null);
 
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
+  const [markPaidTarget, setMarkPaidTarget] = useState<BudgetPayment | null>(null);
+
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleRequestMarkPaymentPaid = async (payId: string) => {
+    const targetPayment = payments.find((p) => p.id === payId);
+    if (!targetPayment) {
+      await markPaymentAsPaid(payId);
+      showToast('¡Pago marcado como abonado!');
+      return;
+    }
+    if (targetPayment.paid_by && targetPayment.paid_by.trim()) {
+      await markPaymentAsPaid(payId, targetPayment.paid_by);
+      showToast(`¡Pago marcado como abonado por ${targetPayment.paid_by}!`);
+      return;
+    }
+    setMarkPaidTarget(targetPayment);
   };
 
   // Map of category metrics by category id
@@ -156,6 +198,7 @@ export default function AdminBudgetPage() {
         'Total Pagado (€)',
         'Total Pendiente (€)',
         'Estado Pago',
+        'Pagado por',
         'Fecha Pago Final',
         'Notas / Comentarios',
       ];
@@ -191,6 +234,21 @@ export default function AdminBudgetPage() {
             ? 'Pendiente de pago'
             : 'Sin pagos';
 
+        const settledPayments = (catMetric?.categoryPayments || []).filter((p) =>
+          isPaymentSettled(p)
+        );
+        const payerTotalsMap = new Map<string, number>();
+        for (const p of settledPayments) {
+          const payerLabel = (p.paid_by || '').trim() || 'Sin asignar';
+          payerTotalsMap.set(
+            payerLabel,
+            (payerTotalsMap.get(payerLabel) || 0) + Number(p.amount || 0)
+          );
+        }
+        const paidBySummary = Array.from(payerTotalsMap.entries())
+          .map(([payerName, amt]) => `${payerName} (${formatCurrency(amt)})`)
+          .join('; ');
+
         const notes = selectedSup
           ? [selectedSup.comments, selectedSup.notes].filter(Boolean).join(' | ')
           : cat.description || '';
@@ -207,6 +265,7 @@ export default function AdminBudgetPage() {
           Number(paidPrice).toFixed(2),
           Number(pendingPrice).toFixed(2),
           `"${paymentStatusLabel}"`,
+          `"${paidBySummary.replace(/"/g, '""')}"`,
           `"${catMetric?.finalPaymentDueDate || ''}"`,
           `"${notes.replace(/"/g, '""')}"`,
         ].join(',');
@@ -226,10 +285,46 @@ export default function AdminBudgetPage() {
         Number(metrics.totalPending).toFixed(2),
         '""',
         '""',
+        '""',
         `"Generado: ${new Date().toLocaleDateString('es-ES')}"`,
       ].join(',');
 
-      const csvContent = '\uFEFF' + [headers.join(','), ...rows, summaryRow].join('\r\n');
+      const payerBreakdownHeader = [
+        '',
+        '"DESGLOSE POR PAGADOR"',
+        '"Rol"',
+        '"Nº Pagos"',
+        '"% del Total Pagado"',
+        '"Total Pagado (€)"',
+      ].join(',');
+
+      const payerBreakdownRows = payerBreakdown.payers.map((p) => {
+        const roleLabel =
+          p.role === 'member'
+            ? 'Miembro de la boda'
+            : p.role === 'third_party'
+            ? 'Tercero'
+            : 'Sin asignar';
+        return [
+          '',
+          `"${p.name.replace(/"/g, '""')}"`,
+          `"${roleLabel}"`,
+          String(p.paidCount),
+          `"${p.percentOfTotalPaid}%"`,
+          Number(p.totalPaid).toFixed(2),
+        ].join(',');
+      });
+
+      const csvContent =
+        '\uFEFF' +
+        [
+          headers.join(','),
+          ...rows,
+          summaryRow,
+          '',
+          payerBreakdownHeader,
+          ...payerBreakdownRows,
+        ].join('\r\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -288,6 +383,16 @@ export default function AdminBudgetPage() {
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
+            type="button"
+            onClick={() => setIsBreakdownModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            title="Ver desglose de gastos y totales por cada miembro de la boda y terceros"
+          >
+            <Users className="w-4 h-4" />
+            <span>Desglose de Gastos</span>
+          </button>
+
+          <button
             onClick={handleExportCSV}
             className="px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-card hover:bg-neutral-50 text-text-primary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             title="Descargar presupuesto completo en formato CSV / Excel"
@@ -324,6 +429,8 @@ export default function AdminBudgetPage() {
       {/* 1. Dashboard Financial KPIs & Alerts */}
       <BudgetDashboard
         metrics={metrics}
+        payerBreakdown={payerBreakdown}
+        onOpenPayerBreakdown={() => setIsBreakdownModalOpen(true)}
         onOpenAddCategory={() => {
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
@@ -338,10 +445,7 @@ export default function AdminBudgetPage() {
           setPaymentToEdit(null);
           setIsPaymentModalOpen(true);
         }}
-        onMarkPaymentPaid={async (payId) => {
-          await markPaymentAsPaid(payId);
-          showToast('¡Pago marcado como abonado!');
-        }}
+        onMarkPaymentPaid={handleRequestMarkPaymentPaid}
       />
 
       {/* 2. Menu Cost Dynamic Calculator */}
@@ -363,16 +467,14 @@ export default function AdminBudgetPage() {
             banquetPayments={banquetMetric.payments}
             paidAmount={banquetMetric.paidAmount}
             pendingAmount={banquetMetric.pendingAmount}
+            defaultMembers={defaultMembers}
             onOpenBanquetPayments={handleOpenBanquetPayments}
             onEditBanquetPayment={(pay) => {
               setPaymentModalSupplier(banquetMetric.supplier);
               setPaymentToEdit(pay);
               setIsPaymentModalOpen(true);
             }}
-            onMarkBanquetPaymentPaid={async (payId) => {
-              await markPaymentAsPaid(payId);
-              showToast('¡Pago del banquete marcado como abonado!');
-            }}
+            onMarkBanquetPaymentPaid={handleRequestMarkPaymentPaid}
             onDeleteBanquetPayment={async (payId) => {
               if (window.confirm('¿Eliminar este registro de pago del banquete?')) {
                 await deletePayment(payId);
@@ -519,6 +621,7 @@ export default function AdminBudgetPage() {
                   pendingAmount={catMetric.pendingAmount}
                   paymentStatus={catMetric.paymentStatus}
                   categoryPayments={catMetric.categoryPayments}
+                  defaultMembers={defaultMembers}
                   finalPaymentDueDate={catMetric.finalPaymentDueDate}
                   daysUntilFinalPayment={catMetric.daysUntilFinalPayment}
                   onOpenComparator={(cat) => {
@@ -534,10 +637,7 @@ export default function AdminBudgetPage() {
                     setPaymentToEdit(payEdit);
                     setIsPaymentModalOpen(true);
                   }}
-                  onMarkPaymentPaid={async (payId) => {
-                    await markPaymentAsPaid(payId);
-                    showToast('¡Pago marcado como abonado!');
-                  }}
+                  onMarkPaymentPaid={handleRequestMarkPaymentPaid}
                   onDeletePayment={async (payId) => {
                     if (window.confirm('¿Eliminar este registro de pago?')) {
                       await deletePayment(payId);
@@ -731,6 +831,8 @@ export default function AdminBudgetPage() {
             paymentToEdit={paymentToEdit}
             contractedTotal={modalContractedTotal}
             alreadyPaidAmount={modalPaidAmount}
+            defaultMembers={defaultMembers}
+            existingThirdParties={knownPayers.thirdParties}
             onClose={() => {
               setIsPaymentModalOpen(false);
               setPaymentModalSupplier(null);
@@ -744,10 +846,7 @@ export default function AdminBudgetPage() {
                 showToast('Pago eliminado');
               }
             }}
-            onMarkPaymentPaid={async (payId) => {
-              await markPaymentAsPaid(payId);
-              showToast('¡Pago marcado como abonado!');
-            }}
+            onMarkPaymentPaid={handleRequestMarkPaymentPaid}
             onSetFinalPaymentDate={async (supId, dueDate, total) => {
               await setSupplierFinalPaymentDate(supId, dueDate, total);
               showToast(
@@ -764,6 +863,7 @@ export default function AdminBudgetPage() {
                   due_date: data.due_date,
                   paid_at: data.paid_at,
                   status: data.status,
+                  paid_by: data.paid_by,
                   notes: data.notes,
                 });
                 if (data.final_payment_date) {
@@ -781,6 +881,7 @@ export default function AdminBudgetPage() {
                   due_date: data.due_date,
                   paid_at: data.paid_at,
                   status: data.status,
+                  paid_by: data.paid_by,
                   notes: data.notes,
                 });
                 if (data.final_payment_date) {
@@ -796,6 +897,51 @@ export default function AdminBudgetPage() {
           />
         );
       })()}
+
+      {/* 5. Payer Expense Breakdown Modal */}
+      <PayerBreakdownModal
+        isOpen={isBreakdownModalOpen}
+        weddingTitle={activeWedding?.couple_names || 'Stephanie & Rodrigo'}
+        breakdown={payerBreakdown}
+        defaultMembers={defaultMembers}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        onEditPayment={(sup, pay) => {
+          setIsBreakdownModalOpen(false);
+          setPaymentModalSupplier(sup);
+          setPaymentToEdit(pay);
+          setIsPaymentModalOpen(true);
+        }}
+      />
+
+      {/* 6. Confirm Payer when marking a scheduled payment as paid */}
+      <MarkPaidPayerModal
+        isOpen={Boolean(markPaidTarget)}
+        payment={markPaidTarget}
+        supplierName={(() => {
+          if (!markPaidTarget) return undefined;
+          const matched = suppliers.find((s) => s.id === markPaidTarget.supplier_id);
+          if (matched) return matched.name;
+          if (
+            markPaidTarget.supplier_id === BANQUET_SUPPLIER_ID ||
+            markPaidTarget.supplier_id === LEGACY_BANQUET_SUPPLIER_ID ||
+            markPaidTarget.supplier_id === metrics.banquetMetric.supplier.id
+          ) {
+            return metrics.banquetMetric.supplier.name;
+          }
+          return undefined;
+        })()}
+        defaultMembers={defaultMembers}
+        existingThirdParties={knownPayers.thirdParties}
+        onClose={() => setMarkPaidTarget(null)}
+        onConfirm={async (paymentId, paidBy) => {
+          await markPaymentAsPaid(paymentId, paidBy);
+          showToast(
+            paidBy
+              ? `¡Pago marcado como abonado por ${paidBy}!`
+              : '¡Pago marcado como abonado!'
+          );
+        }}
+      />
     </div>
   );
 }

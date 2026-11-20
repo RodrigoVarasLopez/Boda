@@ -415,6 +415,7 @@ export function useBudgetStore() {
     due_date?: string | null;
     paid_at?: string | null;
     status?: 'pending' | 'partial' | 'paid';
+    paid_by?: string | null;
     notes?: string | null;
   }) => {
     const normalizedSupplierId =
@@ -425,6 +426,7 @@ export function useBudgetStore() {
         ? crypto.randomUUID()
         : `e0000000-0000-0000-0000-${Date.now().toString(16).padStart(12, '0')}`;
     const paymentStatus = data.status || 'paid';
+    const cleanPaidBy = data.paid_by ? data.paid_by.trim() || null : null;
     const newPayment: BudgetPayment = {
       id: newPaymentId,
       supplier_id: normalizedSupplierId,
@@ -437,6 +439,7 @@ export function useBudgetStore() {
           ? new Date().toISOString().split('T')[0]
           : null),
       status: paymentStatus,
+      paid_by: cleanPaidBy,
       notes: data.notes || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -451,6 +454,7 @@ export function useBudgetStore() {
         supplier_id: normalizedSupplierId,
         id: newPaymentId,
         status: paymentStatus,
+        paid_by: cleanPaidBy,
         paid_at: newPayment.paid_at,
       });
       if (res && res.success) {
@@ -523,14 +527,18 @@ export function useBudgetStore() {
     due_date?: string | null;
     paid_at?: string | null;
     status?: 'pending' | 'partial' | 'paid';
+    paid_by?: string | null;
     notes?: string | null;
   }) => {
     const currentPayments = getStoredBudgetPayments();
+    const cleanPaidBy =
+      data.paid_by !== undefined ? (data.paid_by ? data.paid_by.trim() || null : null) : undefined;
     const nextPayments = currentPayments.map((p) =>
       p.id === data.id
         ? {
             ...p,
             ...data,
+            paid_by: cleanPaidBy !== undefined ? cleanPaidBy : p.paid_by,
             amount: data.amount != null ? Number(data.amount) : p.amount,
             paid_at:
               (data.status === 'paid' || data.status === 'partial') && !data.paid_at
@@ -552,6 +560,7 @@ export function useBudgetStore() {
     try {
       await updatePaymentAction({
         ...data,
+        ...(cleanPaidBy !== undefined ? { paid_by: cleanPaidBy } : {}),
         paid_at: updatedTarget ? updatedTarget.paid_at : data.paid_at,
       });
     } catch (e) {
@@ -571,14 +580,15 @@ export function useBudgetStore() {
   };
 
   /**
-   * Marks a scheduled ('pending') payment as paid today with 1 click
+   * Marks a scheduled ('pending') payment as paid today with 1 click (optionally assigning who paid it)
    */
-  const markPaymentAsPaid = async (paymentId: string) => {
+  const markPaymentAsPaid = async (paymentId: string, paidBy?: string | null) => {
     const today = new Date().toISOString().split('T')[0];
     await updatePayment({
       id: paymentId,
       status: 'paid',
       paid_at: today,
+      ...(paidBy !== undefined ? { paid_by: paidBy } : {}),
     });
   };
 

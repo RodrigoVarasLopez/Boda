@@ -296,6 +296,7 @@ export interface BudgetPayment {
   due_date?: string | null;
   paid_at?: string | null;
   status: PaymentStatus;
+  paid_by?: string | null;
   notes?: string | null;
   created_at?: string;
   updated_at?: string;

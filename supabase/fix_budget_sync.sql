@@ -93,10 +93,13 @@ CREATE TABLE IF NOT EXISTS budget_payments (
   due_date DATE,
   paid_at TIMESTAMPTZ,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'partial', 'paid')),
+  paid_by TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE budget_payments ADD COLUMN IF NOT EXISTS paid_by TEXT;
 
 CREATE TABLE IF NOT EXISTS budget_menu_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

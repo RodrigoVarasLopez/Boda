@@ -255,6 +255,56 @@ export function parseMenuNotesAndExtras(
   return { cleanNotes, extraExpenses: finalExtras };
 }
 
+const PAYMENT_PAYER_MARKER = '<!--PAID_BY:';
+const PAYMENT_PAYER_END = '-->';
+
+/**
+ * Serializes human-readable payment notes and the payer name into a single string
+ * so `budget_payments.notes` acts as a lossless fallback if the native `paid_by` column
+ * has not been migrated in Supabase yet.
+ */
+export function serializePaymentNotesWithPayer(
+  notes?: string | null,
+  paidBy?: string | null
+): string | null {
+  const { cleanNotes } = parsePaymentNotesAndPayer(notes, null);
+  const cleanPayer = (paidBy || '').replace(/-->/g, '').trim();
+  if (!cleanPayer) {
+    return cleanNotes || null;
+  }
+  const encoded = `${PAYMENT_PAYER_MARKER}${cleanPayer}${PAYMENT_PAYER_END}`;
+  return cleanNotes ? `${cleanNotes}\n${encoded}` : encoded;
+}
+
+/**
+ * Extracts clean human-readable payment notes and the resolved `paidBy` value
+ * from a raw notes string and/or a native `paid_by` column value.
+ */
+export function parsePaymentNotesAndPayer(
+  rawNotes?: string | null,
+  columnPaidBy?: string | null
+): { cleanNotes: string | null; paidBy: string | null } {
+  const raw = rawNotes || '';
+  let parsedPayer: string | null = null;
+  const markerIdx = raw.indexOf(PAYMENT_PAYER_MARKER);
+
+  if (markerIdx !== -1) {
+    const startVal = markerIdx + PAYMENT_PAYER_MARKER.length;
+    const endIdx = raw.indexOf(PAYMENT_PAYER_END, startVal);
+    const extracted = (endIdx !== -1 ? raw.slice(startVal, endIdx) : raw.slice(startVal)).trim();
+    if (extracted) {
+      parsedPayer = extracted;
+    }
+  }
+
+  const cleanNotes =
+    raw.replace(/\s*<!--PAID_BY:[\s\S]*?-->/g, '').split(PAYMENT_PAYER_MARKER)[0].trim() || null;
+  const cleanColumnPaidBy = columnPaidBy ? columnPaidBy.trim() : '';
+  const finalPaidBy = cleanColumnPaidBy || parsedPayer || null;
+
+  return { cleanNotes, paidBy: finalPaidBy };
+}
+
 /**
  * Calculates the total cost of a single BanquetExpenseItem
  */
@@ -933,6 +983,437 @@ export function calculateBudgetMetrics(
 }
 
 // ==========================================
+// PAYER TRACKING & EXPENSE BREAKDOWN UTILITIES
+// ==========================================
+
+export interface PayerStyle {
+  badge: string;
+  bar: string;
+  avatar: string;
+  ring: string;
+  text: string;
+}
+
+const UNASSIGNED_PAYER_KEY = '__unassigned__';
+
+const MEMBER_STYLES: PayerStyle[] = [
+  {
+    badge: 'bg-rose-50 text-rose-800 border-rose-200',
+    bar: 'bg-rose-500',
+    avatar: 'bg-rose-100 text-rose-800',
+    ring: 'ring-rose-400',
+    text: 'text-rose-800',
+  },
+  {
+    badge: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+    bar: 'bg-indigo-500',
+    avatar: 'bg-indigo-100 text-indigo-800',
+    ring: 'ring-indigo-400',
+    text: 'text-indigo-800',
+  },
+];
+
+const THIRD_PARTY_STYLES: PayerStyle[] = [
+  {
+    badge: 'bg-teal-50 text-teal-800 border-teal-200',
+    bar: 'bg-teal-500',
+    avatar: 'bg-teal-100 text-teal-800',
+    ring: 'ring-teal-400',
+    text: 'text-teal-800',
+  },
+  {
+    badge: 'bg-violet-50 text-violet-800 border-violet-200',
+    bar: 'bg-violet-500',
+    avatar: 'bg-violet-100 text-violet-800',
+    ring: 'ring-violet-400',
+    text: 'text-violet-800',
+  },
+  {
+    badge: 'bg-amber-50 text-amber-800 border-amber-200',
+    bar: 'bg-amber-500',
+    avatar: 'bg-amber-100 text-amber-800',
+    ring: 'ring-amber-400',
+    text: 'text-amber-800',
+  },
+  {
+    badge: 'bg-sky-50 text-sky-800 border-sky-200',
+    bar: 'bg-sky-500',
+    avatar: 'bg-sky-100 text-sky-800',
+    ring: 'ring-sky-400',
+    text: 'text-sky-800',
+  },
+];
+
+const UNASSIGNED_PAYER_STYLE: PayerStyle = {
+  badge: 'bg-neutral-100 text-neutral-700 border-neutral-200',
+  bar: 'bg-neutral-400',
+  avatar: 'bg-neutral-200 text-neutral-700',
+  ring: 'ring-neutral-400',
+  text: 'text-neutral-700',
+};
+
+export function getWeddingDefaultPayers(
+  wedding?: {
+    id?: string;
+    slug?: string;
+    bride_name?: string;
+    groom_name?: string;
+    couple_names?: string;
+  } | null
+): string[] {
+  if (
+    !wedding ||
+    wedding.id === WEDDING_UUID ||
+    wedding.id === 'w-stephanie-rodrigo-2027' ||
+    wedding.slug === 'stephanie-y-rodrigo'
+  ) {
+    return ['Stephanie Mendoza', 'Rodrigo'];
+  }
+
+  const bride = (wedding.bride_name || '').trim();
+  const groom = (wedding.groom_name || '').trim();
+  const isGeneric = (val: string) => /^(?:novia|novio)$/i.test(val);
+
+  let rawCandidates: string[] = [];
+
+  if (/\s+(?:y|&)\s+/i.test(bride) && (!groom || isGeneric(groom))) {
+    rawCandidates = bride.split(/\s+(?:y|&)\s+/i);
+  } else {
+    if (bride && !isGeneric(bride)) rawCandidates.push(bride);
+    if (groom && !isGeneric(groom)) rawCandidates.push(groom);
+    if (rawCandidates.length === 0 && wedding.couple_names) {
+      rawCandidates = wedding.couple_names.split(/\s+(?:y|&)\s+/i);
+    }
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const cand of rawCandidates) {
+    const clean = cand.trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(clean);
+    }
+  }
+
+  return result.length > 0 ? result : ['Novia', 'Novio'];
+}
+
+export function getAllKnownPayers(
+  defaultMembers: string[],
+  payments: BudgetPayment[]
+): { members: string[]; thirdParties: string[] } {
+  const memberSet = new Set(defaultMembers.map((m) => m.trim().toLowerCase()));
+  const thirdPartyMap = new Map<string, string>();
+
+  for (const p of payments) {
+    const trimmed = (p.paid_by || '').trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (!memberSet.has(key) && !thirdPartyMap.has(key)) {
+      thirdPartyMap.set(key, trimmed);
+    }
+  }
+
+  return {
+    members: defaultMembers,
+    thirdParties: Array.from(thirdPartyMap.values()),
+  };
+}
+
+export function getPayerStyle(
+  payerName: string | null | undefined,
+  defaultMembers: string[]
+): PayerStyle {
+  const trimmed = (payerName || '').trim();
+  if (!trimmed) return UNASSIGNED_PAYER_STYLE;
+
+  const key = trimmed.toLowerCase();
+  const memberIdx = defaultMembers.findIndex((m) => m.trim().toLowerCase() === key);
+  if (memberIdx !== -1) {
+    if (memberIdx < MEMBER_STYLES.length) {
+      return MEMBER_STYLES[memberIdx];
+    }
+    return THIRD_PARTY_STYLES[memberIdx % THIRD_PARTY_STYLES.length];
+  }
+
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return THIRD_PARTY_STYLES[hash % THIRD_PARTY_STYLES.length];
+}
+
+export interface PayerPaymentDetail {
+  payment: BudgetPayment;
+  categoryId: string;
+  categoryName: string;
+  supplier: BudgetSupplier;
+  supplierName: string;
+}
+
+export interface PayerSummary {
+  key: string;
+  name: string;
+  role: 'member' | 'third_party' | 'unassigned';
+  totalPaid: number;
+  paidCount: number;
+  percentOfTotalPaid: number;
+  scheduledTotal: number;
+  scheduledCount: number;
+  payments: PayerPaymentDetail[];
+  scheduledPayments: PayerPaymentDetail[];
+  style: PayerStyle;
+}
+
+export interface PayerBreakdownSummary {
+  totalPaid: number;
+  totalSettledCount: number;
+  membersTotalPaid: number;
+  thirdPartiesTotalPaid: number;
+  unassignedTotalPaid: number;
+  payers: PayerSummary[];
+}
+
+export function calculatePayerBreakdown(
+  metrics: BudgetMetrics,
+  defaultMembers: string[],
+  allSuppliers: BudgetSupplier[] = []
+): PayerBreakdownSummary {
+  const suppliersById = new Map<string, BudgetSupplier>();
+  for (const s of allSuppliers) {
+    suppliersById.set(s.id, s);
+  }
+  if (metrics.banquetMetric?.supplier) {
+    suppliersById.set(metrics.banquetMetric.supplier.id, metrics.banquetMetric.supplier);
+  }
+
+  const seenPaymentIds = new Set<string>();
+  const allDetails: PayerPaymentDetail[] = [];
+
+  for (const cb of metrics.categoryBreakdown) {
+    for (const payment of cb.categoryPayments) {
+      if (seenPaymentIds.has(payment.id)) continue;
+      seenPaymentIds.add(payment.id);
+      const supplier =
+        cb.selectedSupplier ||
+        suppliersById.get(payment.supplier_id) || {
+          ...DEFAULT_BANQUET_SUPPLIER,
+          id: payment.supplier_id,
+          category_id: cb.category.id,
+          name: cb.category.name,
+        };
+      allDetails.push({
+        payment,
+        categoryId: cb.category.id,
+        categoryName: cb.category.name,
+        supplier,
+        supplierName: supplier.name,
+      });
+    }
+  }
+
+  for (const payment of metrics.banquetMetric.payments) {
+    if (seenPaymentIds.has(payment.id)) continue;
+    seenPaymentIds.add(payment.id);
+    const supplier =
+      suppliersById.get(payment.supplier_id) || metrics.banquetMetric.supplier;
+    allDetails.push({
+      payment,
+      categoryId: supplier.category_id || BANQUET_CATEGORY_ID,
+      categoryName: 'Banquete & Catering',
+      supplier,
+      supplierName: supplier.name,
+    });
+  }
+
+  const memberCanonicalByKey = new Map<string, string>();
+  for (const m of defaultMembers) {
+    const clean = m.trim();
+    if (clean) memberCanonicalByKey.set(clean.toLowerCase(), clean);
+  }
+
+  const buckets = new Map<
+    string,
+    {
+      key: string;
+      name: string;
+      role: 'member' | 'third_party' | 'unassigned';
+      totalPaid: number;
+      paidCount: number;
+      scheduledTotal: number;
+      scheduledCount: number;
+      payments: PayerPaymentDetail[];
+      scheduledPayments: PayerPaymentDetail[];
+    }
+  >();
+
+  // Pre-seed default wedding members so they always appear in the breakdown
+  for (const m of defaultMembers) {
+    const clean = m.trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        key,
+        name: clean,
+        role: 'member',
+        totalPaid: 0,
+        paidCount: 0,
+        scheduledTotal: 0,
+        scheduledCount: 0,
+        payments: [],
+        scheduledPayments: [],
+      });
+    }
+  }
+
+  for (const detail of allDetails) {
+    const rawPayer = (detail.payment.paid_by || '').trim();
+    const rawKey = rawPayer.toLowerCase();
+    const settled = isPaymentSettled(detail.payment);
+    const amt = Number(detail.payment.amount) || 0;
+
+    let bucketKey = UNASSIGNED_PAYER_KEY;
+    let bucketName = 'Sin asignar';
+    let role: 'member' | 'third_party' | 'unassigned' = 'unassigned';
+
+    if (rawPayer) {
+      if (memberCanonicalByKey.has(rawKey)) {
+        bucketKey = rawKey;
+        bucketName = memberCanonicalByKey.get(rawKey)!;
+        role = 'member';
+      } else {
+        bucketKey = rawKey;
+        bucketName = rawPayer;
+        role = 'third_party';
+      }
+    }
+
+    let bucket = buckets.get(bucketKey);
+    if (!bucket) {
+      bucket = {
+        key: bucketKey,
+        name: bucketName,
+        role,
+        totalPaid: 0,
+        paidCount: 0,
+        scheduledTotal: 0,
+        scheduledCount: 0,
+        payments: [],
+        scheduledPayments: [],
+      };
+      buckets.set(bucketKey, bucket);
+    }
+
+    if (settled) {
+      bucket.totalPaid = Number((bucket.totalPaid + amt).toFixed(2));
+      bucket.paidCount += 1;
+      bucket.payments.push(detail);
+    } else {
+      bucket.scheduledTotal = Number((bucket.scheduledTotal + amt).toFixed(2));
+      bucket.scheduledCount += 1;
+      bucket.scheduledPayments.push(detail);
+    }
+  }
+
+  let totalPaid = 0;
+  let totalSettledCount = 0;
+  let membersTotalPaid = 0;
+  let thirdPartiesTotalPaid = 0;
+  let unassignedTotalPaid = 0;
+
+  for (const b of buckets.values()) {
+    totalPaid = Number((totalPaid + b.totalPaid).toFixed(2));
+    totalSettledCount += b.paidCount;
+    if (b.role === 'member') {
+      membersTotalPaid = Number((membersTotalPaid + b.totalPaid).toFixed(2));
+    } else if (b.role === 'third_party') {
+      thirdPartiesTotalPaid = Number((thirdPartiesTotalPaid + b.totalPaid).toFixed(2));
+    } else {
+      unassignedTotalPaid = Number((unassignedTotalPaid + b.totalPaid).toFixed(2));
+    }
+  }
+
+  const orderedPayers: PayerSummary[] = [];
+
+  // 1. Default wedding members in original order
+  for (const m of defaultMembers) {
+    const key = m.trim().toLowerCase();
+    const b = buckets.get(key);
+    if (!b) continue;
+    orderedPayers.push({
+      ...b,
+      payments: [...b.payments].sort((a, c) =>
+        (c.payment.paid_at || c.payment.created_at || '').localeCompare(
+          a.payment.paid_at || a.payment.created_at || ''
+        )
+      ),
+      scheduledPayments: [...b.scheduledPayments].sort((a, c) =>
+        (a.payment.due_date || '9999').localeCompare(c.payment.due_date || '9999')
+      ),
+      percentOfTotalPaid:
+        totalPaid > 0 ? Number(((b.totalPaid / totalPaid) * 100).toFixed(1)) : 0,
+      style: getPayerStyle(b.name, defaultMembers),
+    });
+  }
+
+  // 2. Third parties sorted by totalPaid desc, then name asc
+  const thirdPartyBuckets = Array.from(buckets.values())
+    .filter((b) => b.role === 'third_party' && (b.paidCount > 0 || b.scheduledCount > 0))
+    .sort((a, b) => b.totalPaid - a.totalPaid || a.name.localeCompare(b.name));
+
+  for (const b of thirdPartyBuckets) {
+    orderedPayers.push({
+      ...b,
+      payments: [...b.payments].sort((a, c) =>
+        (c.payment.paid_at || c.payment.created_at || '').localeCompare(
+          a.payment.paid_at || a.payment.created_at || ''
+        )
+      ),
+      scheduledPayments: [...b.scheduledPayments].sort((a, c) =>
+        (a.payment.due_date || '9999').localeCompare(c.payment.due_date || '9999')
+      ),
+      percentOfTotalPaid:
+        totalPaid > 0 ? Number(((b.totalPaid / totalPaid) * 100).toFixed(1)) : 0,
+      style: getPayerStyle(b.name, defaultMembers),
+    });
+  }
+
+  // 3. Unassigned only if settled unassigned payments exist
+  const unassignedBucket = buckets.get(UNASSIGNED_PAYER_KEY);
+  if (unassignedBucket && unassignedBucket.paidCount > 0) {
+    orderedPayers.push({
+      ...unassignedBucket,
+      payments: [...unassignedBucket.payments].sort((a, c) =>
+        (c.payment.paid_at || c.payment.created_at || '').localeCompare(
+          a.payment.paid_at || a.payment.created_at || ''
+        )
+      ),
+      scheduledPayments: [...unassignedBucket.scheduledPayments].sort((a, c) =>
+        (a.payment.due_date || '9999').localeCompare(c.payment.due_date || '9999')
+      ),
+      percentOfTotalPaid:
+        totalPaid > 0
+          ? Number(((unassignedBucket.totalPaid / totalPaid) * 100).toFixed(1))
+          : 0,
+      style: UNASSIGNED_PAYER_STYLE,
+    });
+  }
+
+  return {
+    totalPaid,
+    totalSettledCount,
+    membersTotalPaid,
+    thirdPartiesTotalPaid,
+    unassignedTotalPaid,
+    payers: orderedPayers,
+  };
+}
+
+// ==========================================
 // LOCAL STORAGE STORE PERSISTENCE
 // ==========================================
 
@@ -1008,6 +1489,15 @@ export function setStoredBudgetSuppliers(suppliers: BudgetSupplier[]) {
   }
 }
 
+function normalizeBudgetPayment(payment: BudgetPayment): BudgetPayment {
+  const { cleanNotes, paidBy } = parsePaymentNotesAndPayer(payment.notes, payment.paid_by);
+  return {
+    ...payment,
+    notes: cleanNotes,
+    paid_by: paidBy,
+  };
+}
+
 export function getStoredBudgetPayments(): BudgetPayment[] {
   if (typeof window === 'undefined') return INITIAL_PAYMENTS;
   const wid = getCurrentBudgetWeddingId();
@@ -1015,7 +1505,7 @@ export function getStoredBudgetPayments(): BudgetPayment[] {
     const raw = localStorage.getItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_PAYMENTS));
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return parsed.map(normalizeBudgetPayment);
     }
   } catch (e) {
     console.warn('Error reading stored budget payments:', e);
@@ -1024,10 +1514,11 @@ export function getStoredBudgetPayments(): BudgetPayment[] {
 }
 
 export function setStoredBudgetPayments(payments: BudgetPayment[]) {
-  inMemoryPayments = payments;
+  const normalized = payments.map(normalizeBudgetPayment);
+  inMemoryPayments = normalized;
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_PAYMENTS), JSON.stringify(payments));
+      localStorage.setItem(getScopedBudgetKey(STORAGE_KEY_BUDGET_PAYMENTS), JSON.stringify(normalized));
     } catch (e) {
       console.warn('Error saving stored budget payments:', e);
     }

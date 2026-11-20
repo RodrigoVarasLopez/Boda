@@ -164,6 +164,7 @@ export const BudgetPaymentCreateSchema = z.object({
   due_date: z.string().optional().nullable(),
   paid_at: z.string().optional().nullable(),
   status: z.enum(['pending', 'partial', 'paid']).default('paid'),
+  paid_by: z.string().trim().max(120).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -173,6 +174,7 @@ export const BudgetPaymentUpdateSchema = z.object({
   due_date: z.string().optional().nullable(),
   paid_at: z.string().optional().nullable(),
   status: z.enum(['pending', 'partial', 'paid']).optional(),
+  paid_by: z.string().trim().max(120).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
 });
 

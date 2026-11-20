@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BudgetMetrics, formatCurrency, formatDateES } from '@/lib/budget-data';
+import {
+  BudgetMetrics,
+  PayerBreakdownSummary,
+  formatCurrency,
+  formatDateES,
+} from '@/lib/budget-data';
 import { BudgetSupplier } from '@/lib/types';
 import {
   Wallet,
@@ -16,20 +21,26 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Users,
+  ArrowRight,
 } from 'lucide-react';
 
 interface BudgetDashboardProps {
   metrics: BudgetMetrics;
+  payerBreakdown?: PayerBreakdownSummary;
   onOpenAddCategory: () => void;
   onOpenAddSupplier: () => void;
   onOpenSupplierPayment?: (supplier: BudgetSupplier) => void;
   onMarkPaymentPaid?: (paymentId: string) => void;
+  onOpenPayerBreakdown?: () => void;
 }
 
 export const BudgetDashboard: React.FC<BudgetDashboardProps> = ({
   metrics,
+  payerBreakdown,
   onOpenSupplierPayment,
   onMarkPaymentPaid,
+  onOpenPayerBreakdown,
 }) => {
   const [showUnscheduled, setShowUnscheduled] = useState(false);
 
@@ -111,6 +122,32 @@ export const BudgetDashboard: React.FC<BudgetDashboardProps> = ({
                 {metrics.percentPaid}%
               </span>
             </div>
+            {payerBreakdown && payerBreakdown.totalPaid > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {payerBreakdown.payers
+                  .filter((p) => p.totalPaid > 0)
+                  .slice(0, 3)
+                  .map((p) => (
+                    <span
+                      key={p.key}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${p.style.badge}`}
+                    >
+                      {p.name.split(' ')[0]}: {formatCurrency(p.totalPaid)}
+                    </span>
+                  ))}
+              </div>
+            )}
+            {onOpenPayerBreakdown && (
+              <button
+                type="button"
+                onClick={onOpenPayerBreakdown}
+                className="mt-2.5 text-[11px] font-semibold text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Users className="w-3 h-3" />
+                <span>Ver desglose por miembro</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
 
